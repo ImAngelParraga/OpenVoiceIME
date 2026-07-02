@@ -1,0 +1,8 @@
+<resources>
+    <color name="openime_bg">#111418</color>
+    <color name="openime_panel">#1B2027</color>
+    <color name="openime_text">#F4F7FA</color>
+    <color name="openime_muted">#9BA6B2</color>
+    <color name="openime_accent">#45C18D</color>
+    <color name="openime_danger">#E15B64</color>
+</resources>

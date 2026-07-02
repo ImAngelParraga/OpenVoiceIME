@@ -1,0 +1,112 @@
+<resources>
+    <string name="app_name">OpenVoiceIME</string>
+    <string name="ime_name">OpenVoiceIME</string>
+    <string name="ime_voice_subtype">Voice input</string>
+    <string name="version_placeholder">Version</string>
+    <string name="version_format">Version %1$s</string>
+    <string name="ime_version_format">OpenVoiceIME %1$s</string>
+    <string name="status_recording">Recording</string>
+    <string name="status_uploading_format">Uploading %1$d KB</string>
+    <string name="status_inserted">Inserted</string>
+    <string name="status_error">Error</string>
+    <string name="status_not_tested">Not tested</string>
+    <string name="status_testing">Testing...</string>
+    <string name="status_server_reachable">Server reachable</string>
+    <string name="status_server_test_failed">Server test failed</string>
+    <string name="status_permission_not_granted">Permission not granted</string>
+    <string name="status_microphone_permission_required">Microphone permission required</string>
+    <string name="status_keyboard_enabled">OpenVoiceIME keyboard enabled</string>
+    <string name="status_keyboard_required">OpenVoiceIME keyboard must be enabled</string>
+    <string name="status_keyboard_not_enabled">Keyboard not enabled</string>
+    <string name="hint_server_error">Server error</string>
+    <string name="hint_custom_model">Custom model</string>
+    <string name="hint_preset_name">Preset name</string>
+    <string name="hint_custom_iso_code">Custom ISO code</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="button_stop">Stop</string>
+    <string name="button_retry">Retry</string>
+    <string name="button_insert">Insert</string>
+    <string name="button_discard">Discard</string>
+    <string name="button_copy_error">Copy error</string>
+    <string name="button_save_preset">Save current connection as preset</string>
+    <string name="button_test_server">Test server connection</string>
+    <string name="button_grant_microphone">Grant microphone permission</string>
+    <string name="button_open_keyboard_settings">Open keyboard settings</string>
+    <string name="button_copy">Copy</string>
+    <string name="button_share">Share</string>
+    <string name="button_reset_metrics">Reset response metrics</string>
+    <string name="settings_server">Server</string>
+    <string name="settings_preset">Preset</string>
+    <string name="settings_server_url">Server URL</string>
+    <string name="settings_model">Model</string>
+    <string name="settings_api_token">API token</string>
+    <string name="settings_custom_preset">Custom preset</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_app_language">Application language</string>
+    <string name="settings_transcription_language">Transcription language</string>
+    <string name="settings_behavior">Behavior</string>
+    <string name="settings_append_trailing_space">Append trailing space</string>
+    <string name="settings_hide_after_insert">Hide after insert</string>
+    <string name="settings_confirm_before_insert">Confirm before insert</string>
+    <string name="settings_select_inserted_text">Select inserted text</string>
+    <string name="settings_autosave_note">Changes save automatically.</string>
+    <string name="settings_required_setup">Required setup</string>
+    <string name="settings_microphone_step">1. Grant microphone permission</string>
+    <string name="settings_microphone_description">OpenVoiceIME needs microphone access to record audio before sending it to your transcription server.</string>
+    <string name="settings_keyboard_step">2. Enable OpenVoiceIME keyboard</string>
+    <string name="settings_keyboard_description">Android requires enabling OpenVoiceIME as an input method before it can appear in the keyboard picker.</string>
+    <string name="settings_response_metrics">Response time metrics</string>
+    <string name="language_auto">Auto</string>
+    <string name="language_spanish">Spanish</string>
+    <string name="language_english">English</string>
+    <string name="language_custom">Custom</string>
+    <string name="app_language_system">System default</string>
+    <string-array name="app_language_choice_labels">
+        <item>@string/app_language_system</item>
+        <item>@string/language_english</item>
+        <item>@string/language_spanish</item>
+    </string-array>
+    <string-array name="language_choice_labels">
+        <item>@string/language_auto</item>
+        <item>@string/language_spanish</item>
+        <item>@string/language_english</item>
+        <item>@string/language_custom</item>
+    </string-array>
+    <string name="setup_configure_openime">Open settings to configure OpenVoiceIME</string>
+    <string name="setup_grant_microphone">Open OpenVoiceIME settings and grant microphone permission</string>
+    <string name="error_start_recorder">Could not start recorder</string>
+    <string name="error_recording_failed">Recording failed</string>
+    <string name="error_no_recording_retry">No recording available to retry</string>
+    <string name="error_copied">Error copied</string>
+    <string name="error_clip_label">OpenVoiceIME error</string>
+    <string name="toast_microphone_granted">Microphone permission granted</string>
+    <string name="toast_microphone_denied">Microphone permission denied</string>
+    <string name="toast_microphone_already_granted">Microphone permission already granted</string>
+    <string name="toast_metrics_reset">Response metrics reset</string>
+    <string name="toast_preset_name_required">Preset name is required</string>
+    <string name="toast_model_required">Model is required</string>
+    <string name="toast_preset_saved">Preset saved</string>
+    <string name="toast_testing_server">Testing server connection</string>
+    <string name="toast_no_metrics_copy">No response metrics to copy</string>
+    <string name="toast_metrics_copied">Response metrics copied</string>
+    <string name="toast_no_metrics_share">No response metrics to share</string>
+    <string name="metrics_clip_label">OpenVoiceIME response metrics</string>
+    <string name="metrics_share_chooser">Share response metrics</string>
+    <string name="validation_invalid_settings">Invalid settings</string>
+    <string name="validation_api_token_required">API token is required</string>
+    <string name="validation_model_required">Model is required</string>
+    <string name="validation_language_iso_code">Language must be an ISO code like es or en</string>
+    <string name="validation_server_url">Server URL must start with http:// or https://</string>
+    <string name="diagnostic_endpoint_reachable">Transcription endpoint reachable</string>
+    <string name="transcription_timeout">Server did not respond</string>
+    <string name="transcription_unauthorized">Token is invalid</string>
+    <string name="transcription_server_busy">Server GPU is busy</string>
+    <string name="transcription_empty">No speech detected</string>
+    <string name="transcription_unknown_host">Cannot resolve server hostname</string>
+    <string name="transcription_connection_refused">Cannot connect to server</string>
+    <string name="transcription_http_format">Server returned HTTP %1$d</string>
+    <string name="transcription_http_detail_format">Server returned HTTP %1$d: %2$s</string>
+    <string name="transcription_network_format">Network error: %1$s</string>
+    <string name="transcription_parse">Could not parse server response</string>
+    <string name="transcription_parse_detail_format">Could not parse server response: %1$s</string>
+</resources>

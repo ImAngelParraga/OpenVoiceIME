@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenVoiceIME</string>
+    <string name="ime_name">OpenVoiceIME</string>
+    <string name="ime_voice_subtype">Entrada de voz</string>
+    <string name="version_placeholder">Versión</string>
+    <string name="version_format">Versión %1$s</string>
+    <string name="ime_version_format">OpenVoiceIME %1$s</string>
+    <string name="status_recording">Grabando</string>
+    <string name="status_uploading_format">Subiendo %1$d KB</string>
+    <string name="status_inserted">Insertado</string>
+    <string name="status_error">Error</string>
+    <string name="status_not_tested">Sin probar</string>
+    <string name="status_testing">Probando...</string>
+    <string name="status_server_reachable">Servidor accesible</string>
+    <string name="status_server_test_failed">La prueba del servidor falló</string>
+    <string name="status_permission_not_granted">Permiso no concedido</string>
+    <string name="status_microphone_permission_required">Permiso de micrófono requerido</string>
+    <string name="status_keyboard_enabled">Teclado OpenVoiceIME activado</string>
+    <string name="status_keyboard_required">El teclado OpenVoiceIME debe estar activado</string>
+    <string name="status_keyboard_not_enabled">Teclado no activado</string>
+    <string name="hint_server_error">Error del servidor</string>
+    <string name="hint_custom_model">Modelo personalizado</string>
+    <string name="hint_preset_name">Nombre del preajuste</string>
+    <string name="hint_custom_iso_code">Código ISO personalizado</string>
+    <string name="button_cancel">Cancelar</string>
+    <string name="button_stop">Detener</string>
+    <string name="button_retry">Reintentar</string>
+    <string name="button_insert">Insertar</string>
+    <string name="button_discard">Descartar</string>
+    <string name="button_copy_error">Copiar error</string>
+    <string name="button_save_preset">Guardar conexión actual como preajuste</string>
+    <string name="button_test_server">Probar conexión con el servidor</string>
+    <string name="button_grant_microphone">Conceder permiso de micrófono</string>
+    <string name="button_open_keyboard_settings">Abrir ajustes de teclado</string>
+    <string name="button_copy">Copiar</string>
+    <string name="button_share">Compartir</string>
+    <string name="button_reset_metrics">Restablecer métricas de respuesta</string>
+    <string name="settings_server">Servidor</string>
+    <string name="settings_preset">Preajuste</string>
+    <string name="settings_server_url">URL del servidor</string>
+    <string name="settings_model">Modelo</string>
+    <string name="settings_api_token">Token de API</string>
+    <string name="settings_custom_preset">Preajuste personalizado</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_app_language">Idioma de la aplicación</string>
+    <string name="settings_transcription_language">Idioma de transcripción</string>
+    <string name="settings_behavior">Comportamiento</string>
+    <string name="settings_append_trailing_space">Añadir espacio final</string>
+    <string name="settings_hide_after_insert">Ocultar tras insertar</string>
+    <string name="settings_confirm_before_insert">Confirmar antes de insertar</string>
+    <string name="settings_select_inserted_text">Seleccionar texto insertado</string>
+    <string name="settings_autosave_note">Los cambios se guardan automáticamente.</string>
+    <string name="settings_required_setup">Configuración requerida</string>
+    <string name="settings_microphone_step">1. Concede permiso de micrófono</string>
+    <string name="settings_microphone_description">OpenVoiceIME necesita acceso al micrófono para grabar audio antes de enviarlo a tu servidor de transcripción.</string>
+    <string name="settings_keyboard_step">2. Activa el teclado OpenVoiceIME</string>
+    <string name="settings_keyboard_description">Android requiere activar OpenVoiceIME como método de entrada antes de que aparezca en el selector de teclado.</string>
+    <string name="settings_response_metrics">Métricas de tiempo de respuesta</string>
+    <string name="language_auto">Automático</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_english">Inglés</string>
+    <string name="language_custom">Personalizado</string>
+    <string name="app_language_system">Predeterminado del sistema</string>
+    <string-array name="app_language_choice_labels">
+        <item>@string/app_language_system</item>
+        <item>@string/language_english</item>
+        <item>@string/language_spanish</item>
+    </string-array>
+    <string-array name="language_choice_labels">
+        <item>@string/language_auto</item>
+        <item>@string/language_spanish</item>
+        <item>@string/language_english</item>
+        <item>@string/language_custom</item>
+    </string-array>
+    <string name="setup_configure_openime">Abre los ajustes para configurar OpenVoiceIME</string>
+    <string name="setup_grant_microphone">Abre los ajustes de OpenVoiceIME y concede permiso de micrófono</string>
+    <string name="error_start_recorder">No se pudo iniciar la grabadora</string>
+    <string name="error_recording_failed">La grabación falló</string>
+    <string name="error_no_recording_retry">No hay grabacion disponible para reintentar</string>
+    <string name="error_copied">Error copiado</string>
+    <string name="error_clip_label">Error de OpenVoiceIME</string>
+    <string name="toast_microphone_granted">Permiso de micrófono concedido</string>
+    <string name="toast_microphone_denied">Permiso de micrófono denegado</string>
+    <string name="toast_microphone_already_granted">El permiso de micrófono ya está concedido</string>
+    <string name="toast_metrics_reset">Métricas de respuesta restablecidas</string>
+    <string name="toast_preset_name_required">El nombre del preajuste es obligatorio</string>
+    <string name="toast_model_required">El modelo es obligatorio</string>
+    <string name="toast_preset_saved">Preajuste guardado</string>
+    <string name="toast_testing_server">Probando conexión con el servidor</string>
+    <string name="toast_no_metrics_copy">No hay métricas de respuesta para copiar</string>
+    <string name="toast_metrics_copied">Métricas de respuesta copiadas</string>
+    <string name="toast_no_metrics_share">No hay métricas de respuesta para compartir</string>
+    <string name="metrics_clip_label">Métricas de respuesta de OpenVoiceIME</string>
+    <string name="metrics_share_chooser">Compartir métricas de respuesta</string>
+    <string name="validation_invalid_settings">Ajustes no válidos</string>
+    <string name="validation_api_token_required">El token de API es obligatorio</string>
+    <string name="validation_model_required">El modelo es obligatorio</string>
+    <string name="validation_language_iso_code">El idioma debe ser un código ISO como es o en</string>
+    <string name="validation_server_url">La URL del servidor debe empezar por http:// o https://</string>
+    <string name="diagnostic_endpoint_reachable">El endpoint de transcripción es accesible</string>
+    <string name="transcription_timeout">El servidor no respondió</string>
+    <string name="transcription_unauthorized">El token no es valido</string>
+    <string name="transcription_server_busy">La GPU del servidor está ocupada</string>
+    <string name="transcription_empty">No se detectó voz</string>
+    <string name="transcription_unknown_host">No se puede resolver el nombre del servidor</string>
+    <string name="transcription_connection_refused">No se puede conectar con el servidor</string>
+    <string name="transcription_http_format">El servidor devolvió HTTP %1$d</string>
+    <string name="transcription_http_detail_format">El servidor devolvió HTTP %1$d: %2$s</string>
+    <string name="transcription_network_format">Error de red: %1$s</string>
+    <string name="transcription_parse">No se pudo interpretar la respuesta del servidor</string>
+    <string name="transcription_parse_detail_format">No se pudo interpretar la respuesta del servidor: %1$s</string>
+</resources>
