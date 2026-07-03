@@ -52,4 +52,4 @@ Remote provider retention is controlled by the provider you choose.
 
 ## Contact
 
-For privacy questions, use the contact address listed on the Google Play Store listing or the project repository.
+For privacy questions, use the contact address listed in the project repository.

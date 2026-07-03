@@ -16,7 +16,7 @@ It is meant for people who want a configurable voice keyboard instead of a fixed
 
 ## Current status
 
-OpenVoiceIME is early project software. It supports manual installation, configuration, and testing. Release hardening for Play Store publication is in progress.
+OpenVoiceIME is early project software. It supports manual installation, configuration, and testing through GitHub Releases or local builds.
 
 Supported today:
 
@@ -29,7 +29,6 @@ Supported today:
 Not supported yet:
 
 - Provider-specific adapters for Deepgram, AssemblyAI, Google Speech-to-Text, or Azure Speech.
-- A published Play Store/F-Droid production release.
 - End-to-end Android instrumented tests.
 
 ## How it works
@@ -43,7 +42,7 @@ By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`.
 
 ## Setup
 
-1. Build and install the debug APK.
+1. Download an APK from GitHub Releases, or build one locally.
 2. Open **OpenVoiceIME** from the launcher.
 3. Grant microphone permission.
 4. Choose a provider preset or configure a custom OpenAI-compatible server.
@@ -57,36 +56,40 @@ By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`.
 Run commands from the repository root.
 
 ```powershell
-.\gradlew.bat testDebugUnitTest assembleDebug
+.\gradlew.bat testDebugUnitTest assembleRelease
 ```
 
-The debug APK is written to:
+The release APK is written to:
 
 ```text
-app/build/outputs/apk/debug/OpenVoiceIME-debug.apk
+app/build/outputs/apk/release/OpenVoiceIME-release.apk
 ```
 
 Install it on a connected device or emulator with:
 
 ```powershell
-adb install -r app/build/outputs/apk/debug/OpenVoiceIME-debug.apk
+adb install -r app/build/outputs/apk/release/OpenVoiceIME-release.apk
 ```
 
-The release Android App Bundle is written to:
+For local debug builds, use:
 
-```text
-app/build/outputs/bundle/release/app-release.aab
+```powershell
+.\gradlew.bat assembleDebug
 ```
 
 On macOS/Linux, use:
 
 ```bash
-./gradlew testDebugUnitTest assembleDebug
+./gradlew testDebugUnitTest assembleRelease
 ```
 
-## Release Preparation
+## Releases
 
-Play Store preparation is tracked in [docs/play-store.md](docs/play-store.md). The draft privacy policy lives in [docs/privacy-policy.md](docs/privacy-policy.md).
+Public APKs are distributed through GitHub Releases. Each release should include:
+
+- `OpenVoiceIME-release.apk`
+- A short changelog.
+- Any known setup or compatibility notes.
 
 Release builds block cleartext HTTP and disable app backup to protect provider credentials. Debug builds allow cleartext HTTP for local development endpoints.
 
@@ -162,7 +165,7 @@ Useful first areas:
 Before opening a pull request, run:
 
 ```powershell
-.\gradlew.bat testDebugUnitTest assembleDebug
+.\gradlew.bat testDebugUnitTest assembleRelease
 ```
 
 Use Conventional Commit subjects such as `feat(stt): add provider adapter` or `fix(ime): handle empty recording`.
