@@ -75,6 +75,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var operationId: Long = 0L
     private var selectedLanguageCode: String? = null
     private var favoriteLanguageCodes: List<String?> = emptyList()
+    private var inputViewVisible = false
+    private var startRecordingScheduled = false
 
     private val tick = object : Runnable {
         override fun run() {
@@ -82,6 +84,13 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
                 updateRecordingFeedback()
                 handler.postDelayed(this, 120)
             }
+        }
+    }
+
+    private val scheduledStartRecording = Runnable {
+        startRecordingScheduled = false
+        if (inputViewVisible && shouldStartFreshRecording()) {
+            startRecordingOrShowSetupError()
         }
     }
 
@@ -98,6 +107,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     override fun onCreateInputView(): View {
         val view = LayoutInflater.from(this).inflate(R.layout.ime_voice_input, null)
+        inputViewVisible = true
         versionText = view.findViewById(R.id.versionText)
         statusText = view.findViewById(R.id.statusText)
         errorDetailsInput = view.findViewById(R.id.errorDetailsInput)
@@ -121,19 +131,25 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         versionText.text = appVersionLabel()
         setupLanguageControls()
         resetControls()
-        startRecordingOrShowSetupError()
+        showLanguageControls()
+        scheduleStartRecordingOrShowSetupError()
         return view
     }
 
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        inputViewVisible = true
         if (::statusText.isInitialized && shouldStartFreshRecording()) {
             resetControls()
-            startRecordingOrShowSetupError()
+            showLanguageControls()
+            scheduleStartRecordingOrShowSetupError()
         }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        inputViewVisible = false
+        startRecordingScheduled = false
+        handler.removeCallbacks(scheduledStartRecording)
         handler.removeCallbacks(tick)
         if (state == ImeState.Recording) {
             recorder.cancel()
@@ -144,10 +160,24 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(scheduledStartRecording)
         handler.removeCallbacks(tick)
         recorder.cancel()
         scope.cancel()
         super.onDestroy()
+    }
+
+    private fun scheduleStartRecordingOrShowSetupError() {
+        if (startRecordingScheduled) {
+            return
+        }
+        startRecordingScheduled = true
+        handler.postDelayed(scheduledStartRecording, AUTO_RECORD_DELAY_MILLIS)
+    }
+
+    private fun cancelScheduledStartRecording() {
+        startRecordingScheduled = false
+        handler.removeCallbacks(scheduledStartRecording)
     }
 
     private fun startRecordingOrShowSetupError() {
@@ -169,8 +199,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             statusText.setText(R.string.status_recording)
             timerText.text = "00:00"
             levelBar.progress = 0
-            refreshLanguageControls(settingsStore.loadTranscriptionLanguage())
-            languageButton.visibility = View.VISIBLE
+            showLanguageControls()
             stopButton.setText(R.string.button_stop)
             stopButton.isEnabled = true
             cancelButton.setText(R.string.button_cancel)
@@ -330,6 +359,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private fun cancelCurrentWork() {
         operationId += 1
+        startRecordingScheduled = false
+        handler.removeCallbacks(scheduledStartRecording)
         handler.removeCallbacks(tick)
         if (state == ImeState.Recording) {
             recorder.cancel()
@@ -399,7 +430,15 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         languageButton.text = languageButtonLabel(selectedLanguageCode)
     }
 
+    private fun showLanguageControls() {
+        refreshLanguageControls(settingsStore.loadTranscriptionLanguage())
+        languageButton.visibility = View.VISIBLE
+    }
+
     private fun showLanguageMenu() {
+        if (shouldStartFreshRecording()) {
+            cancelScheduledStartRecording()
+        }
         val menu = PopupMenu(this, languageButton)
         favoriteLanguageCodes.forEachIndexed { index, code ->
             menu.menu.add(0, index, index, languageButtonLabel(code))
@@ -407,7 +446,11 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         menu.setOnMenuItemClickListener { item ->
             selectedLanguageCode = favoriteLanguageCodes.getOrNull(item.itemId)
             saveLanguageSettings()
+            scheduleStartRecordingIfFresh()
             true
+        }
+        menu.setOnDismissListener {
+            scheduleStartRecordingIfFresh()
         }
         menu.show()
     }
@@ -415,6 +458,12 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private fun saveLanguageSettings() {
         settingsStore.saveTranscriptionLanguage(selectedLanguageCode)
         languageButton.text = languageButtonLabel(selectedLanguageCode)
+    }
+
+    private fun scheduleStartRecordingIfFresh() {
+        if (inputViewVisible && shouldStartFreshRecording()) {
+            scheduleStartRecordingOrShowSetupError()
+        }
     }
 
     private fun languageButtonLabel(languageCode: String?): String {
@@ -532,5 +581,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private companion object {
         const val TAG = "OpenVoiceIME"
+        const val AUTO_RECORD_DELAY_MILLIS = 800L
     }
 }

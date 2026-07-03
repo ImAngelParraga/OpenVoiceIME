@@ -45,6 +45,10 @@ class SettingsStore(context: Context) {
         )
     }
 
+    fun loadAppLanguageChoice(): AppLanguageChoice {
+        return prefs.enumValue(KEY_APP_LANGUAGE_CHOICE, AppLanguageChoice.SYSTEM)
+    }
+
     fun loadTranscriptionLanguage(): TranscriptionLanguageSettings {
         val selectedLanguageCode = prefs.getString(KEY_TRANSCRIPTION_LANGUAGE_CODE, null)
             ?: legacyLanguageCode()
