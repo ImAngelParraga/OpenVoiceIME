@@ -17,18 +17,7 @@ import java.util.concurrent.TimeUnit
 class OpenAiCompatibleProvider(
     private val client: OkHttpClient = defaultClient(),
 ) : SttProvider {
-    private val warmupLock = Any()
-    private var warmupCall: okhttp3.Call? = null
-
-    private val warmupClient = client.newBuilder()
-        .callTimeout(2, TimeUnit.SECONDS)
-        .connectTimeout(2, TimeUnit.SECONDS)
-        .readTimeout(2, TimeUnit.SECONDS)
-        .writeTimeout(2, TimeUnit.SECONDS)
-        .build()
-
     override suspend fun transcribe(audioFile: File, settings: AppSettings): TranscriptionResult = withContext(Dispatchers.IO) {
-        cancelWarmup()
         if (!audioFile.exists() || audioFile.length() <= 0L) {
             return@withContext TranscriptionResult.Failure(TranscriptionError.Network("recording file is empty"))
         }
@@ -56,37 +45,6 @@ class OpenAiCompatibleProvider(
             val error = e.toTranscriptionError()
             Log.w(TAG, "STT upload failed: ${error.userMessage}", e)
             TranscriptionResult.Failure(error)
-        }
-    }
-
-    override suspend fun warmUp(settings: AppSettings) = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${settings.normalizedBaseUrl()}/health")
-            .get()
-            .build()
-        runCatching {
-            val startedAt = SystemClock.elapsedRealtime()
-            val call = warmupClient.newCall(request)
-            synchronized(warmupLock) {
-                warmupCall = call
-            }
-            call.execute().use { response ->
-                Log.i(TAG, "Server warmup HTTP ${response.code} after ${SystemClock.elapsedRealtime() - startedAt}ms")
-            }
-        }.onFailure {
-            Log.i(TAG, "Server warmup skipped: ${it.javaClass.simpleName}")
-        }.also {
-            synchronized(warmupLock) {
-                warmupCall = null
-            }
-        }
-        Unit
-    }
-
-    private fun cancelWarmup() {
-        synchronized(warmupLock) {
-            warmupCall?.cancel()
-            warmupCall = null
         }
     }
 

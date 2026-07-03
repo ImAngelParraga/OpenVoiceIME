@@ -9,12 +9,14 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
@@ -34,8 +36,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class SettingsActivity : AppCompatActivity() {
+    private companion object {
+        const val MAX_LANGUAGE_SEARCH_RESULTS = 6
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val diagnostics = NetworkDiagnostics()
 
@@ -48,8 +55,10 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var presetNameInput: EditText
     private lateinit var tokenInput: EditText
     private lateinit var appLanguageSpinner: Spinner
-    private lateinit var languageSpinner: Spinner
-    private lateinit var customLanguageInput: EditText
+    private lateinit var languageSearchInput: EditText
+    private lateinit var languageSearchResultsContainer: LinearLayout
+    private lateinit var favoriteLanguagesToggleButton: Button
+    private lateinit var favoriteLanguagesContainer: LinearLayout
     private lateinit var diagnosticPanel: ScrollView
     private lateinit var diagnosticOutput: TextView
     private lateinit var serverStatusIcon: TextView
@@ -66,8 +75,13 @@ class SettingsActivity : AppCompatActivity() {
     private var suppressPresetChanges = false
     private var suppressModelChanges = false
     private var suppressAutosave = false
+    private var selectedLanguageCode: String? = null
+    private var favoriteLanguageCodes: List<String?> = emptyList()
+    private var favoriteLanguagesExpanded = false
+    private var lastSavedConnectionFingerprint: String? = null
     private var presetOptions: List<ProviderPresetOption> = emptyList()
     private var modelChoices: List<String> = emptyList()
+    private var languageOptions: List<TranscriptionLanguageOption> = emptyList()
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(newBase.withAppLocale())
@@ -92,7 +106,7 @@ class SettingsActivity : AppCompatActivity() {
             setupProviderPresetSpinner()
             setupModelSpinner()
             setupAppLanguageSpinner()
-            setupLanguageSpinner()
+            setupLanguageSearch()
             loadSettings()
         }
         refreshMetrics()
@@ -121,8 +135,10 @@ class SettingsActivity : AppCompatActivity() {
         presetNameInput = findViewById(R.id.presetNameInput)
         tokenInput = findViewById(R.id.tokenInput)
         appLanguageSpinner = findViewById(R.id.appLanguageSpinner)
-        languageSpinner = findViewById(R.id.languageSpinner)
-        customLanguageInput = findViewById(R.id.customLanguageInput)
+        languageSearchInput = findViewById(R.id.languageSearchInput)
+        languageSearchResultsContainer = findViewById(R.id.languageSearchResultsContainer)
+        favoriteLanguagesToggleButton = findViewById(R.id.favoriteLanguagesToggleButton)
+        favoriteLanguagesContainer = findViewById(R.id.favoriteLanguagesContainer)
         diagnosticPanel = findViewById(R.id.diagnosticPanel)
         diagnosticOutput = findViewById(R.id.diagnosticOutput)
         serverStatusIcon = findViewById(R.id.serverStatusIcon)
@@ -175,16 +191,18 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupLanguageSpinner() {
-        val labels = resources.getStringArray(R.array.language_choice_labels).toList()
-        languageSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
-        languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                customLanguageInput.visibility = if (position == LanguageChoice.CUSTOM.ordinal) View.VISIBLE else View.GONE
-                saveSettingsSilently()
+    private fun setupLanguageSearch() {
+        languageOptions = transcriptionLanguageOptions(Locale.getDefault())
+        languageSearchInput.doAfterTextChanged {
+            refreshLanguageSearchResults(it?.toString().orEmpty())
+        }
+        languageSearchInput.setOnEditorActionListener { view, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                hideKeyboard(view)
+                true
+            } else {
+                false
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
     }
 
@@ -216,12 +234,17 @@ class SettingsActivity : AppCompatActivity() {
             refreshModelSpinner(settings.model)
             tokenInput.setText(settings.apiToken)
             appLanguageSpinner.setSelection(settings.appLanguageChoice.ordinal)
-            languageSpinner.setSelection(settings.languageChoice.ordinal)
-            customLanguageInput.setText(settings.customLanguage)
+            selectedLanguageCode = settings.languageCode
+            favoriteLanguageCodes = settings.favoriteTranscriptionLanguageCodes
+            languageSearchInput.setText("")
+            refreshLanguageSearchResults()
+            refreshFavoriteLanguages()
             trailingSpaceCheck.isChecked = settings.appendTrailingSpace
             hideAfterSuccessCheck.isChecked = settings.hideAfterSuccess
             confirmBeforeInsertCheck.isChecked = settings.confirmBeforeInsert
             selectInsertedTextCheck.isChecked = settings.selectInsertedText
+            lastSavedConnectionFingerprint = connectionTestFingerprint(settings)
+            showConnectionTestStatus(settings)
         }
     }
 
@@ -252,6 +275,11 @@ class SettingsActivity : AppCompatActivity() {
             saveCurrentServerAsPreset()
         }
 
+        favoriteLanguagesToggleButton.setOnClickListener {
+            favoriteLanguagesExpanded = !favoriteLanguagesExpanded
+            refreshFavoriteLanguages()
+        }
+
         findViewById<Button>(R.id.copyMetricsButton).setOnClickListener {
             copyMetrics()
         }
@@ -265,7 +293,6 @@ class SettingsActivity : AppCompatActivity() {
         baseUrlInput.doAfterTextChanged { saveSettingsSilently() }
         customModelInput.doAfterTextChanged { saveSettingsSilently() }
         tokenInput.doAfterTextChanged { saveSettingsSilently() }
-        customLanguageInput.doAfterTextChanged { saveSettingsSilently() }
 
         trailingSpaceCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
         hideAfterSuccessCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
@@ -328,6 +355,114 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun refreshLanguageSearchResults(query: String = languageSearchInput.text?.toString().orEmpty()) {
+        val normalizedQuery = query.trim()
+        if (normalizedQuery.isBlank()) {
+            renderLanguageSearchResults(emptyList(), showEmptyState = false)
+            return
+        }
+        val results = languageOptions.filter { option ->
+            option.label.contains(normalizedQuery, ignoreCase = true) ||
+                option.code?.contains(normalizedQuery, ignoreCase = true) == true
+        }.take(MAX_LANGUAGE_SEARCH_RESULTS)
+        renderLanguageSearchResults(results, showEmptyState = true)
+    }
+
+    private fun renderLanguageSearchResults(results: List<TranscriptionLanguageOption>, showEmptyState: Boolean) {
+        languageSearchResultsContainer.removeAllViews()
+        if (results.isEmpty()) {
+            languageSearchResultsContainer.visibility = if (showEmptyState) View.VISIBLE else View.GONE
+            if (!showEmptyState) {
+                return
+            }
+            languageSearchResultsContainer.addView(
+                TextView(this).apply {
+                    text = getString(R.string.language_no_matches)
+                    setTextColor(ContextCompat.getColor(this@SettingsActivity, R.color.openime_muted))
+                    textSize = 14f
+                    setPadding(0, 8, 0, 8)
+                },
+            )
+            return
+        }
+        languageSearchResultsContainer.visibility = View.VISIBLE
+        results.forEach { option ->
+            languageSearchResultsContainer.addView(
+                Button(this).apply {
+                    text = option.label
+                    setOnClickListener { addFavoriteLanguage(option.code) }
+                },
+            )
+        }
+    }
+
+    private fun addFavoriteLanguage(languageCode: String?) {
+        if (languageCode in favoriteLanguageCodes) {
+            Toast.makeText(this, R.string.toast_language_favorite_exists, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (favoriteLanguageCodes.size >= MAX_FAVORITE_TRANSCRIPTION_LANGUAGES) {
+            Toast.makeText(this, R.string.toast_language_favorite_limit, Toast.LENGTH_SHORT).show()
+            return
+        }
+        favoriteLanguageCodes = normalizeFavoriteTranscriptionLanguageCodes(favoriteLanguageCodes + languageCode)
+        refreshFavoriteLanguages()
+        languageSearchInput.setText("")
+        refreshLanguageSearchResults()
+        hideKeyboard(languageSearchInput)
+        saveSettingsSilently()
+        Toast.makeText(this, R.string.toast_language_favorite_added, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun hideKeyboard(view: View) {
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
+        view.clearFocus()
+    }
+
+    private fun removeFavoriteLanguage(languageCode: String?) {
+        if (languageCode == null) {
+            return
+        }
+        favoriteLanguageCodes = normalizeFavoriteTranscriptionLanguageCodes(favoriteLanguageCodes.filterNot { it == languageCode })
+        refreshFavoriteLanguages()
+        saveSettingsSilently()
+    }
+
+    private fun refreshFavoriteLanguages() {
+        favoriteLanguagesContainer.removeAllViews()
+        favoriteLanguageCodes = normalizeFavoriteTranscriptionLanguageCodes(favoriteLanguageCodes)
+        favoriteLanguagesToggleButton.text = if (favoriteLanguagesExpanded) {
+            getString(R.string.settings_quick_languages_hide)
+        } else {
+            getString(R.string.settings_quick_languages_format, favoriteLanguageSummary())
+        }
+        favoriteLanguagesContainer.visibility = if (favoriteLanguagesExpanded) View.VISIBLE else View.GONE
+        favoriteLanguageCodes.forEach { code ->
+            val button = Button(this).apply {
+                text = if (code == null) {
+                    getString(R.string.language_auto).uppercase(Locale.ROOT)
+                } else {
+                    "${languageLabel(code)}  X"
+                }
+                isEnabled = code != null
+                setOnClickListener { removeFavoriteLanguage(code) }
+            }
+            favoriteLanguagesContainer.addView(button)
+        }
+    }
+
+    private fun languageLabel(languageCode: String): String {
+        val label = languageOptions.firstOrNull { it.code == languageCode }?.label
+        return label ?: languageCode.uppercase(Locale.ROOT)
+    }
+
+    private fun favoriteLanguageSummary(): String {
+        return favoriteLanguageCodes.joinToString(", ") { code ->
+            code?.uppercase(Locale.ROOT) ?: getString(R.string.language_auto).uppercase(Locale.ROOT)
+        }
+    }
+
     private fun saveCurrentServerAsPreset() {
         val name = presetNameInput.text.toString().trim()
         if (name.isBlank()) {
@@ -368,8 +503,8 @@ class SettingsActivity : AppCompatActivity() {
             apiToken = tokenInput.text.toString(),
             appLanguageChoice = AppLanguageChoice.entries.getOrNull(appLanguageSpinner.selectedItemPosition)
                 ?: AppLanguageChoice.SYSTEM,
-            languageChoice = LanguageChoice.entries[languageSpinner.selectedItemPosition],
-            customLanguage = customLanguageInput.text.toString(),
+            transcriptionLanguageCode = selectedLanguageCode,
+            favoriteTranscriptionLanguageCodes = favoriteLanguageCodes,
             appendTrailingSpace = trailingSpaceCheck.isChecked,
             hideAfterSuccess = hideAfterSuccessCheck.isChecked,
             confirmBeforeInsert = confirmBeforeInsertCheck.isChecked,
@@ -395,6 +530,7 @@ class SettingsActivity : AppCompatActivity() {
             when (val result = diagnostics.test(settings)) {
                 is DiagnosticResult.Success -> {
                     val message = getString(R.string.diagnostic_endpoint_reachable)
+                    store.markConnectionTestSucceeded(settings)
                     hideDiagnosticDetails()
                     showServerStatusSuccess(message)
                     Toast.makeText(this@SettingsActivity, message, Toast.LENGTH_LONG).show()
@@ -422,7 +558,13 @@ class SettingsActivity : AppCompatActivity() {
         if (suppressAutosave) {
             return
         }
-        store.save(currentFormSettings())
+        val settings = currentFormSettings()
+        store.save(settings)
+        val fingerprint = connectionTestFingerprint(settings)
+        if (lastSavedConnectionFingerprint != fingerprint) {
+            lastSavedConnectionFingerprint = fingerprint
+            showConnectionTestStatus(settings)
+        }
     }
 
     private fun runWithoutAutosave(block: () -> Unit) {
@@ -504,6 +646,14 @@ class SettingsActivity : AppCompatActivity() {
         )
     }
 
+    private fun showConnectionTestStatus(settings: AppSettings) {
+        if (store.hasCurrentConnectionTest(settings)) {
+            showServerStatusSuccess(getString(R.string.diagnostic_endpoint_reachable))
+        } else {
+            showServerStatusIdle()
+        }
+    }
+
     private fun setServerStatus(icon: String, text: String, colorRes: Int) {
         val color = ContextCompat.getColor(this, colorRes)
         serverStatusIcon.text = icon
@@ -577,7 +727,6 @@ class SettingsActivity : AppCompatActivity() {
         return when (validation.error) {
             SettingsValidationError.ApiTokenRequired -> getString(R.string.validation_api_token_required)
             SettingsValidationError.ModelRequired -> getString(R.string.validation_model_required)
-            SettingsValidationError.LanguageIsoCodeRequired -> getString(R.string.validation_language_iso_code)
             SettingsValidationError.ServerUrlRequired -> getString(R.string.validation_server_url)
             null -> validation.message ?: getString(R.string.validation_invalid_settings)
         }

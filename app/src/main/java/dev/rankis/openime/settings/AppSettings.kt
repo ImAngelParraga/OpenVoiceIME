@@ -1,6 +1,8 @@
 package dev.rankis.openime.settings
 
 import java.net.URI
+import java.security.MessageDigest
+import java.util.Locale
 
 enum class ProviderType {
     OPENAI_COMPATIBLE,
@@ -68,18 +70,16 @@ data class ProviderPresetOption(
     val isSaved: Boolean = false,
 )
 
-enum class LanguageChoice(val wireValue: String?) {
-    AUTO(null),
-    SPANISH("es"),
-    ENGLISH("en"),
-    CUSTOM(null),
-}
-
 enum class AppLanguageChoice(val languageTag: String?) {
     SYSTEM(null),
     ENGLISH("en"),
     SPANISH("es"),
 }
+
+data class TranscriptionLanguageSettings(
+    val languageCode: String? = null,
+    val favoriteLanguageCodes: List<String?> = defaultFavoriteTranscriptionLanguageCodes(),
+)
 
 data class AppSettings(
     val providerType: ProviderType = ProviderType.OPENAI_COMPATIBLE,
@@ -88,19 +88,15 @@ data class AppSettings(
     val model: String = DEFAULT_TRANSCRIPTION_MODEL,
     val apiToken: String = "",
     val appLanguageChoice: AppLanguageChoice = AppLanguageChoice.SYSTEM,
-    val languageChoice: LanguageChoice = LanguageChoice.AUTO,
-    val customLanguage: String = "",
+    val transcriptionLanguageCode: String? = null,
+    val favoriteTranscriptionLanguageCodes: List<String?> = defaultFavoriteTranscriptionLanguageCodes(),
     val appendTrailingSpace: Boolean = false,
     val hideAfterSuccess: Boolean = true,
     val confirmBeforeInsert: Boolean = false,
     val selectInsertedText: Boolean = true,
 ) {
     val languageCode: String?
-        get() = when (languageChoice) {
-            LanguageChoice.AUTO -> null
-            LanguageChoice.CUSTOM -> customLanguage.trim().ifBlank { null }
-            else -> languageChoice.wireValue
-        }
+        get() = transcriptionLanguageCode?.trim()?.ifBlank { null }
 
     fun normalizedBaseUrl(): String = baseUrl.trim().trimEnd('/')
 
@@ -110,6 +106,7 @@ data class AppSettings(
 const val DEFAULT_BASE_URL = "https://api.openai.com"
 const val DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
 const val CUSTOM_MODEL_LABEL = "Custom..."
+const val MAX_FAVORITE_TRANSCRIPTION_LANGUAGES = 6
 
 fun builtInProviderOptions(): List<ProviderPresetOption> {
     return BuiltInProviderPreset.entries.map { preset ->
@@ -157,8 +154,40 @@ data class SettingsValidation(
 enum class SettingsValidationError {
     ApiTokenRequired,
     ModelRequired,
-    LanguageIsoCodeRequired,
     ServerUrlRequired,
+}
+
+data class TranscriptionLanguageOption(
+    val code: String?,
+    val label: String,
+)
+
+fun transcriptionLanguageOptions(locale: Locale = Locale.getDefault()): List<TranscriptionLanguageOption> {
+    val languages = Locale.getISOLanguages()
+        .mapNotNull { code ->
+            val displayName = Locale.forLanguageTag(code).getDisplayLanguage(locale)
+                .replaceFirstChar { char ->
+                    if (char.isLowerCase()) char.titlecase(locale) else char.toString()
+                }
+            displayName.takeIf { it.isNotBlank() }?.let { name ->
+                TranscriptionLanguageOption(code = code, label = "$name ($code)")
+            }
+        }
+        .distinctBy { it.code }
+        .sortedBy { it.label.lowercase(locale) }
+    return listOf(TranscriptionLanguageOption(code = null, label = "Auto")) + languages
+}
+
+fun defaultFavoriteTranscriptionLanguageCodes(locale: Locale = Locale.getDefault()): List<String?> {
+    val language = locale.language.takeIf { it.isNotBlank() }
+    return normalizeFavoriteTranscriptionLanguageCodes(listOf(null, language))
+}
+
+fun normalizeFavoriteTranscriptionLanguageCodes(codes: List<String?>): List<String?> {
+    return (listOf<String?>(null) + codes)
+        .map { code -> code?.trim()?.lowercase(Locale.ROOT)?.ifBlank { null } }
+        .distinct()
+        .take(MAX_FAVORITE_TRANSCRIPTION_LANGUAGES)
 }
 
 fun validateSettings(settings: AppSettings): SettingsValidation {
@@ -173,10 +202,6 @@ fun validateSettings(settings: AppSettings): SettingsValidation {
     if (settings.normalizedModel().isBlank()) {
         return SettingsValidation(false, "Model is required", SettingsValidationError.ModelRequired)
     }
-    val language = settings.languageCode
-    if (language != null && !Regex("^[A-Za-z]{2,8}(-[A-Za-z0-9]{2,8})?$").matches(language)) {
-        return SettingsValidation(false, "Language must be an ISO code like es or en", SettingsValidationError.LanguageIsoCodeRequired)
-    }
     return SettingsValidation(true)
 }
 
@@ -187,6 +212,17 @@ fun validateServerUrl(baseUrl: String): SettingsValidation {
         return SettingsValidation(false, "Server URL must start with http:// or https://", SettingsValidationError.ServerUrlRequired)
     }
     return SettingsValidation(true)
+}
+
+fun connectionTestFingerprint(settings: AppSettings): String {
+    val value = listOf(
+        settings.normalizedBaseUrl(),
+        settings.normalizedModel(),
+        settings.apiToken,
+    ).joinToString(separator = "\u0000")
+    return MessageDigest.getInstance("SHA-256")
+        .digest(value.toByteArray(Charsets.UTF_8))
+        .joinToString(separator = "") { byte -> "%02x".format(byte) }
 }
 
 fun formatCommitText(text: String, appendTrailingSpace: Boolean): String {

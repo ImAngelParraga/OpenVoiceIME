@@ -54,15 +54,42 @@
         android:textIsSelectable="true"
         android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/timerText"
+    <LinearLayout
+        android:id="@+id/timerRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:gravity="center"
-        android:text="00:00"
-        android:textColor="@color/openime_muted"
-        android:textSize="14sp" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/timerText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="00:00"
+            android:textColor="@color/openime_muted"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/languageButton"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="end|center_vertical"
+            android:text="@string/language_auto"
+            android:textColor="@color/openime_muted"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <ProgressBar
         android:id="@+id/levelBar"

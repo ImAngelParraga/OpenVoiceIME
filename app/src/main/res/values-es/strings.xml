@@ -22,7 +22,7 @@
     <string name="hint_server_error">Error del servidor</string>
     <string name="hint_custom_model">Modelo personalizado</string>
     <string name="hint_preset_name">Nombre del preajuste</string>
-    <string name="hint_custom_iso_code">Código ISO personalizado</string>
+    <string name="hint_search_language">Buscar idioma</string>
     <string name="button_cancel">Cancelar</string>
     <string name="button_stop">Detener</string>
     <string name="button_retry">Reintentar</string>
@@ -57,21 +57,17 @@
     <string name="settings_keyboard_step">2. Activa el teclado OpenVoiceIME</string>
     <string name="settings_keyboard_description">Android requiere activar OpenVoiceIME como método de entrada antes de que aparezca en el selector de teclado.</string>
     <string name="settings_response_metrics">Métricas de tiempo de respuesta</string>
+    <string name="settings_quick_languages_format">Idiomas rápidos: %1$s</string>
+    <string name="settings_quick_languages_hide">Ocultar idiomas rápidos</string>
     <string name="language_auto">Automático</string>
     <string name="language_spanish">Español</string>
     <string name="language_english">Inglés</string>
-    <string name="language_custom">Personalizado</string>
+    <string name="language_no_matches">Sin resultados</string>
     <string name="app_language_system">Predeterminado del sistema</string>
     <string-array name="app_language_choice_labels">
         <item>@string/app_language_system</item>
         <item>@string/language_english</item>
         <item>@string/language_spanish</item>
-    </string-array>
-    <string-array name="language_choice_labels">
-        <item>@string/language_auto</item>
-        <item>@string/language_spanish</item>
-        <item>@string/language_english</item>
-        <item>@string/language_custom</item>
     </string-array>
     <string name="setup_configure_openime">Abre los ajustes para configurar OpenVoiceIME</string>
     <string name="setup_grant_microphone">Abre los ajustes de OpenVoiceIME y concede permiso de micrófono</string>
@@ -91,13 +87,16 @@
     <string name="toast_no_metrics_copy">No hay métricas de respuesta para copiar</string>
     <string name="toast_metrics_copied">Métricas de respuesta copiadas</string>
     <string name="toast_no_metrics_share">No hay métricas de respuesta para compartir</string>
+    <string name="toast_language_favorite_added">Idioma añadido a la lista rápida</string>
+    <string name="toast_language_favorite_limit">La lista de idiomas rápidos está llena</string>
+    <string name="toast_language_favorite_exists">El idioma ya está en la lista rápida</string>
     <string name="metrics_clip_label">Métricas de respuesta de OpenVoiceIME</string>
     <string name="metrics_share_chooser">Compartir métricas de respuesta</string>
     <string name="validation_invalid_settings">Ajustes no válidos</string>
     <string name="validation_api_token_required">El token de API es obligatorio</string>
     <string name="validation_model_required">El modelo es obligatorio</string>
-    <string name="validation_language_iso_code">El idioma debe ser un código ISO como es o en</string>
     <string name="validation_server_url">La URL del servidor debe empezar por http:// o https://</string>
+    <string name="validation_connection_test_required">Prueba la conexión del servidor en los ajustes de OpenVoiceIME antes de grabar</string>
     <string name="diagnostic_endpoint_reachable">El endpoint de transcripción es accesible</string>
     <string name="transcription_timeout">El servidor no respondió</string>
     <string name="transcription_unauthorized">El token no es valido</string>

@@ -5,8 +5,6 @@ import java.io.File
 
 interface SttProvider {
     suspend fun transcribe(audioFile: File, settings: AppSettings): TranscriptionResult
-
-    suspend fun warmUp(settings: AppSettings) = Unit
 }
 
 sealed class TranscriptionResult {

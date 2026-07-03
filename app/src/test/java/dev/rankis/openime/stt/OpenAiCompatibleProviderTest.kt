@@ -1,7 +1,6 @@
 package dev.rankis.openime.stt
 
 import dev.rankis.openime.settings.AppSettings
-import dev.rankis.openime.settings.LanguageChoice
 import okhttp3.Request
 import okio.Buffer
 import org.junit.Assert.assertEquals
@@ -60,8 +59,7 @@ class OpenAiCompatibleProviderTest {
             baseUrl = "https://api.example.test/",
             model = "gpt-4o-transcribe",
             apiToken = "secret-token",
-            languageChoice = LanguageChoice.CUSTOM,
-            customLanguage = "pt-BR",
+            transcriptionLanguageCode = "pt",
         )
 
         val request = buildOpenAiTranscriptionRequest(file, "audio/mp4", settings)
@@ -72,7 +70,7 @@ class OpenAiCompatibleProviderTest {
             assertTrue(body.contains("name=\"model\""))
             assertTrue(body.contains("gpt-4o-transcribe"))
             assertTrue(body.contains("name=\"language\""))
-            assertTrue(body.contains("pt-BR"))
+            assertTrue(body.contains("pt"))
             assertTrue(body.contains("name=\"temperature\""))
             assertTrue(body.contains("0.0"))
             assertTrue(body.contains("name=\"file\"; filename=\"${file.name}\""))

@@ -17,6 +17,7 @@ import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.widget.Button
 import android.widget.EditText
+import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -27,6 +28,7 @@ import dev.rankis.openime.settings.AppSettings
 import dev.rankis.openime.settings.SettingsStore
 import dev.rankis.openime.settings.SettingsValidation
 import dev.rankis.openime.settings.SettingsValidationError
+import dev.rankis.openime.settings.TranscriptionLanguageSettings
 import dev.rankis.openime.settings.formatCommitText
 import dev.rankis.openime.settings.validateSettings
 import dev.rankis.openime.settings.withAppLocale
@@ -41,6 +43,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -57,6 +60,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private lateinit var errorDetailsInput: EditText
     private lateinit var timerText: TextView
     private lateinit var levelBar: ProgressBar
+    private lateinit var languageButton: TextView
     private lateinit var stopButton: Button
     private lateinit var cancelButton: Button
     private lateinit var retryButton: Button
@@ -69,6 +73,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var pendingSelectInsertedText: Boolean = true
     private var lastErrorMessage: String? = null
     private var operationId: Long = 0L
+    private var selectedLanguageCode: String? = null
+    private var favoriteLanguageCodes: List<String?> = emptyList()
 
     private val tick = object : Runnable {
         override fun run() {
@@ -97,6 +103,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         errorDetailsInput = view.findViewById(R.id.errorDetailsInput)
         timerText = view.findViewById(R.id.timerText)
         levelBar = view.findViewById(R.id.levelBar)
+        languageButton = view.findViewById(R.id.languageButton)
         stopButton = view.findViewById(R.id.stopButton)
         cancelButton = view.findViewById(R.id.cancelButton)
         retryButton = view.findViewById(R.id.retryButton)
@@ -112,6 +119,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         }
 
         versionText.text = appVersionLabel()
+        setupLanguageControls()
         resetControls()
         startRecordingOrShowSetupError()
         return view
@@ -143,12 +151,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     private fun startRecordingOrShowSetupError() {
-        val settings = settingsStore.load()
-        val validation = validateSettings(settings)
-        if (!validation.isValid) {
-            showError(localizedValidationMessage(validation))
-            return
-        }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             showError(getString(R.string.setup_grant_microphone))
             return
@@ -157,11 +159,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         runCatching {
             handler.removeCallbacks(tick)
             operationId += 1
-            warmUpServer(settings, operationId)
             audioFile = recorder.start()
             pendingText = null
-            pendingHideAfterSuccess = settings.hideAfterSuccess
-            pendingSelectInsertedText = settings.selectInsertedText
             lastErrorMessage = null
             state = ImeState.Recording
             startedAtMillis = System.currentTimeMillis()
@@ -170,12 +169,15 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             statusText.setText(R.string.status_recording)
             timerText.text = "00:00"
             levelBar.progress = 0
+            refreshLanguageControls(settingsStore.loadTranscriptionLanguage())
+            languageButton.visibility = View.VISIBLE
             stopButton.setText(R.string.button_stop)
             stopButton.isEnabled = true
             cancelButton.setText(R.string.button_cancel)
             cancelButton.isEnabled = true
             retryButton.visibility = View.GONE
             handler.post(tick)
+            validateRecordingSettingsAsync(operationId)
         }.onFailure {
             showError(getString(R.string.error_start_recorder))
         }
@@ -212,11 +214,17 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private fun upload(file: File) {
         val settings = settingsStore.load()
+        val readinessError = connectionReadinessError(settings)
+        if (readinessError != null) {
+            showError(readinessError)
+            return
+        }
         val uploadOperationId = operationId
         state = ImeState.Uploading
         lastErrorMessage = null
         applyDefaultStatusStyle()
         clearErrorDetails()
+        languageButton.visibility = View.GONE
         statusText.text = getString(R.string.status_uploading_format, (file.length() / 1024).coerceAtLeast(1))
         stopButton.isEnabled = false
         cancelButton.isEnabled = true
@@ -265,13 +273,30 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         }
     }
 
-    private fun warmUpServer(settings: AppSettings, warmupOperationId: Long) {
-        scope.launch(Dispatchers.IO) {
-            provider.warmUp(settings)
-            if (warmupOperationId != operationId) {
+    private fun validateRecordingSettingsAsync(validationOperationId: Long) {
+        scope.launch {
+            val error = withContext(Dispatchers.IO) {
+                connectionReadinessError(settingsStore.load())
+            }
+            if (validationOperationId != operationId || state != ImeState.Recording || error == null) {
                 return@launch
             }
+            handler.removeCallbacks(tick)
+            recorder.cancel()
+            audioFile = null
+            showError(error)
         }
+    }
+
+    private fun connectionReadinessError(settings: AppSettings): String? {
+        val validation = validateSettings(settings)
+        if (!validation.isValid) {
+            return localizedValidationMessage(validation)
+        }
+        if (!settingsStore.hasCurrentConnectionTest(settings)) {
+            return getString(R.string.validation_connection_test_required)
+        }
+        return null
     }
 
     private fun recordTranscriptionMetrics(audioBytes: Long, durationMillis: Long, success: Boolean) {
@@ -328,6 +353,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         errorDetailsInput.visibility = View.VISIBLE
         timerText.visibility = View.GONE
         levelBar.visibility = View.GONE
+        languageButton.visibility = View.GONE
         stopButton.setText(R.string.button_retry)
         stopButton.isEnabled = audioFile?.exists() == true
         cancelButton.setText(R.string.button_cancel)
@@ -349,8 +375,50 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         clearErrorDetails()
         timerText.text = "00:00"
         levelBar.progress = 0
+        languageButton.visibility = View.GONE
         retryButton.setText(R.string.button_retry)
         retryButton.visibility = View.GONE
+    }
+
+    private fun setupLanguageControls() {
+        languageButton.setOnClickListener {
+            showLanguageMenu()
+        }
+    }
+
+    private fun refreshLanguageControls(settings: TranscriptionLanguageSettings) {
+        favoriteLanguageCodes = settings.favoriteLanguageCodes
+        selectedLanguageCode = if (settings.languageCode in favoriteLanguageCodes) {
+            settings.languageCode
+        } else {
+            null
+        }
+        if (selectedLanguageCode != settings.languageCode) {
+            settingsStore.saveTranscriptionLanguage(selectedLanguageCode)
+        }
+        languageButton.text = languageButtonLabel(selectedLanguageCode)
+    }
+
+    private fun showLanguageMenu() {
+        val menu = PopupMenu(this, languageButton)
+        favoriteLanguageCodes.forEachIndexed { index, code ->
+            menu.menu.add(0, index, index, languageButtonLabel(code))
+        }
+        menu.setOnMenuItemClickListener { item ->
+            selectedLanguageCode = favoriteLanguageCodes.getOrNull(item.itemId)
+            saveLanguageSettings()
+            true
+        }
+        menu.show()
+    }
+
+    private fun saveLanguageSettings() {
+        settingsStore.saveTranscriptionLanguage(selectedLanguageCode)
+        languageButton.text = languageButtonLabel(selectedLanguageCode)
+    }
+
+    private fun languageButtonLabel(languageCode: String?): String {
+        return languageCode?.uppercase(Locale.ROOT) ?: getString(R.string.language_auto).uppercase(Locale.ROOT)
     }
 
     private fun updateRecordingFeedback() {
@@ -432,7 +500,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         return when (validation.error) {
             SettingsValidationError.ApiTokenRequired -> getString(R.string.validation_api_token_required)
             SettingsValidationError.ModelRequired -> getString(R.string.validation_model_required)
-            SettingsValidationError.LanguageIsoCodeRequired -> getString(R.string.validation_language_iso_code)
             SettingsValidationError.ServerUrlRequired -> getString(R.string.validation_server_url)
             null -> validation.message ?: getString(R.string.setup_configure_openime)
         }

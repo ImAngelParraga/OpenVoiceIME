@@ -22,7 +22,7 @@
     <string name="hint_server_error">Server error</string>
     <string name="hint_custom_model">Custom model</string>
     <string name="hint_preset_name">Preset name</string>
-    <string name="hint_custom_iso_code">Custom ISO code</string>
+    <string name="hint_search_language">Search language</string>
     <string name="button_cancel">Cancel</string>
     <string name="button_stop">Stop</string>
     <string name="button_retry">Retry</string>
@@ -57,21 +57,17 @@
     <string name="settings_keyboard_step">2. Enable OpenVoiceIME keyboard</string>
     <string name="settings_keyboard_description">Android requires enabling OpenVoiceIME as an input method before it can appear in the keyboard picker.</string>
     <string name="settings_response_metrics">Response time metrics</string>
+    <string name="settings_quick_languages_format">Quick languages: %1$s</string>
+    <string name="settings_quick_languages_hide">Hide quick languages</string>
     <string name="language_auto">Auto</string>
     <string name="language_spanish">Spanish</string>
     <string name="language_english">English</string>
-    <string name="language_custom">Custom</string>
+    <string name="language_no_matches">No matches</string>
     <string name="app_language_system">System default</string>
     <string-array name="app_language_choice_labels">
         <item>@string/app_language_system</item>
         <item>@string/language_english</item>
         <item>@string/language_spanish</item>
-    </string-array>
-    <string-array name="language_choice_labels">
-        <item>@string/language_auto</item>
-        <item>@string/language_spanish</item>
-        <item>@string/language_english</item>
-        <item>@string/language_custom</item>
     </string-array>
     <string name="setup_configure_openime">Open settings to configure OpenVoiceIME</string>
     <string name="setup_grant_microphone">Open OpenVoiceIME settings and grant microphone permission</string>
@@ -91,13 +87,16 @@
     <string name="toast_no_metrics_copy">No response metrics to copy</string>
     <string name="toast_metrics_copied">Response metrics copied</string>
     <string name="toast_no_metrics_share">No response metrics to share</string>
+    <string name="toast_language_favorite_added">Language added to quick list</string>
+    <string name="toast_language_favorite_limit">Quick language list is full</string>
+    <string name="toast_language_favorite_exists">Language is already in quick list</string>
     <string name="metrics_clip_label">OpenVoiceIME response metrics</string>
     <string name="metrics_share_chooser">Share response metrics</string>
     <string name="validation_invalid_settings">Invalid settings</string>
     <string name="validation_api_token_required">API token is required</string>
     <string name="validation_model_required">Model is required</string>
-    <string name="validation_language_iso_code">Language must be an ISO code like es or en</string>
     <string name="validation_server_url">Server URL must start with http:// or https://</string>
+    <string name="validation_connection_test_required">Test server connection in OpenVoiceIME settings before recording</string>
     <string name="diagnostic_endpoint_reachable">Transcription endpoint reachable</string>
     <string name="transcription_timeout">Server did not respond</string>
     <string name="transcription_unauthorized">Token is invalid</string>

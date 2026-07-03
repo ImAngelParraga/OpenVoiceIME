@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class SettingsValidationTest {
     @Test
@@ -111,17 +112,38 @@ class SettingsValidationTest {
     }
 
     @Test
-    fun customLanguageMustLookLikeIsoCode() {
-        val result = validateSettings(
-            AppSettings(
-                apiToken = "secret",
-                languageChoice = LanguageChoice.CUSTOM,
-                customLanguage = "not a code",
-            ),
-        )
+    fun connectionTestFingerprintIgnoresBehaviorSettings() {
+        val base = AppSettings(apiToken = "secret", appendTrailingSpace = false)
+        val changedBehavior = base.copy(appendTrailingSpace = true, hideAfterSuccess = false)
 
-        assertFalse(result.isValid)
-        assertEquals("Language must be an ISO code like es or en", result.message)
+        assertEquals(connectionTestFingerprint(base), connectionTestFingerprint(changedBehavior))
+    }
+
+    @Test
+    fun connectionTestFingerprintChangesForConnectionSettings() {
+        val base = AppSettings(apiToken = "secret")
+
+        assertFalse(connectionTestFingerprint(base) == connectionTestFingerprint(base.copy(model = "whisper-1")))
+        assertFalse(connectionTestFingerprint(base) == connectionTestFingerprint(base.copy(baseUrl = "https://asr.example.test")))
+        assertFalse(connectionTestFingerprint(base) == connectionTestFingerprint(base.copy(apiToken = "other-secret")))
+    }
+
+    @Test
+    fun defaultFavoriteLanguagesIncludeAutoAndLocaleLanguage() {
+        assertEquals(listOf(null, "es"), defaultFavoriteTranscriptionLanguageCodes(Locale.forLanguageTag("es-ES")))
+    }
+
+    @Test
+    fun favoriteLanguagesAlwaysIncludeAutoAndDeduplicate() {
+        assertEquals(listOf(null, "es", "en"), normalizeFavoriteTranscriptionLanguageCodes(listOf("es", null, "es", "en")))
+    }
+
+    @Test
+    fun favoriteLanguagesAreCappedAtSix() {
+        assertEquals(
+            listOf(null, "a", "b", "c", "d", "e"),
+            normalizeFavoriteTranscriptionLanguageCodes(listOf("a", "b", "c", "d", "e", "f")),
+        )
     }
 
     @Test

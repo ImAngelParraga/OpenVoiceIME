@@ -141,20 +141,39 @@
             android:text="@string/settings_transcription_language"
             android:textColor="@color/openime_muted" />
 
-        <Spinner
-            android:id="@+id/languageSpinner"
-            android:layout_width="match_parent"
-            android:layout_height="48dp" />
-
         <EditText
-            android:id="@+id/customLanguageInput"
+            android:id="@+id/languageSearchInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/hint_custom_iso_code"
+            android:hint="@string/hint_search_language"
+            android:imeOptions="actionDone"
             android:inputType="text"
             android:singleLine="true"
             android:textColor="@color/openime_text"
             android:textColorHint="@color/openime_muted" />
+
+        <LinearLayout
+            android:id="@+id/languageSearchResultsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/favoriteLanguagesToggleButton"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="6dp"
+            android:text="@string/settings_quick_languages_format" />
+
+        <LinearLayout
+            android:id="@+id/favoriteLanguagesContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/testServerButton"
