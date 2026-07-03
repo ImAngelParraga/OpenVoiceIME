@@ -172,7 +172,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             return
         }
         startRecordingScheduled = true
-        handler.postDelayed(scheduledStartRecording, AUTO_RECORD_DELAY_MILLIS)
+        handler.post(scheduledStartRecording)
     }
 
     private fun cancelScheduledStartRecording() {
@@ -581,6 +581,5 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private companion object {
         const val TAG = "OpenVoiceIME"
-        const val AUTO_RECORD_DELAY_MILLIS = 800L
     }
 }

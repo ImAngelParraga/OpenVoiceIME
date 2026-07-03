@@ -21,12 +21,12 @@ class RemoteSttInputMethodServiceSourceTest {
     }
 
     @Test
-    fun testV22AutoRecordStartsAfterGracePeriod() {
+    fun testV22AutoRecordStartsAfterViewReturns() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val body = functionBody(source, "scheduleStartRecordingOrShowSetupError")
 
-        assertTrue(source.contains("const val AUTO_RECORD_DELAY_MILLIS = 800L"))
-        assertTrue(body.contains("handler.postDelayed(scheduledStartRecording, AUTO_RECORD_DELAY_MILLIS)"))
+        assertTrue(body.contains("handler.post(scheduledStartRecording)"))
+        assertFalse(body.contains("postDelayed"))
     }
 
     @Test
