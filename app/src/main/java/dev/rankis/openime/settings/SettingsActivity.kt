@@ -59,6 +59,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var languageSearchResultsContainer: LinearLayout
     private lateinit var favoriteLanguagesToggleButton: Button
     private lateinit var favoriteLanguagesContainer: LinearLayout
+    private lateinit var transcriptionPromptInput: EditText
     private lateinit var diagnosticPanel: ScrollView
     private lateinit var diagnosticOutput: TextView
     private lateinit var serverStatusIcon: TextView
@@ -139,6 +140,7 @@ class SettingsActivity : AppCompatActivity() {
         languageSearchResultsContainer = findViewById(R.id.languageSearchResultsContainer)
         favoriteLanguagesToggleButton = findViewById(R.id.favoriteLanguagesToggleButton)
         favoriteLanguagesContainer = findViewById(R.id.favoriteLanguagesContainer)
+        transcriptionPromptInput = findViewById(R.id.transcriptionPromptInput)
         diagnosticPanel = findViewById(R.id.diagnosticPanel)
         diagnosticOutput = findViewById(R.id.diagnosticOutput)
         serverStatusIcon = findViewById(R.id.serverStatusIcon)
@@ -239,6 +241,7 @@ class SettingsActivity : AppCompatActivity() {
             languageSearchInput.setText("")
             refreshLanguageSearchResults()
             refreshFavoriteLanguages()
+            transcriptionPromptInput.setText(settings.transcriptionPrompt)
             trailingSpaceCheck.isChecked = settings.appendTrailingSpace
             hideAfterSuccessCheck.isChecked = settings.hideAfterSuccess
             confirmBeforeInsertCheck.isChecked = settings.confirmBeforeInsert
@@ -293,6 +296,7 @@ class SettingsActivity : AppCompatActivity() {
         baseUrlInput.doAfterTextChanged { saveSettingsSilently() }
         customModelInput.doAfterTextChanged { saveSettingsSilently() }
         tokenInput.doAfterTextChanged { saveSettingsSilently() }
+        transcriptionPromptInput.doAfterTextChanged { saveSettingsSilently() }
 
         trailingSpaceCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
         hideAfterSuccessCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
@@ -505,6 +509,7 @@ class SettingsActivity : AppCompatActivity() {
                 ?: AppLanguageChoice.SYSTEM,
             transcriptionLanguageCode = selectedLanguageCode,
             favoriteTranscriptionLanguageCodes = favoriteLanguageCodes,
+            transcriptionPrompt = transcriptionPromptInput.text.toString(),
             appendTrailingSpace = trailingSpaceCheck.isChecked,
             hideAfterSuccess = hideAfterSuccessCheck.isChecked,
             confirmBeforeInsert = confirmBeforeInsertCheck.isChecked,

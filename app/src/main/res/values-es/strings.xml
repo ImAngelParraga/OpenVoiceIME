@@ -23,6 +23,7 @@
     <string name="hint_custom_model">Modelo personalizado</string>
     <string name="hint_preset_name">Nombre del preajuste</string>
     <string name="hint_search_language">Buscar idioma</string>
+    <string name="hint_transcription_prompt">Nombres, términos, siglas...</string>
     <string name="button_cancel">Cancelar</string>
     <string name="button_stop">Detener</string>
     <string name="button_retry">Reintentar</string>
@@ -45,6 +46,8 @@
     <string name="settings_language">Idioma</string>
     <string name="settings_app_language">Idioma de la aplicación</string>
     <string name="settings_transcription_language">Idioma de transcripción</string>
+    <string name="settings_transcription_prompt">Prompt de transcripción</string>
+    <string name="settings_transcription_prompt_help">Palabras o contexto opcional que se envía con cada transcripción.</string>
     <string name="settings_behavior">Comportamiento</string>
     <string name="settings_append_trailing_space">Añadir espacio final</string>
     <string name="settings_hide_after_insert">Ocultar tras insertar</string>

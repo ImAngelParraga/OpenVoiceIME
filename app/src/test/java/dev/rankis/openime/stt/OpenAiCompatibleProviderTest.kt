@@ -4,6 +4,7 @@ import dev.rankis.openime.settings.AppSettings
 import okhttp3.Request
 import okio.Buffer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -60,6 +61,7 @@ class OpenAiCompatibleProviderTest {
             model = "gpt-4o-transcribe",
             apiToken = "secret-token",
             transcriptionLanguageCode = "pt",
+            transcriptionPrompt = "Ranki, OpenVoiceIME",
         )
 
         val request = buildOpenAiTranscriptionRequest(file, "audio/mp4", settings)
@@ -71,10 +73,25 @@ class OpenAiCompatibleProviderTest {
             assertTrue(body.contains("gpt-4o-transcribe"))
             assertTrue(body.contains("name=\"language\""))
             assertTrue(body.contains("pt"))
+            assertTrue(body.contains("name=\"prompt\""))
+            assertTrue(body.contains("Ranki, OpenVoiceIME"))
             assertTrue(body.contains("name=\"temperature\""))
             assertTrue(body.contains("0.0"))
             assertTrue(body.contains("name=\"file\"; filename=\"${file.name}\""))
         }
+    }
+
+    @Test
+    fun transcriptionRequestOmitsBlankPrompt() {
+        val file = tempAudioFile()
+        val settings = AppSettings(
+            apiToken = "secret-token",
+            transcriptionPrompt = "   ",
+        )
+
+        val request = buildOpenAiTranscriptionRequest(file, "audio/mp4", settings)
+
+        assertFalse(request.multipartText().contains("name=\"prompt\""))
     }
 
     @Test
@@ -92,6 +109,7 @@ class OpenAiCompatibleProviderTest {
         request.multipartText().let { body ->
             assertTrue(body.contains("name=\"model\""))
             assertTrue(body.contains("whisper-large-v3-turbo"))
+            assertFalse(body.contains("name=\"prompt\""))
             assertTrue(body.contains("name=\"file\"; filename=\"openime-probe.wav\""))
         }
     }

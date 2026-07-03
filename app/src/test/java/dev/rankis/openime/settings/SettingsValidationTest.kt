@@ -29,6 +29,13 @@ class SettingsValidationTest {
     }
 
     @Test
+    fun transcriptionPromptDefaultsBlankAndNormalizesWhitespace() {
+        assertEquals("", AppSettings().transcriptionPrompt)
+        assertNull(AppSettings(transcriptionPrompt = "   ").prompt)
+        assertEquals("Ranki, OpenVoiceIME", AppSettings(transcriptionPrompt = "  Ranki, OpenVoiceIME  ").prompt)
+    }
+
+    @Test
     fun openAiPresetUsesOpenAiBaseUrlAndTranscriptionModel() {
         assertEquals("OpenAI", BuiltInProviderPreset.OPENAI.displayName)
         assertEquals("https://api.openai.com", BuiltInProviderPreset.OPENAI.defaultBaseUrl)

@@ -90,6 +90,7 @@ data class AppSettings(
     val appLanguageChoice: AppLanguageChoice = AppLanguageChoice.SYSTEM,
     val transcriptionLanguageCode: String? = null,
     val favoriteTranscriptionLanguageCodes: List<String?> = defaultFavoriteTranscriptionLanguageCodes(),
+    val transcriptionPrompt: String = "",
     val appendTrailingSpace: Boolean = false,
     val hideAfterSuccess: Boolean = true,
     val confirmBeforeInsert: Boolean = false,
@@ -97,6 +98,9 @@ data class AppSettings(
 ) {
     val languageCode: String?
         get() = transcriptionLanguageCode?.trim()?.ifBlank { null }
+
+    val prompt: String?
+        get() = transcriptionPrompt.trim().ifBlank { null }
 
     fun normalizedBaseUrl(): String = baseUrl.trim().trimEnd('/')
 

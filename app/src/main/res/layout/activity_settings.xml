@@ -175,6 +175,34 @@
             android:orientation="vertical"
             android:visibility="gone" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/settings_transcription_prompt"
+            android:textColor="@color/openime_muted" />
+
+        <EditText
+            android:id="@+id/transcriptionPromptInput"
+            android:layout_width="match_parent"
+            android:layout_height="96dp"
+            android:gravity="top|start"
+            android:hint="@string/hint_transcription_prompt"
+            android:imeOptions="actionDone"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLines="5"
+            android:minLines="3"
+            android:textColor="@color/openime_text"
+            android:textColorHint="@color/openime_muted" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/settings_transcription_prompt_help"
+            android:textColor="@color/openime_muted"
+            android:textSize="13sp" />
+
         <Button
             android:id="@+id/testServerButton"
             android:layout_width="match_parent"

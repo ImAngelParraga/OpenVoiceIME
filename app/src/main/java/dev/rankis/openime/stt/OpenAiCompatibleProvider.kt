@@ -64,6 +64,7 @@ fun buildOpenAiTranscriptionRequest(
         .addFormDataPart("file", audioFile.name, audioFile.asRequestBody(mediaType.toMediaType()))
 
     settings.languageCode?.let { bodyBuilder.addFormDataPart("language", it) }
+    settings.prompt?.let { bodyBuilder.addFormDataPart("prompt", it) }
     bodyBuilder.addFormDataPart("temperature", "0.0")
 
     return Request.Builder()

@@ -37,6 +37,7 @@ class SettingsStore(context: Context) {
             appLanguageChoice = prefs.enumValue(KEY_APP_LANGUAGE_CHOICE, AppLanguageChoice.SYSTEM),
             transcriptionLanguageCode = transcriptionLanguage.languageCode,
             favoriteTranscriptionLanguageCodes = transcriptionLanguage.favoriteLanguageCodes,
+            transcriptionPrompt = prefs.getString(KEY_TRANSCRIPTION_PROMPT, "")?.trim().orEmpty(),
             appendTrailingSpace = prefs.getBoolean(KEY_TRAILING_SPACE, false),
             hideAfterSuccess = prefs.getBoolean(KEY_HIDE_AFTER_SUCCESS, true),
             confirmBeforeInsert = prefs.getBoolean(KEY_CONFIRM_BEFORE_INSERT, false),
@@ -82,6 +83,7 @@ class SettingsStore(context: Context) {
                 .putString(KEY_MODEL, settings.normalizedModel())
                 .remove(KEY_API_TOKEN)
                 .putString(KEY_APP_LANGUAGE_CHOICE, settings.appLanguageChoice.name)
+                .putString(KEY_TRANSCRIPTION_PROMPT, settings.transcriptionPrompt.trim())
                 .putBoolean(KEY_TRAILING_SPACE, settings.appendTrailingSpace)
                 .putBoolean(KEY_HIDE_AFTER_SUCCESS, settings.hideAfterSuccess)
                 .putBoolean(KEY_CONFIRM_BEFORE_INSERT, settings.confirmBeforeInsert)
@@ -236,6 +238,7 @@ class SettingsStore(context: Context) {
         const val KEY_CUSTOM_LANGUAGE = "custom_language"
         const val KEY_TRANSCRIPTION_LANGUAGE_CODE = "transcription_language_code"
         const val KEY_FAVORITE_TRANSCRIPTION_LANGUAGE_CODES = "favorite_transcription_language_codes"
+        const val KEY_TRANSCRIPTION_PROMPT = "transcription_prompt"
         const val KEY_TRAILING_SPACE = "trailing_space"
         const val KEY_HIDE_AFTER_SUCCESS = "hide_after_success"
         const val KEY_CONFIRM_BEFORE_INSERT = "confirm_before_insert"

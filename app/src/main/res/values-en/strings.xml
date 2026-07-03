@@ -23,6 +23,7 @@
     <string name="hint_custom_model">Custom model</string>
     <string name="hint_preset_name">Preset name</string>
     <string name="hint_search_language">Search language</string>
+    <string name="hint_transcription_prompt">Names, terms, acronyms...</string>
     <string name="button_cancel">Cancel</string>
     <string name="button_stop">Stop</string>
     <string name="button_retry">Retry</string>
@@ -45,6 +46,8 @@
     <string name="settings_language">Language</string>
     <string name="settings_app_language">Application language</string>
     <string name="settings_transcription_language">Transcription language</string>
+    <string name="settings_transcription_prompt">Transcription prompt</string>
+    <string name="settings_transcription_prompt_help">Optional words or context sent with each transcription request.</string>
     <string name="settings_behavior">Behavior</string>
     <string name="settings_append_trailing_space">Append trailing space</string>
     <string name="settings_hide_after_insert">Hide after insert</string>
