@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenVoiceIME - Android voice input for OpenAI-compatible transcription</title>
+  <meta name="description" content="OpenVoiceIME is an Android voice input keyboard for OpenAI, Groq, and custom OpenAI-compatible speech-to-text endpoints.">
+  <meta property="og:title" content="OpenVoiceIME">
+  <meta property="og:description" content="Android voice input keyboard for OpenAI-compatible speech-to-text transcription.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://imangelparraga.github.io/OpenVoiceIME/">
+  <meta property="og:image" content="https://imangelparraga.github.io/OpenVoiceIME/logo.svg">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="https://imangelparraga.github.io/OpenVoiceIME/" aria-label="OpenVoiceIME home">
+      <img src="logo.svg" alt="" width="36" height="36">
+      <span>OpenVoiceIME</span>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#setup">Setup</a>
+      <a href="#privacy">Privacy</a>
+      <a href="privacy-policy/">Policy</a>
+      <a href="https://github.com/ImAngelParraga/OpenVoiceIME">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Android voice input keyboard</p>
+        <h1>Dictation through the transcription provider you choose.</h1>
+        <p class="lead">
+          OpenVoiceIME records speech, sends it to an OpenAI-compatible endpoint, and inserts the returned text into the app you are already using.
+        </p>
+        <div class="actions" aria-label="Primary actions">
+          <a class="button primary" href="https://github.com/ImAngelParraga/OpenVoiceIME/releases/download/v0.2.5/OpenVoiceIME-release.apk">Download APK</a>
+          <a class="button secondary" href="https://github.com/ImAngelParraga/OpenVoiceIME">View source</a>
+        </div>
+        <dl class="release-meta">
+          <div>
+            <dt>Current release</dt>
+            <dd>0.2.5</dd>
+          </div>
+          <div>
+            <dt>Providers</dt>
+            <dd>OpenAI, Groq, custom</dd>
+          </div>
+          <div>
+            <dt>Install</dt>
+            <dd>Manual APK</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="hero-media" aria-label="OpenVoiceIME recording screenshot">
+        <div class="phone-frame primary-phone">
+          <img src="assets/openvoiceime-recording.jpeg" alt="OpenVoiceIME recording inside an Android text field">
+        </div>
+      </div>
+    </section>
+
+    <section class="section split" id="setup">
+      <div>
+        <p class="eyebrow">Setup</p>
+        <h2>Install, configure, dictate.</h2>
+        <p>
+          OpenVoiceIME is built for users who already have an API token or a compatible self-hosted transcription server.
+        </p>
+      </div>
+      <ol class="steps">
+        <li>
+          <span>01</span>
+          <div>
+            <strong>Install the release APK</strong>
+            <p>Download the latest APK from GitHub Releases and allow installation from your browser or file manager.</p>
+          </div>
+        </li>
+        <li>
+          <span>02</span>
+          <div>
+            <strong>Configure transcription</strong>
+            <p>Select OpenAI, Groq, or a custom OpenAI-compatible endpoint. Enter the model, token, language, and optional prompt context.</p>
+          </div>
+        </li>
+        <li>
+          <span>03</span>
+          <div>
+            <strong>Enable the keyboard</strong>
+            <p>Grant microphone permission, enable OpenVoiceIME in Android keyboard settings, then switch keyboards when you want to dictate.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="showcase" aria-label="OpenVoiceIME screenshots">
+      <div class="phone-frame">
+        <img src="assets/openvoiceime-settings.jpeg" alt="OpenVoiceIME settings screen with provider, model, token, language, and prompt fields">
+      </div>
+      <div class="phone-frame offset">
+        <img src="assets/openvoiceime-setup.jpeg" alt="OpenVoiceIME setup screen showing microphone permission, keyboard enablement, and response metrics">
+      </div>
+    </section>
+
+    <section class="section cards">
+      <article class="card">
+        <h3>Provider control</h3>
+        <p>Use the built-in OpenAI and Groq presets, or save a custom OpenAI-compatible endpoint for your own server.</p>
+      </article>
+      <article class="card">
+        <h3>Prompt context</h3>
+        <p>Add names, terms, acronyms, or domain context that should travel with transcription requests.</p>
+      </article>
+      <article class="card">
+        <h3>Local diagnostics</h3>
+        <p>Test server connectivity and review local response-time metrics without sending data to a developer backend.</p>
+      </article>
+    </section>
+
+    <section class="section compatibility" id="compatibility">
+      <div>
+        <p class="eyebrow">Compatibility</p>
+        <h2>OpenAI-compatible first.</h2>
+      </div>
+      <div class="compat-grid">
+        <div>
+          <strong>OpenAI</strong>
+          <span>Supported default</span>
+        </div>
+        <div>
+          <strong>Groq</strong>
+          <span>Supported preset</span>
+        </div>
+        <div>
+          <strong>Custom endpoint</strong>
+          <span>Supported when it follows `/v1/audio/transcriptions`</span>
+        </div>
+        <div>
+          <strong>Other speech APIs</strong>
+          <span>Deepgram, AssemblyAI, Google, and Azure need adapters</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section privacy" id="privacy">
+      <div>
+        <p class="eyebrow">Privacy model</p>
+        <h2>No OpenVoiceIME transcription backend.</h2>
+        <p>
+          Audio is sent to the endpoint you configure. API tokens are stored locally using encrypted app storage. Release builds block cleartext HTTP, so normal use should go through HTTPS.
+        </p>
+      </div>
+      <div class="privacy-list">
+        <p>Audio goes to your configured provider.</p>
+        <p>Transcript text is inserted into the active app.</p>
+        <p>Provider retention depends on the provider you choose.</p>
+        <a href="privacy-policy/">Read the full privacy policy</a>
+      </div>
+    </section>
+
+    <section class="download-panel">
+      <div>
+        <p class="eyebrow">Get the APK</p>
+        <h2>Download the signed APK.</h2>
+        <p>After installing, Android will guide you through enabling OpenVoiceIME as an input method.</p>
+      </div>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/ImAngelParraga/OpenVoiceIME/releases/latest">Latest release</a>
+        <a class="button secondary" href="https://github.com/ImAngelParraga/OpenVoiceIME/releases/download/v0.2.5/OpenVoiceIME-release.apk">Direct APK</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>OpenVoiceIME</span>
+    <nav aria-label="Footer navigation">
+      <a href="https://github.com/ImAngelParraga/OpenVoiceIME">Source</a>
+      <a href="https://github.com/ImAngelParraga/OpenVoiceIME/releases/latest">Release</a>
+      <a href="privacy-policy/">Privacy</a>
+      <a href="https://github.com/ImAngelParraga/OpenVoiceIME/blob/main/LICENSE">License</a>
+    </nav>
+  </footer>
+</body>
+</html>

@@ -3,6 +3,7 @@
 .agents/
 .kotlin/
 tmp/
+pics/
 AGENTS.md
 SPEC.md
 PLAY_STORE_READINESS.md
