@@ -10,7 +10,7 @@ It is meant for people who want a configurable voice keyboard instead of a fixed
 
 ## Related Project
 
-[Portable ASR Service](https://github.com/ImAngelParraga/rankis-asr) is a self-hosted OpenAI-compatible transcription server. OpenVoiceIME can use it as a custom provider by setting the server base URL, token, model, and language in settings.
+[Postable ASR](https://github.com/ImAngelParraga/postable-asr) is a self-hosted OpenAI-compatible transcription server. OpenVoiceIME can use it as a custom provider by setting the server base URL, token, model, and language in settings.
 
 ## Who this is for
 
