@@ -8,6 +8,10 @@ OpenVoiceIME is an Android voice input method editor (IME) that records speech l
 
 It is meant for people who want a configurable voice keyboard instead of a fixed vendor keyboard, and for developers who want a small Android IME codebase to extend with other speech-to-text providers.
 
+## Related Project
+
+[Portable ASR Service](https://github.com/ImAngelParraga/rankis-asr) is a self-hosted OpenAI-compatible transcription server. OpenVoiceIME can use it as a custom provider by setting the server base URL, token, model, and language in settings.
+
 ## Who this is for
 
 - **Android users** who want voice typing through OpenAI, Groq, or a compatible self-hosted transcription server.
