@@ -23,6 +23,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import dev.rankis.openime.audio.AudioRecorder
+import dev.rankis.openime.audio.RecordingAudioFocus
 import dev.rankis.openime.metrics.TranscriptionMetricsStore
 import dev.rankis.openime.settings.AppSettings
 import dev.rankis.openime.settings.SettingsStore
@@ -53,6 +54,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private val provider: SttProvider = OpenAiCompatibleProvider()
 
     private lateinit var recorder: AudioRecorder
+    private lateinit var recordingAudioFocus: RecordingAudioFocus
     private lateinit var settingsStore: SettingsStore
     private lateinit var metricsStore: TranscriptionMetricsStore
     private lateinit var versionText: TextView
@@ -101,6 +103,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     override fun onCreate() {
         super.onCreate()
         recorder = AudioRecorder(this)
+        recordingAudioFocus = RecordingAudioFocus(this)
         settingsStore = SettingsStore(this)
         metricsStore = TranscriptionMetricsStore(this)
     }
@@ -153,6 +156,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         handler.removeCallbacks(tick)
         if (state == ImeState.Recording) {
             recorder.cancel()
+            recordingAudioFocus.abandon()
             audioFile = null
             state = ImeState.Idle
         }
@@ -163,6 +167,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         handler.removeCallbacks(scheduledStartRecording)
         handler.removeCallbacks(tick)
         recorder.cancel()
+        recordingAudioFocus.abandon()
         scope.cancel()
         super.onDestroy()
     }
@@ -189,6 +194,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         runCatching {
             handler.removeCallbacks(tick)
             operationId += 1
+            recordingAudioFocus.request()
             audioFile = recorder.start()
             pendingText = null
             lastErrorMessage = null
@@ -208,6 +214,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             handler.post(tick)
             validateRecordingSettingsAsync(operationId)
         }.onFailure {
+            recordingAudioFocus.abandon()
             showError(getString(R.string.error_start_recorder))
         }
     }
@@ -224,6 +231,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private fun stopAndUpload() {
         handler.removeCallbacks(tick)
         val file = recorder.stop()
+        recordingAudioFocus.abandon()
         if (file == null || !file.exists() || file.length() <= 0L) {
             showError(getString(R.string.error_recording_failed))
             return
@@ -312,6 +320,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             }
             handler.removeCallbacks(tick)
             recorder.cancel()
+            recordingAudioFocus.abandon()
             audioFile = null
             showError(error)
         }
@@ -364,6 +373,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         handler.removeCallbacks(tick)
         if (state == ImeState.Recording) {
             recorder.cancel()
+            recordingAudioFocus.abandon()
         }
         audioFile?.delete()
         audioFile = null

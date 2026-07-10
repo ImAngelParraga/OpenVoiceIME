@@ -41,6 +41,27 @@ class RemoteSttInputMethodServiceSourceTest {
         assertFalse(body.contains("recorder.cancel()"))
     }
 
+    @Test
+    fun recordingRequestsAudioFocusBeforeStartingRecorder() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val body = functionBody(source, "startRecordingOrShowSetupError")
+
+        assertTrue(body.contains("recordingAudioFocus.request()"))
+        assertTrue(body.indexOf("recordingAudioFocus.request()") < body.indexOf("recorder.start()"))
+        assertFalse(body.contains("AUDIOFOCUS_REQUEST_GRANTED"))
+    }
+
+    @Test
+    fun recordingCleanupAbandonsAudioFocus() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+
+        assertTrue(functionBody(source, "stopAndUpload").contains("recordingAudioFocus.abandon()"))
+        assertTrue(functionBody(source, "cancelCurrentWork").contains("recordingAudioFocus.abandon()"))
+        assertTrue(functionBody(source, "onFinishInputView").contains("recordingAudioFocus.abandon()"))
+        assertTrue(functionBody(source, "onDestroy").contains("recordingAudioFocus.abandon()"))
+        assertTrue(functionBody(source, "validateRecordingSettingsAsync").contains("recordingAudioFocus.abandon()"))
+    }
+
     private fun serviceSourcePath(): Path {
         val userDir = Paths.get(System.getProperty("user.dir"))
         val relativePath = Paths.get(

@@ -20,7 +20,7 @@ It is meant for people who want a configurable voice keyboard instead of a fixed
 
 ## Current status
 
-OpenVoiceIME is early project software. It supports manual installation, configuration, and testing through GitHub Releases or local builds.
+OpenVoiceIME is early project software. It supports manual installation, configuration, and testing through the published APK, GitHub Releases, or local builds.
 
 Supported today:
 
@@ -46,7 +46,7 @@ By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`.
 
 ## Setup
 
-1. Download an APK from GitHub Releases, or build one locally.
+1. Download the published APK from the project site or GitHub Releases, or build one locally.
 2. Open **OpenVoiceIME** from the launcher.
 3. Grant microphone permission.
 4. Choose a provider preset or configure a custom OpenAI-compatible server.
@@ -96,6 +96,12 @@ Public APKs are distributed through GitHub Releases. Each release should include
 - Any known setup or compatibility notes.
 
 Release builds block cleartext HTTP and disable app backup to protect provider credentials. Debug builds allow cleartext HTTP for local development endpoints.
+
+The project site also hosts the latest signed APK at:
+
+```text
+docs/downloads/OpenVoiceIME-release.apk
+```
 
 ## Transcription compatibility
 
