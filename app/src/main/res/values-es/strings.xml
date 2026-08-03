@@ -51,6 +51,7 @@
     <string name="settings_behavior">Comportamiento</string>
     <string name="settings_append_trailing_space">Añadir espacio final</string>
     <string name="settings_hide_after_insert">Ocultar tras insertar</string>
+    <string name="settings_hide_after_cancel">Ocultar tras cancelar</string>
     <string name="settings_confirm_before_insert">Confirmar antes de insertar</string>
     <string name="settings_select_inserted_text">Seleccionar texto insertado</string>
     <string name="settings_autosave_note">Los cambios se guardan automáticamente.</string>

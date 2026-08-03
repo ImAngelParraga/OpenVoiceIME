@@ -93,6 +93,7 @@ data class AppSettings(
     val transcriptionPrompt: String = "",
     val appendTrailingSpace: Boolean = false,
     val hideAfterSuccess: Boolean = true,
+    val hideAfterCancel: Boolean = true,
     val confirmBeforeInsert: Boolean = false,
     val selectInsertedText: Boolean = true,
 ) {

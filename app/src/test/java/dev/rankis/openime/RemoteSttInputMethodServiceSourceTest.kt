@@ -62,6 +62,17 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(functionBody(source, "validateRecordingSettingsAsync").contains("recordingAudioFocus.abandon()"))
     }
 
+    @Test
+    fun cancelCanKeepPanelOpenAndStartFreshRecording() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val body = functionBody(source, "cancelCurrentWork")
+
+        assertTrue(body.contains("settingsStore.load().hideAfterCancel"))
+        assertTrue(body.contains("requestHideSelf(0)"))
+        assertTrue(body.contains("resetControls()"))
+        assertTrue(body.contains("scheduleStartRecordingOrShowSetupError()"))
+    }
+
     private fun serviceSourcePath(): Path {
         val userDir = Paths.get(System.getProperty("user.dir"))
         val relativePath = Paths.get(

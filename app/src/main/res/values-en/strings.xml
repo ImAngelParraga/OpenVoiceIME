@@ -51,6 +51,7 @@
     <string name="settings_behavior">Behavior</string>
     <string name="settings_append_trailing_space">Append trailing space</string>
     <string name="settings_hide_after_insert">Hide after insert</string>
+    <string name="settings_hide_after_cancel">Hide after cancel</string>
     <string name="settings_confirm_before_insert">Confirm before insert</string>
     <string name="settings_select_inserted_text">Select inserted text</string>
     <string name="settings_autosave_note">Changes save automatically.</string>

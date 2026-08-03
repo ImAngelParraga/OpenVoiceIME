@@ -382,7 +382,13 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         pendingSelectInsertedText = true
         lastErrorMessage = null
         state = ImeState.Idle
-        requestHideSelf(0)
+        if (settingsStore.load().hideAfterCancel) {
+            requestHideSelf(0)
+        } else {
+            resetControls()
+            showLanguageControls()
+            scheduleStartRecordingOrShowSetupError()
+        }
     }
 
     private fun showError(message: String, error: TranscriptionError? = null) {

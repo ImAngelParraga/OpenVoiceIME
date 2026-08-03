@@ -29,6 +29,11 @@ class SettingsValidationTest {
     }
 
     @Test
+    fun hideAfterCancelDefaultsToCurrentBehavior() {
+        assertTrue(AppSettings().hideAfterCancel)
+    }
+
+    @Test
     fun transcriptionPromptDefaultsBlankAndNormalizesWhitespace() {
         assertEquals("", AppSettings().transcriptionPrompt)
         assertNull(AppSettings(transcriptionPrompt = "   ").prompt)
@@ -121,7 +126,11 @@ class SettingsValidationTest {
     @Test
     fun connectionTestFingerprintIgnoresBehaviorSettings() {
         val base = AppSettings(apiToken = "secret", appendTrailingSpace = false)
-        val changedBehavior = base.copy(appendTrailingSpace = true, hideAfterSuccess = false)
+        val changedBehavior = base.copy(
+            appendTrailingSpace = true,
+            hideAfterSuccess = false,
+            hideAfterCancel = false,
+        )
 
         assertEquals(connectionTestFingerprint(base), connectionTestFingerprint(changedBehavior))
     }

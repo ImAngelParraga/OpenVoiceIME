@@ -40,6 +40,7 @@ class SettingsStore(context: Context) {
             transcriptionPrompt = prefs.getString(KEY_TRANSCRIPTION_PROMPT, "")?.trim().orEmpty(),
             appendTrailingSpace = prefs.getBoolean(KEY_TRAILING_SPACE, false),
             hideAfterSuccess = prefs.getBoolean(KEY_HIDE_AFTER_SUCCESS, true),
+            hideAfterCancel = prefs.getBoolean(KEY_HIDE_AFTER_CANCEL, true),
             confirmBeforeInsert = prefs.getBoolean(KEY_CONFIRM_BEFORE_INSERT, false),
             selectInsertedText = prefs.getBoolean(KEY_SELECT_INSERTED_TEXT, true),
         )
@@ -90,6 +91,7 @@ class SettingsStore(context: Context) {
                 .putString(KEY_TRANSCRIPTION_PROMPT, settings.transcriptionPrompt.trim())
                 .putBoolean(KEY_TRAILING_SPACE, settings.appendTrailingSpace)
                 .putBoolean(KEY_HIDE_AFTER_SUCCESS, settings.hideAfterSuccess)
+                .putBoolean(KEY_HIDE_AFTER_CANCEL, settings.hideAfterCancel)
                 .putBoolean(KEY_CONFIRM_BEFORE_INSERT, settings.confirmBeforeInsert)
                 .putBoolean(KEY_SELECT_INSERTED_TEXT, settings.selectInsertedText)
             if (settings.languageCode.isNullOrBlank()) {
@@ -245,6 +247,7 @@ class SettingsStore(context: Context) {
         const val KEY_TRANSCRIPTION_PROMPT = "transcription_prompt"
         const val KEY_TRAILING_SPACE = "trailing_space"
         const val KEY_HIDE_AFTER_SUCCESS = "hide_after_success"
+        const val KEY_HIDE_AFTER_CANCEL = "hide_after_cancel"
         const val KEY_CONFIRM_BEFORE_INSERT = "confirm_before_insert"
         const val KEY_SELECT_INSERTED_TEXT = "select_inserted_text"
         const val KEY_CUSTOM_PRESET_TOKEN_PREFIX = "custom_preset_token_"
