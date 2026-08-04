@@ -78,6 +78,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var operationId: Long = 0L
     private var selectedLanguageCode: String? = null
     private var favoriteLanguageCodes: List<String?> = emptyList()
+    private var currentEditorPackageName: String? = null
     private var inputViewVisible = false
     private var startRecordingScheduled = false
 
@@ -140,8 +141,14 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         return view
     }
 
+    override fun onStartInput(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        updateCurrentEditorPackageName(info)
+    }
+
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        updateCurrentEditorPackageName(info)
         inputViewVisible = true
         if (::statusText.isInitialized && shouldStartFreshRecording()) {
             resetControls()
@@ -251,7 +258,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     private fun upload(file: File) {
-        val settings = settingsStore.load()
+        val settings = loadCurrentEditorSettings()
         val readinessError = connectionReadinessError(settings)
         if (readinessError != null) {
             showError(readinessError)
@@ -337,6 +344,15 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             return getString(R.string.validation_connection_test_required)
         }
         return null
+    }
+
+    private fun loadCurrentEditorSettings(): AppSettings {
+        val settings = settingsStore.load()
+        return settings.copy(
+            transcriptionLanguageCode = settingsStore
+                .loadTranscriptionLanguage(currentEditorPackageName)
+                .languageCode,
+        )
     }
 
     private fun recordTranscriptionMetrics(audioBytes: Long, durationMillis: Long, success: Boolean) {
@@ -450,13 +466,13 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             null
         }
         if (selectedLanguageCode != settings.languageCode) {
-            settingsStore.saveTranscriptionLanguage(selectedLanguageCode)
+            settingsStore.saveTranscriptionLanguage(selectedLanguageCode, currentEditorPackageName)
         }
         languageButton.text = languageButtonLabel(selectedLanguageCode)
     }
 
     private fun showLanguageControls() {
-        refreshLanguageControls(settingsStore.loadTranscriptionLanguage())
+        refreshLanguageControls(settingsStore.loadTranscriptionLanguage(currentEditorPackageName))
         languageButton.visibility = View.VISIBLE
     }
 
@@ -481,8 +497,14 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     private fun saveLanguageSettings() {
-        settingsStore.saveTranscriptionLanguage(selectedLanguageCode)
+        settingsStore.saveTranscriptionLanguage(selectedLanguageCode, currentEditorPackageName)
         languageButton.text = languageButtonLabel(selectedLanguageCode)
+    }
+
+    private fun updateCurrentEditorPackageName(info: android.view.inputmethod.EditorInfo?) {
+        if (info != null) {
+            currentEditorPackageName = info.packageName?.trim()?.ifBlank { null }
+        }
     }
 
     private fun scheduleStartRecordingIfFresh() {

@@ -51,16 +51,29 @@ class SettingsStore(context: Context) {
         return prefs.enumValue(KEY_APP_LANGUAGE_CHOICE, AppLanguageChoice.SYSTEM)
     }
 
-    fun loadTranscriptionLanguage(): TranscriptionLanguageSettings {
-        val selectedLanguageCode = prefs.getString(KEY_TRANSCRIPTION_LANGUAGE_CODE, null)
-            ?: legacyLanguageCode()
+    fun loadTranscriptionLanguage(packageName: String? = null): TranscriptionLanguageSettings {
+        val normalizedPackageName = packageName?.trim()?.ifBlank { null }
+        val appLanguageKey = normalizedPackageName?.let(::transcriptionLanguageKey)
+        val selectedLanguageCode = if (appLanguageKey != null && prefs.contains(appLanguageKey)) {
+            decodeStoredTranscriptionLanguage(prefs.getString(appLanguageKey, AUTO_LANGUAGE_CODE))
+        } else {
+            prefs.getString(KEY_TRANSCRIPTION_LANGUAGE_CODE, null)
+                ?: legacyLanguageCode()
+        }
         return TranscriptionLanguageSettings(
             languageCode = selectedLanguageCode,
             favoriteLanguageCodes = loadFavoriteTranscriptionLanguageCodes(selectedLanguageCode),
         )
     }
 
-    fun saveTranscriptionLanguage(languageCode: String?) {
+    fun saveTranscriptionLanguage(languageCode: String?, packageName: String? = null) {
+        val normalizedPackageName = packageName?.trim()?.ifBlank { null }
+        if (normalizedPackageName != null) {
+            prefs.edit {
+                putString(transcriptionLanguageKey(normalizedPackageName), encodeStoredTranscriptionLanguage(languageCode))
+            }
+            return
+        }
         prefs.edit {
             if (languageCode.isNullOrBlank()) {
                 remove(KEY_TRANSCRIPTION_LANGUAGE_CODE)
@@ -187,6 +200,18 @@ class SettingsStore(context: Context) {
 
     private fun customPresetTokenKey(id: String): String = "${KEY_CUSTOM_PRESET_TOKEN_PREFIX}$id"
 
+    private fun transcriptionLanguageKey(packageName: String): String {
+        return "$KEY_TRANSCRIPTION_LANGUAGE_PREFIX$packageName"
+    }
+
+    private fun encodeStoredTranscriptionLanguage(languageCode: String?): String {
+        return languageCode?.trim()?.takeIf { it.isNotBlank() } ?: AUTO_LANGUAGE_CODE
+    }
+
+    private fun decodeStoredTranscriptionLanguage(languageCode: String?): String? {
+        return languageCode?.trim()?.takeUnless { it.isBlank() || it == AUTO_LANGUAGE_CODE }
+    }
+
     private fun legacyLanguageCode(): String? {
         return when (prefs.getString(KEY_LANGUAGE_CHOICE, null)) {
             "SPANISH" -> "es"
@@ -245,6 +270,7 @@ class SettingsStore(context: Context) {
         const val KEY_LANGUAGE_CHOICE = "language_choice"
         const val KEY_CUSTOM_LANGUAGE = "custom_language"
         const val KEY_TRANSCRIPTION_LANGUAGE_CODE = "transcription_language_code"
+        const val KEY_TRANSCRIPTION_LANGUAGE_PREFIX = "transcription_language_app_"
         const val KEY_FAVORITE_TRANSCRIPTION_LANGUAGE_CODES = "favorite_transcription_language_codes"
         const val KEY_TRANSCRIPTION_PROMPT = "transcription_prompt"
         const val KEY_TRAILING_SPACE = "trailing_space"

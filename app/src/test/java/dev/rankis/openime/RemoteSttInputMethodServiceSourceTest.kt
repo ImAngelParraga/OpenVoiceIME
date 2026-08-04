@@ -85,6 +85,18 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(body.contains("scheduleStartRecordingOrShowSetupError()"))
     }
 
+    @Test
+    fun languageSelectionUsesCurrentEditorPackage() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+
+        assertTrue(source.contains("override fun onStartInput("))
+        assertTrue(source.contains("updateCurrentEditorPackageName(info)"))
+        assertTrue(functionBody(source, "showLanguageControls").contains("currentEditorPackageName"))
+        assertTrue(functionBody(source, "saveLanguageSettings").contains("currentEditorPackageName"))
+        assertTrue(functionBody(source, "loadCurrentEditorSettings").contains("currentEditorPackageName"))
+        assertTrue(functionBody(source, "upload").contains("loadCurrentEditorSettings()"))
+    }
+
     private fun serviceSourcePath(): Path {
         val userDir = Paths.get(System.getProperty("user.dir"))
         val relativePath = Paths.get(
