@@ -25,6 +25,7 @@
     <string name="hint_search_language">Buscar idioma</string>
     <string name="hint_transcription_prompt">Nombres, términos, siglas...</string>
     <string name="button_cancel">Cancelar</string>
+    <string name="button_delete">Eliminar</string>
     <string name="button_stop">Detener</string>
     <string name="button_retry">Reintentar</string>
     <string name="button_insert">Insertar</string>

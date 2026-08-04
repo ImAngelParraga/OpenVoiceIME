@@ -24,6 +24,7 @@
     <string name="hint_search_language">Search language</string>
     <string name="hint_transcription_prompt">Names, terms, acronyms...</string>
     <string name="button_cancel">Cancel</string>
+    <string name="button_delete">Delete</string>
     <string name="button_stop">Stop</string>
     <string name="button_retry">Retry</string>
     <string name="button_insert">Insert</string>

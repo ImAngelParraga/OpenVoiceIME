@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -65,6 +66,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private lateinit var languageButton: TextView
     private lateinit var stopButton: Button
     private lateinit var cancelButton: Button
+    private lateinit var deleteButton: Button
     private lateinit var retryButton: Button
 
     private var state: ImeState = ImeState.Idle
@@ -74,6 +76,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var pendingHideAfterSuccess: Boolean = true
     private var pendingSelectInsertedText: Boolean = true
     private var pendingReturnToKeyboardAfterInsert: Boolean = true
+    private var lastInsertedText: InsertedText? = null
     private var lastErrorMessage: String? = null
     private var operationId: Long = 0L
     private var selectedLanguageCode: String? = null
@@ -121,10 +124,12 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         languageButton = view.findViewById(R.id.languageButton)
         stopButton = view.findViewById(R.id.stopButton)
         cancelButton = view.findViewById(R.id.cancelButton)
+        deleteButton = view.findViewById(R.id.deleteButton)
         retryButton = view.findViewById(R.id.retryButton)
 
         stopButton.setOnClickListener { onPrimaryAction() }
         cancelButton.setOnClickListener { cancelCurrentWork() }
+        deleteButton.setOnClickListener { deleteLastInsertedText() }
         retryButton.setOnClickListener {
             if (state == ImeState.Error) {
                 copyLastError()
@@ -143,6 +148,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     override fun onStartInput(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
+        clearLastInsertedText()
         updateCurrentEditorPackageName(info)
     }
 
@@ -367,10 +373,16 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private fun commitPendingText() {
         val text = pendingText ?: return
-        currentInputConnection.safeCommitText(text, pendingSelectInsertedText)
+        val insertedBounds = currentInputConnection.safeCommitText(text, pendingSelectInsertedText)
         audioFile?.delete()
         audioFile = null
         pendingText = null
+        lastInsertedText = if (text.isNotEmpty() && insertedBounds != null) {
+            InsertedText(text = text, bounds = insertedBounds)
+        } else {
+            null
+        }
+        updateDeleteButton()
         state = ImeState.Inserted
         lastErrorMessage = null
         applyDefaultStatusStyle()
@@ -387,6 +399,31 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             resetControls()
             showLanguageControls()
             scheduleStartRecordingOrShowSetupError()
+        }
+    }
+
+    private fun deleteLastInsertedText() {
+        val insertion = lastInsertedText ?: return
+        val inputConnection = currentInputConnection ?: return
+        val currentBounds = inputConnection.currentSelectionBounds() ?: return
+        val deleted = when {
+            currentBounds == insertion.bounds && inputConnection.getSelectedText(0)?.toString() == insertion.text -> {
+                inputConnection.commitText("", 1)
+                true
+            }
+            currentBounds.start == insertion.bounds.end && currentBounds.end == insertion.bounds.end -> {
+                val textBeforeCursor = inputConnection.getTextBeforeCursor(insertion.text.length, 0)?.toString()
+                if (textBeforeCursor == insertion.text) {
+                    inputConnection.deleteSurroundingText(insertion.text.length, 0)
+                    true
+                } else {
+                    false
+                }
+            }
+            else -> false
+        }
+        if (deleted) {
+            clearLastInsertedText()
         }
     }
 
@@ -450,6 +487,18 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         languageButton.visibility = View.GONE
         retryButton.setText(R.string.button_retry)
         retryButton.visibility = View.GONE
+        updateDeleteButton()
+    }
+
+    private fun clearLastInsertedText() {
+        lastInsertedText = null
+        updateDeleteButton()
+    }
+
+    private fun updateDeleteButton() {
+        if (::deleteButton.isInitialized) {
+            deleteButton.isEnabled = lastInsertedText != null
+        }
     }
 
     private fun setupLanguageControls() {
@@ -528,25 +577,32 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         return state == ImeState.Idle || state == ImeState.Inserted
     }
 
-    private fun InputConnection?.safeCommitText(text: String, selectInsertedText: Boolean) {
-        val inputConnection = this ?: return
+    private fun InputConnection?.safeCommitText(text: String, selectInsertedText: Boolean): SelectionBounds? {
+        val inputConnection = this ?: return null
+        val selection = inputConnection.currentSelectionBounds()
         if (!selectInsertedText) {
             inputConnection.commitText(text, 1)
-            return
+            return selection?.let { bounds ->
+                SelectionBounds(bounds.start, bounds.start + text.length)
+            }
         }
-        val insertStart = inputConnection.currentSelectionStart()
         inputConnection.commitText(text, 1)
-        if (insertStart != null) {
-            inputConnection.setSelection(insertStart, insertStart + text.length)
+        if (selection != null) {
+            inputConnection.setSelection(selection.start, selection.start + text.length)
+            return SelectionBounds(selection.start, selection.start + text.length)
         }
+        return null
     }
 
-    private fun InputConnection.currentSelectionStart(): Int? {
+    private fun InputConnection.currentSelectionBounds(): SelectionBounds? {
         val extracted = getExtractedText(ExtractedTextRequest(), 0) ?: return null
         if (extracted.selectionStart < 0 || extracted.selectionEnd < 0) {
             return null
         }
-        return min(extracted.selectionStart, extracted.selectionEnd)
+        return SelectionBounds(
+            start = min(extracted.selectionStart, extracted.selectionEnd),
+            end = max(extracted.selectionStart, extracted.selectionEnd),
+        )
     }
 
     private fun switchToNextKeyboard(): Boolean {
@@ -625,6 +681,16 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         Inserted,
         Error,
     }
+
+    private data class SelectionBounds(
+        val start: Int,
+        val end: Int,
+    )
+
+    private data class InsertedText(
+        val text: String,
+        val bounds: SelectionBounds,
+    )
 
     private companion object {
         const val TAG = "OpenVoiceIME"

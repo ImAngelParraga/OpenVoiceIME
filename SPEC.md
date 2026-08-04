@@ -2,7 +2,7 @@
 
 ## §G
 
-Cancel panel visibility configurable. User choose whether Cancel hides IME panel; disabled hide keeps panel open for immediate fresh dictation. Post-insert keyboard return configurable; disabled return keeps panel active for hands-free dictation. Transcription language remembered per editor application.
+Cancel panel visibility configurable. User choose whether Cancel hides IME panel; disabled hide keeps panel open for immediate fresh dictation. Post-insert keyboard return configurable; disabled return keeps panel active for hands-free dictation. Transcription language remembered per editor application. Last inserted transcription deletable from panel.
 
 ## §C
 
@@ -15,6 +15,8 @@ Cancel panel visibility configurable. User choose whether Cancel hides IME panel
 - Disabled post-insert keyboard return skips keyboard switch and panel hide, then starts fresh recording.
 - App-specific language choice uses editor package identity, with global-language fallback.
 - Per-app language lookup uses local preferences only; no network or package enumeration on panel startup.
+- Delete action removes only the last transcription inserted by OpenVoiceIME when editor selection/cursor still matches it.
+- Delete action never clears arbitrary editor text.
 - Settings label translated in English and Spanish.
 
 ## §I
@@ -30,6 +32,7 @@ Cancel panel visibility configurable. User choose whether Cancel hides IME panel
 | `RemoteSttInputMethodService.commitPendingText` | Honor keyboard-return setting; keep panel and restart recording when disabled. |
 | `InputMethodService.onStartInput` / `EditorInfo.packageName` | Identify current editor application for language selection. |
 | `SettingsStore` / `RemoteSttInputMethodService` | Load/save transcription language per app with global fallback. |
+| `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose safe Delete action for last inserted transcription. |
 
 ## §V
 
@@ -44,6 +47,8 @@ Cancel panel visibility configurable. User choose whether Cancel hides IME panel
 - V9: Current editor package is captured from `EditorInfo.packageName`; language selection loads/saves under that package, while missing package mappings use global language.
 - V10: Per-app language resolution performs only local preference access; it does not perform network I/O, package enumeration, or transcription work during panel startup.
 - V11: Every uploaded release APK passes `apksigner verify`; release builds fail clearly when signing properties are unavailable.
+- V12: Delete button removes only the tracked last inserted transcription after matching current editor selection/cursor; otherwise it performs no deletion.
+- V13: Delete button is disabled when no tracked insertion exists and clears tracking after successful deletion.
 
 ## §T
 
@@ -53,6 +58,7 @@ Cancel panel visibility configurable. User choose whether Cancel hides IME panel
 | T2 | x | Add persisted post-insert keyboard-return setting, Behavior checkbox, localized labels, and hands-free post-insert flow; verify defaults, persistence wiring, keyboard-switch branching, panel retention, and fresh recording; run `./gradlew test` and `./gradlew assembleRelease`. | V6,V7,V8,AppSettings,SettingsStore,SettingsActivity,RemoteSttInputMethodService |
 | T3 | x | Remember transcription language per editor application using `EditorInfo.packageName`, global fallback, local preference lookup, and regression tests; run `./gradlew testDebugUnitTest assembleRelease`. | V9,V10,SettingsStore,RemoteSttInputMethodService |
 | T4 | x | Require release signing configuration, add APK signature regression coverage, and republish signed patch release; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V11,app/build.gradle.kts,AGENTS.md |
+| T5 | x | Add safe Delete button for last inserted transcription, localized labels, cursor/selection guard, and regression tests; run `./gradlew testDebugUnitTest assembleRelease`. | V12,V13,RemoteSttInputMethodService,ime_voice_input.xml |
 
 ## §B
 
