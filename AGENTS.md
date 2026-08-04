@@ -6,4 +6,5 @@
 - Bump Android `versionCode` and `versionName` for each new GitHub release.
 - Commit changes, push `main`, create and push version tag.
 - Create GitHub release with `app/build/outputs/apk/release/OpenVoiceIME-release.apk` and short changelog.
+- Verify APK with SDK `apksigner verify --verbose` before upload; never publish unsigned APK.
 - Verify release is published, APK asset uploaded, and working tree clean.

@@ -11,8 +11,8 @@ android {
         applicationId = "dev.rankis.openime"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.3.0"
+        versionCode = 13
+        versionName = "0.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -48,6 +48,28 @@ android {
         outputs.all {
             (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
                 "OpenVoiceIME-${variantName}.apk"
+        }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val releaseRequested = allTasks.any { task ->
+        task.path.contains("Release")
+    }
+    if (releaseRequested) {
+        val requiredProperties = listOf(
+            "OPENIME_RELEASE_STORE_FILE",
+            "OPENIME_RELEASE_STORE_PASSWORD",
+            "OPENIME_RELEASE_KEY_ALIAS",
+            "OPENIME_RELEASE_KEY_PASSWORD",
+        )
+        val missingProperties = requiredProperties.filter { property ->
+            providers.gradleProperty(property).orNull.isNullOrBlank()
+        }
+        if (missingProperties.isNotEmpty()) {
+            throw GradleException(
+                "Release signing is not configured. Missing: ${missingProperties.joinToString()}",
+            )
         }
     }
 }
