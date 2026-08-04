@@ -86,6 +86,15 @@ class RemoteSttInputMethodServiceSourceTest {
     }
 
     @Test
+    fun hideAfterInsertWinsWhenKeyboardReturnDisabled() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val body = functionBody(source, "commitPendingText")
+
+        assertTrue(body.contains("} else if (pendingHideAfterSuccess) {"))
+        assertTrue(body.contains("requestHideSelf(0)"))
+    }
+
+    @Test
     fun languageSelectionUsesCurrentEditorPackage() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
 

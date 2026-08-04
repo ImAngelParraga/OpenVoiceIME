@@ -395,6 +395,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             if (!switched && pendingHideAfterSuccess) {
                 requestHideSelf(0)
             }
+        } else if (pendingHideAfterSuccess) {
+            requestHideSelf(0)
         } else {
             resetControls()
             showLanguageControls()
