@@ -311,6 +311,13 @@
             android:textColor="@color/openime_text" />
 
         <CheckBox
+            android:id="@+id/returnToKeyboardAfterInsertCheck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_return_to_keyboard_after_insert"
+            android:textColor="@color/openime_text" />
+
+        <CheckBox
             android:id="@+id/confirmBeforeInsertCheck"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

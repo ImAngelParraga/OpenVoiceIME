@@ -94,6 +94,7 @@ data class AppSettings(
     val appendTrailingSpace: Boolean = false,
     val hideAfterSuccess: Boolean = true,
     val hideAfterCancel: Boolean = true,
+    val returnToKeyboardAfterInsert: Boolean = true,
     val confirmBeforeInsert: Boolean = false,
     val selectInsertedText: Boolean = true,
 ) {

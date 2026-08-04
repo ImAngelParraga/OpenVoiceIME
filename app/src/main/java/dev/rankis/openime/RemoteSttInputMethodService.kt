@@ -73,6 +73,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var pendingText: String? = null
     private var pendingHideAfterSuccess: Boolean = true
     private var pendingSelectInsertedText: Boolean = true
+    private var pendingReturnToKeyboardAfterInsert: Boolean = true
     private var lastErrorMessage: String? = null
     private var operationId: Long = 0L
     private var selectedLanguageCode: String? = null
@@ -292,6 +293,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         val commitText = formatCommitText(text, settings.appendTrailingSpace)
         pendingHideAfterSuccess = settings.hideAfterSuccess
         pendingSelectInsertedText = settings.selectInsertedText
+        pendingReturnToKeyboardAfterInsert = settings.returnToKeyboardAfterInsert
         if (settings.confirmBeforeInsert) {
             pendingText = commitText
             state = ImeState.ReadyToInsert
@@ -360,9 +362,15 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         statusText.setText(R.string.status_inserted)
         stopButton.isEnabled = false
         retryButton.visibility = View.GONE
-        val switched = switchToNextKeyboard()
-        if (!switched && pendingHideAfterSuccess) {
-            requestHideSelf(0)
+        if (pendingReturnToKeyboardAfterInsert) {
+            val switched = switchToNextKeyboard()
+            if (!switched && pendingHideAfterSuccess) {
+                requestHideSelf(0)
+            }
+        } else {
+            resetControls()
+            showLanguageControls()
+            scheduleStartRecordingOrShowSetupError()
         }
     }
 
@@ -380,6 +388,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         pendingText = null
         pendingHideAfterSuccess = true
         pendingSelectInsertedText = true
+        pendingReturnToKeyboardAfterInsert = true
         lastErrorMessage = null
         state = ImeState.Idle
         if (settingsStore.load().hideAfterCancel) {

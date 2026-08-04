@@ -72,6 +72,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var trailingSpaceCheck: CheckBox
     private lateinit var hideAfterSuccessCheck: CheckBox
     private lateinit var hideAfterCancelCheck: CheckBox
+    private lateinit var returnToKeyboardAfterInsertCheck: CheckBox
     private lateinit var confirmBeforeInsertCheck: CheckBox
     private lateinit var selectInsertedTextCheck: CheckBox
     private var suppressPresetChanges = false
@@ -154,6 +155,7 @@ class SettingsActivity : AppCompatActivity() {
         trailingSpaceCheck = findViewById(R.id.trailingSpaceCheck)
         hideAfterSuccessCheck = findViewById(R.id.hideAfterSuccessCheck)
         hideAfterCancelCheck = findViewById(R.id.hideAfterCancelCheck)
+        returnToKeyboardAfterInsertCheck = findViewById(R.id.returnToKeyboardAfterInsertCheck)
         confirmBeforeInsertCheck = findViewById(R.id.confirmBeforeInsertCheck)
         selectInsertedTextCheck = findViewById(R.id.selectInsertedTextCheck)
         findViewById<TextView>(R.id.versionText).text = appVersionLabel()
@@ -247,6 +249,7 @@ class SettingsActivity : AppCompatActivity() {
             trailingSpaceCheck.isChecked = settings.appendTrailingSpace
             hideAfterSuccessCheck.isChecked = settings.hideAfterSuccess
             hideAfterCancelCheck.isChecked = settings.hideAfterCancel
+            returnToKeyboardAfterInsertCheck.isChecked = settings.returnToKeyboardAfterInsert
             confirmBeforeInsertCheck.isChecked = settings.confirmBeforeInsert
             selectInsertedTextCheck.isChecked = settings.selectInsertedText
             lastSavedConnectionFingerprint = connectionTestFingerprint(settings)
@@ -304,6 +307,7 @@ class SettingsActivity : AppCompatActivity() {
         trailingSpaceCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
         hideAfterSuccessCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
         hideAfterCancelCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
+        returnToKeyboardAfterInsertCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
         confirmBeforeInsertCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
         selectInsertedTextCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
         refreshSetupStatus()
@@ -517,6 +521,7 @@ class SettingsActivity : AppCompatActivity() {
             appendTrailingSpace = trailingSpaceCheck.isChecked,
             hideAfterSuccess = hideAfterSuccessCheck.isChecked,
             hideAfterCancel = hideAfterCancelCheck.isChecked,
+            returnToKeyboardAfterInsert = returnToKeyboardAfterInsertCheck.isChecked,
             confirmBeforeInsert = confirmBeforeInsertCheck.isChecked,
             selectInsertedText = selectInsertedTextCheck.isChecked,
         )

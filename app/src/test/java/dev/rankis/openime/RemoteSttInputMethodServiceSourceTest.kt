@@ -73,6 +73,18 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(body.contains("scheduleStartRecordingOrShowSetupError()"))
     }
 
+    @Test
+    fun postInsertKeyboardReturnCanKeepPanelForFreshRecording() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val body = functionBody(source, "commitPendingText")
+
+        assertTrue(body.contains("if (pendingReturnToKeyboardAfterInsert)"))
+        assertTrue(body.contains("switchToNextKeyboard()"))
+        assertTrue(body.contains("requestHideSelf(0)"))
+        assertTrue(body.contains("resetControls()"))
+        assertTrue(body.contains("scheduleStartRecordingOrShowSetupError()"))
+    }
+
     private fun serviceSourcePath(): Path {
         val userDir = Paths.get(System.getProperty("user.dir"))
         val relativePath = Paths.get(

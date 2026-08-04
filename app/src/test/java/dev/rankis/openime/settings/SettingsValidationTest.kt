@@ -34,6 +34,11 @@ class SettingsValidationTest {
     }
 
     @Test
+    fun returnToKeyboardAfterInsertDefaultsToCurrentBehavior() {
+        assertTrue(AppSettings().returnToKeyboardAfterInsert)
+    }
+
+    @Test
     fun transcriptionPromptDefaultsBlankAndNormalizesWhitespace() {
         assertEquals("", AppSettings().transcriptionPrompt)
         assertNull(AppSettings(transcriptionPrompt = "   ").prompt)
@@ -130,6 +135,7 @@ class SettingsValidationTest {
             appendTrailingSpace = true,
             hideAfterSuccess = false,
             hideAfterCancel = false,
+            returnToKeyboardAfterInsert = false,
         )
 
         assertEquals(connectionTestFingerprint(base), connectionTestFingerprint(changedBehavior))

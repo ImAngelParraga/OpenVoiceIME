@@ -52,6 +52,7 @@
     <string name="settings_append_trailing_space">Append trailing space</string>
     <string name="settings_hide_after_insert">Hide after insert</string>
     <string name="settings_hide_after_cancel">Hide after cancel</string>
+    <string name="settings_return_to_keyboard_after_insert">Return to keyboard after insert</string>
     <string name="settings_confirm_before_insert">Confirm before insert</string>
     <string name="settings_select_inserted_text">Select inserted text</string>
     <string name="settings_autosave_note">Changes save automatically.</string>
