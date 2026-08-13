@@ -9,6 +9,47 @@ import java.nio.file.Paths
 
 class RemoteSttInputMethodServiceSourceTest {
     @Test
+    fun testV25ConfigurationRebuildCleansBeforeRecreatingView() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val configurationBody = functionBody(source, "onConfigurationChanged")
+        val inputViewBody = functionBody(source, "onCreateInputView")
+
+        assertTrue(configurationBody.indexOf("cleanupForInputViewRecreation()") < configurationBody.indexOf("super.onConfigurationChanged"))
+        assertTrue(inputViewBody.indexOf("cleanupForInputViewRecreation()") < inputViewBody.indexOf("LayoutInflater"))
+    }
+
+    @Test
+    fun testV25CleanupInvalidatesTransientWorkRegardlessOfLogicalState() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val cleanupBody = functionBody(source, "cleanupForInputViewRecreation")
+        val cancelBody = functionBody(source, "cancelCurrentWork")
+
+        assertTrue(cleanupBody.contains("operationId += 1"))
+        assertTrue(cleanupBody.contains("cancelScheduledStartRecording()"))
+        assertTrue(cleanupBody.contains("uploadJob?.cancel()"))
+        assertTrue(cleanupBody.contains("activeEditorGesture = null"))
+        assertTrue(cleanupBody.contains("activeGestureMode = null"))
+        assertTrue(cleanupBody.contains("recorder.cancel()"))
+        assertTrue(cleanupBody.contains("recordingAudioFocus.abandon()"))
+        assertTrue(cleanupBody.contains("state = ImeState.Idle"))
+        assertFalse(cleanupBody.contains("state == ImeState.Recording"))
+        assertTrue(cancelBody.contains("recorder.cancel()"))
+        assertTrue(cancelBody.contains("recordingAudioFocus.abandon()"))
+        assertFalse(cancelBody.contains("if (state == ImeState.Recording)"))
+    }
+
+    @Test
+    fun testV25RecorderStartFailureCleansRecorderAndFileState() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val body = functionBody(source, "startRecordingOrShowSetupError")
+
+        assertTrue(body.contains("recorder.cancel()"))
+        assertTrue(body.contains("recordingAudioFocus.abandon()"))
+        assertTrue(body.contains("audioFile = null"))
+        assertTrue(body.indexOf("recorder.cancel()") < body.lastIndexOf("showError"))
+    }
+
+    @Test
     fun testV21OnCreateInputViewDoesNotStartRecorderInline() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val body = functionBody(source, "onCreateInputView")

@@ -65,6 +65,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 - V22: Editors with `TYPE_NULL` or unavailable extracted text use bounded key-event gestures: cursor emits only newly crossed left/right arrows (including reversal), Delete tap emits one `KEYCODE_DEL`, drag defers bounded final count until release, and cancel/vertical escape emits none; rich snapshots apply `startOffset` to global selections.
 - V23: Rich extracted snapshots retain local selection offsets and validated nonnegative `startOffset`; every editor selection mutation translates local positions to global exactly once, and gesture capability mode is latched on ACTION_DOWN through UP/CANCEL.
 - V24: Delete tap honors latched Terminal/Rich mode without reprobe; only an unlatched accessibility/programmatic tap probes capability, and each tap causes at most one mutation.
+- V25: IME configuration changes leave at most one recorder active; rebuilt UI and logical state agree; Cancel/Stop remain usable without switching keyboards.
 
 ## §T
 
@@ -81,6 +82,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | T9 | x | Add terminal/non-rich key-event fallback and ExtractedText offset correctness; verify gesture math, service wiring, signed v0.3.6 release, and remote APK. | V22,TerminalGestureController,RemoteSttInputMethodService |
 | T10 | x | Fix partial extracted-text local/global offset handling and latch rich/terminal routing for each gesture; verify signed v0.3.7 release and remote APK. | V23,EditorGestureController,RemoteSttInputMethodService |
 | T11 | x | Keep Delete tap mode latched through synchronous performClick, probe only when unlatched, and publish signed v0.3.8 with remote verification. | V24,RemoteSttInputMethodService |
+| T12 | ~ | Make IME configuration rebuilds clean up recorder/audio focus and transient work before UI recreation, keep cleanup idempotent across logical-state drift, verify rotation recovery, and publish signed release. | V25,RemoteSttInputMethodService,AudioRecorder |
 
 ## §B
 
@@ -95,3 +97,4 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | B7 | 2026-08-13 | gestures assumed extracted text; terminal InputConnection returned null, making Termius controls no-op | V22 |
 | B8 | 2026-08-13 | nonzero extracted-text offsets were mixed between local snapshots and global selections; capability probing reran during gesture and could switch routes mid-touch | V23 |
 | B9 | 2026-08-13 | synchronous Delete performClick reprobed capability despite latched gesture mode, allowing transient route switch | V24 |
+| B10 | 2026-08-13 | configuration rebuild reset logical state while MediaRecorder survived, causing duplicate start and state-gated cleanup failure | V25 |

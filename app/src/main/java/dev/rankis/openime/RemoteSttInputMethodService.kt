@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.res.Configuration
 import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.os.Build
@@ -42,6 +43,7 @@ import dev.rankis.openime.stt.TranscriptionError
 import dev.rankis.openime.stt.TranscriptionResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -97,6 +99,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var terminalGestureDragged = false
     private var terminalDownX = 0f
     private var terminalDownY = 0f
+    private var uploadJob: Job? = null
 
     private val tick = object : Runnable {
         override fun run() {
@@ -127,6 +130,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     override fun onCreateInputView(): View {
+        cleanupForInputViewRecreation()
         val view = LayoutInflater.from(this).inflate(R.layout.ime_voice_input, null)
         inputViewVisible = true
         versionText = view.findViewById(R.id.versionText)
@@ -177,6 +181,11 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         return view
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        cleanupForInputViewRecreation()
+        super.onConfigurationChanged(newConfig)
+    }
+
     override fun onStartInput(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
         updateCurrentEditorPackageName(info)
@@ -195,25 +204,56 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     override fun onFinishInputView(finishingInput: Boolean) {
         inputViewVisible = false
-        startRecordingScheduled = false
-        handler.removeCallbacks(scheduledStartRecording)
-        handler.removeCallbacks(tick)
-        if (state == ImeState.Recording) {
-            recorder.cancel()
-            recordingAudioFocus.abandon()
-            audioFile = null
-            state = ImeState.Idle
-        }
+        cleanupForInputViewRecreation()
+        recordingAudioFocus.abandon()
         super.onFinishInputView(finishingInput)
     }
 
     override fun onDestroy() {
-        handler.removeCallbacks(scheduledStartRecording)
-        handler.removeCallbacks(tick)
-        recorder.cancel()
+        cleanupForInputViewRecreation()
         recordingAudioFocus.abandon()
         scope.cancel()
         super.onDestroy()
+    }
+
+    private fun cleanupForInputViewRecreation() {
+        inputViewVisible = false
+        operationId += 1
+        cancelScheduledStartRecording()
+        handler.removeCallbacks(tick)
+        uploadJob?.cancel()
+        uploadJob = null
+
+        if (::cursorGesture.isInitialized) {
+            cursorGesture.cancel()
+        }
+        if (::deleteGesture.isInitialized) {
+            deleteGesture.cancel()
+        }
+        if (::terminalCursorGesture.isInitialized) {
+            terminalCursorGesture.cancel()
+        }
+        if (::terminalDeleteGesture.isInitialized) {
+            terminalDeleteGesture.cancel()
+        }
+        activeEditorGesture = null
+        activeGestureMode = null
+        terminalGestureDragged = false
+
+        if (::recorder.isInitialized) {
+            recorder.cancel()
+        }
+        if (::recordingAudioFocus.isInitialized) {
+            recordingAudioFocus.abandon()
+        }
+        audioFile?.delete()
+        audioFile = null
+        pendingText = null
+        pendingHideAfterSuccess = true
+        pendingSelectInsertedText = true
+        pendingReturnToKeyboardAfterInsert = true
+        lastErrorMessage = null
+        state = ImeState.Idle
     }
 
     private fun scheduleStartRecordingOrShowSetupError() {
@@ -258,7 +298,9 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             handler.post(tick)
             validateRecordingSettingsAsync(operationId)
         }.onFailure {
+            recorder.cancel()
             recordingAudioFocus.abandon()
+            audioFile = null
             showError(getString(R.string.error_start_recorder))
         }
     }
@@ -311,7 +353,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         cancelButton.isEnabled = true
         retryButton.visibility = View.GONE
 
-        scope.launch {
+        uploadJob?.cancel()
+        uploadJob = scope.launch {
             Log.i(TAG, "Upload started for ${file.length()} bytes")
             val audioBytes = file.length()
             val startedAt = SystemClock.elapsedRealtime()
@@ -433,10 +476,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         startRecordingScheduled = false
         handler.removeCallbacks(scheduledStartRecording)
         handler.removeCallbacks(tick)
-        if (state == ImeState.Recording) {
-            recorder.cancel()
-            recordingAudioFocus.abandon()
-        }
+        uploadJob?.cancel()
+        uploadJob = null
+        recorder.cancel()
+        recordingAudioFocus.abandon()
         audioFile?.delete()
         audioFile = null
         pendingText = null

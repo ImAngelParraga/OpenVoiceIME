@@ -15,49 +15,63 @@ class AudioRecorder(private val context: Context) {
     fun start(): File {
         check(recorder == null) { "Recorder already running" }
         val file = File.createTempFile("openime-", ".m4a", context.cacheDir)
-        val mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(context)
-        } else {
-            @Suppress("DEPRECATION")
-            MediaRecorder()
+        var mediaRecorder: MediaRecorder? = null
+
+        return try {
+            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                MediaRecorder(context)
+            } else {
+                @Suppress("DEPRECATION")
+                MediaRecorder()
+            }
+            val configuredRecorder = mediaRecorder ?: error("Recorder construction failed")
+            configuredRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            configuredRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            configuredRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            configuredRecorder.setAudioChannels(1)
+            configuredRecorder.setAudioSamplingRate(16000)
+            configuredRecorder.setAudioEncodingBitRate(64000)
+            configuredRecorder.setOutputFile(file.absolutePath)
+            configuredRecorder.prepare()
+            configuredRecorder.start()
+
+            recorder = configuredRecorder
+            currentFile = file
+            file
+        } catch (failure: Throwable) {
+            mediaRecorder?.let(::releaseRecorder)
+            runCatching { file.delete() }
+            throw failure
         }
-
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-        mediaRecorder.setAudioChannels(1)
-        mediaRecorder.setAudioSamplingRate(16000)
-        mediaRecorder.setAudioEncodingBitRate(64000)
-        mediaRecorder.setOutputFile(file.absolutePath)
-        mediaRecorder.prepare()
-        mediaRecorder.start()
-
-        recorder = mediaRecorder
-        currentFile = file
-        return file
     }
 
     fun stop(): File? {
         val file = currentFile
-        val mediaRecorder = recorder ?: return file
-        runCatching { mediaRecorder.stop() }
-        mediaRecorder.reset()
-        mediaRecorder.release()
+        val mediaRecorder = recorder
         recorder = null
         currentFile = null
+        if (mediaRecorder == null) {
+            return file
+        }
+        runCatching { mediaRecorder.stop() }
+        releaseRecorder(mediaRecorder)
         return file
     }
 
     fun cancel() {
         val file = currentFile
         val mediaRecorder = recorder
-        if (mediaRecorder != null) {
-            runCatching { mediaRecorder.stop() }
-            mediaRecorder.reset()
-            mediaRecorder.release()
-        }
         recorder = null
         currentFile = null
-        file?.delete()
+        if (mediaRecorder != null) {
+            runCatching { mediaRecorder.stop() }
+            releaseRecorder(mediaRecorder)
+        }
+        file?.let { runCatching { it.delete() } }
+    }
+
+    private fun releaseRecorder(mediaRecorder: MediaRecorder) {
+        runCatching { mediaRecorder.reset() }
+        runCatching { mediaRecorder.release() }
     }
 }
