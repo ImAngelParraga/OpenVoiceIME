@@ -59,32 +59,75 @@ By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`.
 
 Run commands from the repository root.
 
-```powershell
-.\gradlew.bat testDebugUnitTest assembleRelease
-```
-
-The release APK is written to:
-
-```text
-app/build/outputs/apk/release/OpenVoiceIME-release.apk
-```
-
-Install it on a connected device or emulator with:
-
-```powershell
-adb install -r app/build/outputs/apk/release/OpenVoiceIME-release.apk
-```
-
 For local debug builds, use:
 
 ```powershell
-.\gradlew.bat assembleDebug
+.\gradlew.bat testDebugUnitTest assembleDebug
 ```
 
 On macOS/Linux, use:
 
 ```bash
+./gradlew testDebugUnitTest assembleDebug
+```
+
+Debug APK is written to `app/build/outputs/apk/debug/OpenVoiceIME-debug.apk`.
+
+### Maintainer signed release build
+
+Release signing credentials are not stored in repository or loaded automatically by Gradle. On maintainer machine they live in:
+
+```text
+/home/rankis/.openime/openvoiceime-release.properties
+/home/rankis/.openime/openvoiceime-release.jks
+```
+
+Properties file must define all four values below and remain private (`chmod 600`):
+
+```properties
+OPENIME_RELEASE_STORE_FILE=/absolute/path/to/openvoiceime-release.jks
+OPENIME_RELEASE_STORE_PASSWORD=...
+OPENIME_RELEASE_KEY_ALIAS=...
+OPENIME_RELEASE_KEY_PASSWORD=...
+```
+
+Load private file and expose values as Gradle project properties without copying secrets into repository:
+
+```bash
+set -a
+. /home/rankis/.openime/openvoiceime-release.properties
+set +a
+
+export ORG_GRADLE_PROJECT_OPENIME_RELEASE_STORE_FILE="$OPENIME_RELEASE_STORE_FILE"
+export ORG_GRADLE_PROJECT_OPENIME_RELEASE_STORE_PASSWORD="$OPENIME_RELEASE_STORE_PASSWORD"
+export ORG_GRADLE_PROJECT_OPENIME_RELEASE_KEY_ALIAS="$OPENIME_RELEASE_KEY_ALIAS"
+export ORG_GRADLE_PROJECT_OPENIME_RELEASE_KEY_PASSWORD="$OPENIME_RELEASE_KEY_PASSWORD"
+
 ./gradlew testDebugUnitTest assembleRelease
+```
+
+Plain `./gradlew assembleRelease` intentionally fails when these Gradle project properties are unavailable. Presence of `~/.openime/openvoiceime-release.properties` alone is insufficient; Gradle does not automatically read that path.
+
+Release APK is written to:
+
+```text
+app/build/outputs/apk/release/OpenVoiceIME-release.apk
+```
+
+Verify signature before installation or upload:
+
+```bash
+ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/home/rankis/Android/Sdk}}"
+"$ANDROID_SDK/build-tools/35.0.0/apksigner" verify --verbose \
+  app/build/outputs/apk/release/OpenVoiceIME-release.apk
+```
+
+Output must start with `Verifies` and report at least one verified APK signature scheme. Never upload an unsigned APK.
+
+Install verified APK on connected device or emulator:
+
+```bash
+adb install -r app/build/outputs/apk/release/OpenVoiceIME-release.apk
 ```
 
 ## Releases
@@ -94,6 +137,8 @@ Public APKs are distributed through GitHub Releases. Each release should include
 - `OpenVoiceIME-release.apk`
 - A short changelog.
 - Any known setup or compatibility notes.
+
+Maintainer policy: every completed user-facing implementation gets a new signed GitHub release unless publication is explicitly disabled for that change.
 
 Release builds block cleartext HTTP and disable app backup to protect provider credentials. Debug builds allow cleartext HTTP for local development endpoints.
 
@@ -172,11 +217,13 @@ Useful first areas:
 - Add focused tests for parsing, validation, metrics formatting, and provider request mapping.
 - Improve release packaging and install documentation.
 
-Before opening a pull request, run:
+Before opening a pull request, run local verification:
 
 ```powershell
-.\gradlew.bat testDebugUnitTest assembleRelease
+.\gradlew.bat testDebugUnitTest assembleDebug
 ```
+
+Maintainers must also run signed release workflow above before publishing.
 
 Use Conventional Commit subjects such as `feat(stt): add provider adapter` or `fix(ime): handle empty recording`.
 
