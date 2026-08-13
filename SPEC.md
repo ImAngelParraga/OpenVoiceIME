@@ -76,7 +76,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | T6 | x | Restore `hideAfterSuccess` precedence when keyboard return is disabled; add regression coverage; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V14,RemoteSttInputMethodService |
 | T7 | x | Add compact cursor-pad/Delete gestures with live ACTION_MOVE previews, code-point-safe pure math, ACTION_UP-only text mutation, ownership-safe cancel restore, localized accessible labels, and regression tests; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V15,V16,V17,V18,V19,V20,EditorGestureController,RemoteSttInputMethodService,ime_voice_input.xml |
 | T8 | x | Publish cursor/Delete gestures as signed v0.3.5, update project-site APK, push `main` and tag, create GitHub release with verified asset, and persist automatic release policy. | V11,V21,AGENTS.md,README.md,app/build.gradle.kts |
-| T9 | ~ | Add terminal/non-rich key-event fallback and ExtractedText offset correctness; verify gesture math, service wiring, signed v0.3.6 release, and remote APK. | V22,TerminalGestureController,RemoteSttInputMethodService |
+| T9 | x | Add terminal/non-rich key-event fallback and ExtractedText offset correctness; verify gesture math, service wiring, signed v0.3.6 release, and remote APK. | V22,TerminalGestureController,RemoteSttInputMethodService |
 
 ## §B
 
