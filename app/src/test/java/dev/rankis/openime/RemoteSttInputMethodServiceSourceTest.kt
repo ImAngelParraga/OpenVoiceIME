@@ -107,17 +107,15 @@ class RemoteSttInputMethodServiceSourceTest {
     }
 
     @Test
-    fun deleteActionOnlyRemovesTrackedInsertedText() {
+    fun editControlsUseSnapshotGuardedGestures() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
-        val body = functionBody(source, "deleteLastInsertedText")
+        val body = functionBody(source, "onCreateInputView")
 
-        assertTrue(source.contains("deleteButton.setOnClickListener"))
-        assertTrue(body.contains("lastInsertedText"))
-        assertTrue(body.contains("currentSelectionBounds()"))
-        assertTrue(body.contains("getSelectedText(0)"))
-        assertTrue(body.contains("getTextBeforeCursor"))
-        assertTrue(body.contains("deleteSurroundingText"))
-        assertTrue(body.contains("clearLastInsertedText()"))
+        assertTrue(body.contains("cursorButton.setOnTouchListener"))
+        assertTrue(body.contains("deleteButton.setOnTouchListener"))
+        assertTrue(source.contains("currentEditorSnapshot()"))
+        assertTrue(source.contains("EditorGestureController.deleteTap"))
+        assertTrue(source.contains("inputConnection.commitText(\"\", 1)"))
     }
 
     private fun serviceSourcePath(): Path {

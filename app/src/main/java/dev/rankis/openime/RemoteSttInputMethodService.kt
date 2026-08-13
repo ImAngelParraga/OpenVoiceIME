@@ -12,7 +12,9 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.widget.Button
@@ -66,8 +68,12 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private lateinit var languageButton: TextView
     private lateinit var stopButton: Button
     private lateinit var cancelButton: Button
+    private lateinit var cursorButton: Button
     private lateinit var deleteButton: Button
     private lateinit var retryButton: Button
+
+    private lateinit var cursorGesture: EditorGestureController
+    private lateinit var deleteGesture: EditorGestureController
 
     private var state: ImeState = ImeState.Idle
     private var startedAtMillis = 0L
@@ -76,7 +82,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var pendingHideAfterSuccess: Boolean = true
     private var pendingSelectInsertedText: Boolean = true
     private var pendingReturnToKeyboardAfterInsert: Boolean = true
-    private var lastInsertedText: InsertedText? = null
     private var lastErrorMessage: String? = null
     private var operationId: Long = 0L
     private var selectedLanguageCode: String? = null
@@ -124,12 +129,28 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         languageButton = view.findViewById(R.id.languageButton)
         stopButton = view.findViewById(R.id.stopButton)
         cancelButton = view.findViewById(R.id.cancelButton)
+        cursorButton = view.findViewById(R.id.cursorButton)
         deleteButton = view.findViewById(R.id.deleteButton)
         retryButton = view.findViewById(R.id.retryButton)
 
+        val density = resources.displayMetrics.density
+        val touchSlop = ViewConfiguration.get(this).scaledTouchSlop.toFloat()
+        cursorGesture = EditorGestureController(
+            kind = EditorGestureKind.Cursor,
+            horizontalStepPixels = 18f * density,
+            touchSlopPixels = touchSlop,
+        )
+        deleteGesture = EditorGestureController(
+            kind = EditorGestureKind.Delete,
+            horizontalStepPixels = 18f * density,
+            touchSlopPixels = touchSlop,
+        )
+
         stopButton.setOnClickListener { onPrimaryAction() }
         cancelButton.setOnClickListener { cancelCurrentWork() }
-        deleteButton.setOnClickListener { deleteLastInsertedText() }
+        cursorButton.setOnTouchListener { _, event -> handleCursorGesture(event) }
+        deleteButton.setOnClickListener { handleDeleteTap() }
+        deleteButton.setOnTouchListener { _, event -> handleDeleteGesture(event) }
         retryButton.setOnClickListener {
             if (state == ImeState.Error) {
                 copyLastError()
@@ -148,7 +169,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     override fun onStartInput(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
-        clearLastInsertedText()
         updateCurrentEditorPackageName(info)
     }
 
@@ -373,16 +393,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private fun commitPendingText() {
         val text = pendingText ?: return
-        val insertedBounds = currentInputConnection.safeCommitText(text, pendingSelectInsertedText)
+        currentInputConnection.safeCommitText(text, pendingSelectInsertedText)
         audioFile?.delete()
         audioFile = null
         pendingText = null
-        lastInsertedText = if (text.isNotEmpty() && insertedBounds != null) {
-            InsertedText(text = text, bounds = insertedBounds)
-        } else {
-            null
-        }
-        updateDeleteButton()
         state = ImeState.Inserted
         lastErrorMessage = null
         applyDefaultStatusStyle()
@@ -401,31 +415,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             resetControls()
             showLanguageControls()
             scheduleStartRecordingOrShowSetupError()
-        }
-    }
-
-    private fun deleteLastInsertedText() {
-        val insertion = lastInsertedText ?: return
-        val inputConnection = currentInputConnection ?: return
-        val currentBounds = inputConnection.currentSelectionBounds() ?: return
-        val deleted = when {
-            currentBounds == insertion.bounds && inputConnection.getSelectedText(0)?.toString() == insertion.text -> {
-                inputConnection.commitText("", 1)
-                true
-            }
-            currentBounds.start == insertion.bounds.end && currentBounds.end == insertion.bounds.end -> {
-                val textBeforeCursor = inputConnection.getTextBeforeCursor(insertion.text.length, 0)?.toString()
-                if (textBeforeCursor == insertion.text) {
-                    inputConnection.deleteSurroundingText(insertion.text.length, 0)
-                    true
-                } else {
-                    false
-                }
-            }
-            else -> false
-        }
-        if (deleted) {
-            clearLastInsertedText()
         }
     }
 
@@ -489,18 +478,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         languageButton.visibility = View.GONE
         retryButton.setText(R.string.button_retry)
         retryButton.visibility = View.GONE
-        updateDeleteButton()
-    }
-
-    private fun clearLastInsertedText() {
-        lastInsertedText = null
-        updateDeleteButton()
-    }
-
-    private fun updateDeleteButton() {
-        if (::deleteButton.isInitialized) {
-            deleteButton.isEnabled = lastInsertedText != null
-        }
     }
 
     private fun setupLanguageControls() {
@@ -577,6 +554,82 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private fun shouldStartFreshRecording(): Boolean {
         return state == ImeState.Idle || state == ImeState.Inserted
+    }
+
+    private fun handleCursorGesture(event: MotionEvent): Boolean {
+        return handleEditorGesture(cursorGesture, event)
+    }
+
+    private fun handleDeleteGesture(event: MotionEvent): Boolean {
+        return handleEditorGesture(deleteGesture, event)
+    }
+
+    private fun handleEditorGesture(controller: EditorGestureController, event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                val snapshot = currentEditorSnapshot()
+                if (snapshot == null) {
+                    controller.cancel()
+                } else {
+                    controller.begin(snapshot, event.x, event.y)
+                }
+            }
+            MotionEvent.ACTION_MOVE -> controller.move(event.x, event.y)
+            MotionEvent.ACTION_UP -> applyEditorCommand(controller.finish(event.x, event.y))
+            MotionEvent.ACTION_CANCEL -> controller.cancel()
+        }
+        return true
+    }
+
+    private fun handleDeleteTap() {
+        val snapshot = currentEditorSnapshot() ?: return
+        applyEditorCommand(EditorGestureController.deleteTap(snapshot))
+    }
+
+    private fun applyEditorCommand(command: EditorGestureCommand) {
+        val inputConnection = currentInputConnection ?: return
+        val current = currentEditorSnapshot() ?: return
+        when (command) {
+            is EditorGestureCommand.MoveCaret -> {
+                if (current != command.expected || command.position !in 0..current.text.length) {
+                    return
+                }
+                inputConnection.setSelection(command.position, command.position)
+            }
+            is EditorGestureCommand.DeleteRange -> {
+                if (
+                    current != command.expected ||
+                    command.start < 0 ||
+                    command.end > current.text.length ||
+                    command.start >= command.end
+                ) {
+                    return
+                }
+                if (current.selection != EditorSelection(command.start, command.end) &&
+                    !inputConnection.setSelection(command.start, command.end)
+                ) {
+                    return
+                }
+                inputConnection.commitText("", 1)
+            }
+            EditorGestureCommand.NoOp -> Unit
+        }
+    }
+
+    private fun currentEditorSnapshot(): EditorTextSnapshot? {
+        val inputConnection = currentInputConnection ?: return null
+        return try {
+            val extracted = inputConnection.getExtractedText(ExtractedTextRequest(), 0) ?: return null
+            val text = extracted.text?.toString() ?: return null
+            if (extracted.selectionStart < 0 || extracted.selectionEnd < 0) {
+                return null
+            }
+            val start = min(extracted.selectionStart, extracted.selectionEnd).coerceIn(0, text.length)
+            val end = max(extracted.selectionStart, extracted.selectionEnd).coerceIn(start, text.length)
+            EditorTextSnapshot(text, EditorSelection(start, end))
+        } catch (_: RuntimeException) {
+            null
+        }
     }
 
     private fun InputConnection?.safeCommitText(text: String, selectInsertedText: Boolean): SelectionBounds? {
@@ -687,11 +740,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private data class SelectionBounds(
         val start: Int,
         val end: Int,
-    )
-
-    private data class InsertedText(
-        val text: String,
-        val bounds: SelectionBounds,
     )
 
     private companion object {

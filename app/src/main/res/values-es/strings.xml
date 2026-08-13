@@ -26,6 +26,9 @@
     <string name="hint_transcription_prompt">Nombres, términos, siglas...</string>
     <string name="button_cancel">Cancelar</string>
     <string name="button_delete">Eliminar</string>
+    <string name="button_cursor_symbol">↔</string>
+    <string name="button_cursor_description">Mover el cursor a la izquierda o derecha</string>
+    <string name="button_delete_description">Eliminar el texto seleccionado o el carácter anterior</string>
     <string name="button_stop">Detener</string>
     <string name="button_retry">Reintentar</string>
     <string name="button_insert">Insertar</string>
