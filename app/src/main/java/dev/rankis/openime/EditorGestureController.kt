@@ -4,6 +4,7 @@ package dev.rankis.openime
 internal data class EditorTextSnapshot(
     val text: String,
     val selection: EditorSelection,
+    val startOffset: Int = 0,
 ) {
     init {
         require(selection.start >= 0)

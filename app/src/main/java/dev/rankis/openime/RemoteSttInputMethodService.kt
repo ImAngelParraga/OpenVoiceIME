@@ -17,6 +17,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
 import android.widget.PopupMenu
@@ -74,6 +75,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private lateinit var cursorGesture: EditorGestureController
     private lateinit var deleteGesture: EditorGestureController
+    private lateinit var terminalCursorGesture: TerminalGestureController
+    private lateinit var terminalDeleteGesture: TerminalGestureController
 
     private var state: ImeState = ImeState.Idle
     private var startedAtMillis = 0L
@@ -90,6 +93,9 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var inputViewVisible = false
     private var startRecordingScheduled = false
     private var activeEditorGesture: ActiveEditorGesture? = null
+    private var terminalGestureDragged = false
+    private var terminalDownX = 0f
+    private var terminalDownY = 0f
 
     private val tick = object : Runnable {
         override fun run() {
@@ -146,6 +152,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             horizontalStepPixels = 18f * density,
             touchSlopPixels = touchSlop,
         )
+        terminalCursorGesture = TerminalGestureController(18f * density)
+        terminalDeleteGesture = TerminalGestureController(18f * density)
 
         stopButton.setOnClickListener { onPrimaryAction() }
         cancelButton.setOnClickListener { cancelCurrentWork() }
@@ -566,6 +574,9 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     private fun handleEditorGesture(controller: EditorGestureController, event: MotionEvent): Boolean {
+        if (usesTerminalFallback()) {
+            return handleTerminalGesture(controller === cursorGesture, event)
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 val snapshot = currentEditorSnapshot()
@@ -604,7 +615,62 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         return true
     }
 
+    private fun usesTerminalFallback(): Boolean {
+        if (currentInputEditorInfo?.inputType == InputType.TYPE_NULL) return true
+        return currentEditorSnapshot() == null
+    }
+
+    private fun handleTerminalGesture(cursor: Boolean, event: MotionEvent): Boolean {
+        val gesture = if (cursor) terminalCursorGesture else terminalDeleteGesture
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                gesture.begin(event.x)
+                terminalDownX = event.x
+                terminalDownY = event.y
+                terminalGestureDragged = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = event.x - terminalDownX
+                val dy = event.y - terminalDownY
+                if (kotlin.math.abs(dy) > ViewConfiguration.get(this).scaledTouchSlop &&
+                    kotlin.math.abs(dy) >= kotlin.math.abs(dx)
+                ) {
+                    gesture.cancel()
+                    terminalGestureDragged = true
+                } else if (kotlin.math.abs(dx) >= ViewConfiguration.get(this).scaledTouchSlop) {
+                    terminalGestureDragged = true
+                    if (cursor) {
+                        sendTerminalCursorKeys(gesture.cursorDelta(event.x))
+                    }
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!terminalGestureDragged) {
+                    if (!cursor) deleteButton.performClick()
+                } else if (!cursor) {
+                    sendTerminalDeleteKeys(gesture.deleteCount(event.x))
+                }
+                gesture.cancel()
+            }
+            MotionEvent.ACTION_CANCEL -> gesture.cancel()
+        }
+        return true
+    }
+
+    private fun sendTerminalCursorKeys(delta: Int) {
+        val key = if (delta < 0) android.view.KeyEvent.KEYCODE_DPAD_LEFT else android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+        repeat(kotlin.math.abs(delta)) { sendDownUpKeyEvents(key) }
+    }
+
+    private fun sendTerminalDeleteKeys(count: Int) {
+        repeat(count.coerceIn(0, 64)) { sendDownUpKeyEvents(android.view.KeyEvent.KEYCODE_DEL) }
+    }
+
     private fun handleDeleteTap() {
+        if (usesTerminalFallback()) {
+            sendDownUpKeyEvents(android.view.KeyEvent.KEYCODE_DEL)
+            return
+        }
         val snapshot = currentEditorSnapshot() ?: return
         activeEditorGesture = ActiveEditorGesture(
             expectedText = snapshot.text,
@@ -678,7 +744,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             active.valid = false
             return false
         }
-        if (current.selection != selection && !inputConnection.setSelection(selection.start, selection.end)) {
+        if (current.selection != selection && !inputConnection.setSelection(
+                selection.start + current.startOffset,
+                selection.end + current.startOffset,
+            )) {
             active.valid = false
             return false
         }
@@ -704,7 +773,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
                 active.valid = false
                 return
             }
-            if (!inputConnection.setSelection(active.originalSelection.start, active.originalSelection.end)) {
+            if (!inputConnection.setSelection(
+                    active.originalSelection.start + current.startOffset,
+                    active.originalSelection.end + current.startOffset,
+                )) {
                 active.valid = false
                 return
             }
@@ -720,9 +792,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             if (extracted.selectionStart < 0 || extracted.selectionEnd < 0) {
                 return null
             }
-            val start = min(extracted.selectionStart, extracted.selectionEnd).coerceIn(0, text.length)
-            val end = max(extracted.selectionStart, extracted.selectionEnd).coerceIn(start, text.length)
-            EditorTextSnapshot(text, EditorSelection(start, end))
+            val offset = extracted.startOffset.coerceAtLeast(0)
+            val start = (offset + min(extracted.selectionStart, extracted.selectionEnd)).coerceIn(0, text.length + offset)
+            val end = (offset + max(extracted.selectionStart, extracted.selectionEnd)).coerceIn(start, text.length + offset)
+            EditorTextSnapshot(text, EditorSelection(start, end), offset)
         } catch (_: RuntimeException) {
             null
         }
@@ -751,8 +824,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             return null
         }
         return SelectionBounds(
-            start = min(extracted.selectionStart, extracted.selectionEnd),
-            end = max(extracted.selectionStart, extracted.selectionEnd),
+            start = min(extracted.selectionStart, extracted.selectionEnd) + extracted.startOffset.coerceAtLeast(0),
+            end = max(extracted.selectionStart, extracted.selectionEnd) + extracted.startOffset.coerceAtLeast(0),
         )
     }
 

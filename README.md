@@ -152,6 +152,8 @@ docs/downloads/OpenVoiceIME-release.apk
 
 OpenVoiceIME currently has one OpenAI-compatible transcription client. Providers with different upload flows, authentication schemes, or response formats need separate adapters.
 
+Terminal compatibility: editors that expose `TYPE_NULL` or no extracted text (including terminal-style apps) use arrow and Delete key events for the compact cursor/Delete controls. Rich text editors retain selection previews.
+
 | Service | Status | Base URL | Default model |
 | --- | --- | --- | --- |
 | OpenAI | Supported default | `https://api.openai.com` | `gpt-4o-transcribe` |

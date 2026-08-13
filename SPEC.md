@@ -62,6 +62,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 - V19: Delete gesture treats vertical displacement at least as large as horizontal displacement as escape, and each horizontal step maps deterministically to one code point.
 - V20: Horizontal ACTION_MOVE emits live caret/selection previews; ACTION_UP commits the controller-owned preview, while ACTION_CANCEL/vertical escape restores the original selection only when editor text and ownership remain unchanged.
 - V21: Every completed user-facing implementation, unless explicitly opted out, bumps Android version, passes signed release build and `apksigner verify`, pushes `main` plus version tag, publishes GitHub release with APK asset, updates project-site APK, and verifies remote release state.
+- V22: Editors with `TYPE_NULL` or unavailable extracted text use bounded key-event gestures: cursor emits only newly crossed left/right arrows (including reversal), Delete tap emits one `KEYCODE_DEL`, drag defers bounded final count until release, and cancel/vertical escape emits none; rich snapshots apply `startOffset` to global selections.
 
 ## §T
 
@@ -75,6 +76,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | T6 | x | Restore `hideAfterSuccess` precedence when keyboard return is disabled; add regression coverage; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V14,RemoteSttInputMethodService |
 | T7 | x | Add compact cursor-pad/Delete gestures with live ACTION_MOVE previews, code-point-safe pure math, ACTION_UP-only text mutation, ownership-safe cancel restore, localized accessible labels, and regression tests; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V15,V16,V17,V18,V19,V20,EditorGestureController,RemoteSttInputMethodService,ime_voice_input.xml |
 | T8 | x | Publish cursor/Delete gestures as signed v0.3.5, update project-site APK, push `main` and tag, create GitHub release with verified asset, and persist automatic release policy. | V11,V21,AGENTS.md,README.md,app/build.gradle.kts |
+| T9 | ~ | Add terminal/non-rich key-event fallback and ExtractedText offset correctness; verify gesture math, service wiring, signed v0.3.6 release, and remote APK. | V22,TerminalGestureController,RemoteSttInputMethodService |
 
 ## §B
 
@@ -86,3 +88,4 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | B4 | 2026-08-13 | controller emitted only final ACTION_UP command, so caret/selection did not track finger and cancel could not restore preview | V20 |
 | B5 | 2026-08-13 | private signing file existed outside Gradle auto-load paths; plain release command was misread as missing credentials | V11 |
 | B6 | 2026-08-13 | implementation stopped after local verification, so feature had no downloadable GitHub release or updated project-site APK | V21 |
+| B7 | 2026-08-13 | gestures assumed extracted text; terminal InputConnection returned null, making Termius controls no-op | V22 |

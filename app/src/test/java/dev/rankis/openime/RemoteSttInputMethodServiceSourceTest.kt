@@ -123,6 +123,18 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(source.contains("current.selection != active.previewSelection"))
     }
 
+    @Test
+    fun terminalEditorsUseKeyEventFallback() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        assertTrue(source.contains("usesTerminalFallback"))
+        assertTrue(source.contains("InputType.TYPE_NULL"))
+        assertTrue(source.contains("KEYCODE_DPAD_LEFT"))
+        assertTrue(source.contains("KEYCODE_DPAD_RIGHT"))
+        assertTrue(source.contains("KEYCODE_DEL"))
+        assertTrue(source.contains("sendDownUpKeyEvents"))
+        assertTrue(source.contains("extracted.startOffset"))
+    }
+
     private fun serviceSourcePath(): Path {
         val userDir = Paths.get(System.getProperty("user.dir"))
         val relativePath = Paths.get(
