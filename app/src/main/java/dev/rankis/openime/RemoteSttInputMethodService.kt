@@ -89,6 +89,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var currentEditorPackageName: String? = null
     private var inputViewVisible = false
     private var startRecordingScheduled = false
+    private var activeEditorGesture: ActiveEditorGesture? = null
 
     private val tick = object : Runnable {
         override fun run() {
@@ -569,51 +570,146 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             MotionEvent.ACTION_DOWN -> {
                 val snapshot = currentEditorSnapshot()
                 if (snapshot == null) {
+                    activeEditorGesture = null
                     controller.cancel()
                 } else {
+                    activeEditorGesture = ActiveEditorGesture(
+                        expectedText = snapshot.text,
+                        originalSelection = snapshot.selection,
+                        previewSelection = snapshot.selection,
+                    )
                     controller.begin(snapshot, event.x, event.y)
                 }
             }
-            MotionEvent.ACTION_MOVE -> controller.move(event.x, event.y)
-            MotionEvent.ACTION_UP -> applyEditorCommand(controller.finish(event.x, event.y))
-            MotionEvent.ACTION_CANCEL -> controller.cancel()
+            MotionEvent.ACTION_MOVE -> applyGesturePreview(controller.move(event.x, event.y))
+            MotionEvent.ACTION_UP -> {
+                val command = controller.finish(event.x, event.y)
+                if (controller === deleteGesture &&
+                    command is EditorGestureCommand.DeleteRange &&
+                    command.fromTap
+                ) {
+                    activeEditorGesture = null
+                    deleteButton.performClick()
+                } else {
+                    applyEditorCommand(command)
+                    activeEditorGesture = null
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                controller.cancel()
+                restoreActiveGesture()
+                activeEditorGesture = null
+            }
         }
         return true
     }
 
     private fun handleDeleteTap() {
         val snapshot = currentEditorSnapshot() ?: return
+        activeEditorGesture = ActiveEditorGesture(
+            expectedText = snapshot.text,
+            originalSelection = snapshot.selection,
+            previewSelection = snapshot.selection,
+        )
         applyEditorCommand(EditorGestureController.deleteTap(snapshot))
+        activeEditorGesture = null
+    }
+
+    private fun applyGesturePreview(command: EditorGestureCommand) {
+        when (command) {
+            is EditorGestureCommand.PreviewSelection -> {
+                applyOwnedSelection(command.selection, command.expected)
+            }
+            is EditorGestureCommand.RestoreSelection -> {
+                applyOwnedSelection(command.selection, command.expected)
+                activeEditorGesture?.valid = false
+            }
+            else -> Unit
+        }
     }
 
     private fun applyEditorCommand(command: EditorGestureCommand) {
         val inputConnection = currentInputConnection ?: return
-        val current = currentEditorSnapshot() ?: return
         when (command) {
             is EditorGestureCommand.MoveCaret -> {
-                if (current != command.expected || command.position !in 0..current.text.length) {
+                if (command.position < 0) {
                     return
                 }
-                inputConnection.setSelection(command.position, command.position)
+                if (!applyOwnedSelection(EditorSelection(command.position, command.position), command.expected)) {
+                    return
+                }
             }
             is EditorGestureCommand.DeleteRange -> {
-                if (
-                    current != command.expected ||
-                    command.start < 0 ||
-                    command.end > current.text.length ||
-                    command.start >= command.end
-                ) {
+                val current = currentEditorSnapshot() ?: return
+                if (command.start < 0 || command.end > current.text.length || command.start >= command.end) {
                     return
                 }
-                if (current.selection != EditorSelection(command.start, command.end) &&
-                    !inputConnection.setSelection(command.start, command.end)
-                ) {
+                if (!applyOwnedSelection(EditorSelection(command.start, command.end), command.expected)) {
                     return
                 }
                 inputConnection.commitText("", 1)
             }
-            EditorGestureCommand.NoOp -> Unit
+            is EditorGestureCommand.PreviewSelection,
+            is EditorGestureCommand.RestoreSelection,
+            EditorGestureCommand.NoOp -> return
         }
+    }
+
+    private fun applyOwnedSelection(selection: EditorSelection, expected: EditorTextSnapshot): Boolean {
+        val active = activeEditorGesture ?: return false
+        val inputConnection = currentInputConnection ?: run {
+            active.valid = false
+            return false
+        }
+        val current = currentEditorSnapshot() ?: run {
+            active.valid = false
+            return false
+        }
+        if (
+            !active.valid ||
+            current.text != active.expectedText ||
+            expected.text != active.expectedText ||
+            expected.selection != active.originalSelection ||
+            current.selection != active.previewSelection ||
+            selection.start < 0 ||
+            selection.end < selection.start ||
+            selection.end > current.text.length
+        ) {
+            active.valid = false
+            return false
+        }
+        if (current.selection != selection && !inputConnection.setSelection(selection.start, selection.end)) {
+            active.valid = false
+            return false
+        }
+        active.previewSelection = selection
+        return true
+    }
+
+    private fun restoreActiveGesture() {
+        val active = activeEditorGesture ?: return
+        if (!active.valid) {
+            return
+        }
+        val current = currentEditorSnapshot() ?: run {
+            active.valid = false
+            return
+        }
+        if (current.text != active.expectedText || current.selection != active.previewSelection) {
+            active.valid = false
+            return
+        }
+        if (current.selection != active.originalSelection) {
+            val inputConnection = currentInputConnection ?: run {
+                active.valid = false
+                return
+            }
+            if (!inputConnection.setSelection(active.originalSelection.start, active.originalSelection.end)) {
+                active.valid = false
+                return
+            }
+        }
+        active.previewSelection = active.originalSelection
     }
 
     private fun currentEditorSnapshot(): EditorTextSnapshot? {
@@ -740,6 +836,13 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private data class SelectionBounds(
         val start: Int,
         val end: Int,
+    )
+
+    private data class ActiveEditorGesture(
+        val expectedText: String,
+        val originalSelection: EditorSelection,
+        var previewSelection: EditorSelection,
+        var valid: Boolean = true,
     )
 
     private companion object {

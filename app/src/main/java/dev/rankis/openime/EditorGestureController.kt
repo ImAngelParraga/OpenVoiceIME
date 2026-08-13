@@ -28,6 +28,16 @@ internal enum class EditorGestureKind {
 }
 
 internal sealed class EditorGestureCommand {
+    data class PreviewSelection(
+        val selection: EditorSelection,
+        val expected: EditorTextSnapshot,
+    ) : EditorGestureCommand()
+
+    data class RestoreSelection(
+        val selection: EditorSelection,
+        val expected: EditorTextSnapshot,
+    ) : EditorGestureCommand()
+
     data class MoveCaret(
         val position: Int,
         val expected: EditorTextSnapshot,
@@ -37,13 +47,15 @@ internal sealed class EditorGestureCommand {
         val start: Int,
         val end: Int,
         val expected: EditorTextSnapshot,
+        val fromTap: Boolean = false,
     ) : EditorGestureCommand()
 
     data object NoOp : EditorGestureCommand()
 }
 
 /**
- * Pure touch-to-editor math. It never mutates editor state; callers apply the returned command on UP.
+ * Pure touch-to-editor math. It never mutates editor state; callers apply previews on MOVE and
+ * destructive/final commands on UP.
  */
 internal class EditorGestureController(
     private val kind: EditorGestureKind,
@@ -55,6 +67,7 @@ internal class EditorGestureController(
     private var downY = 0f
     private var dragStarted = false
     private var cancelled = false
+    private var previewSelection: EditorSelection? = null
 
     fun begin(snapshot: EditorTextSnapshot, x: Float, y: Float): Boolean {
         this.snapshot = snapshot
@@ -62,22 +75,32 @@ internal class EditorGestureController(
         downY = y
         dragStarted = false
         cancelled = false
+        previewSelection = snapshot.selection
         return true
     }
 
-    fun move(x: Float, y: Float) {
+    fun move(x: Float, y: Float): EditorGestureCommand {
         if (snapshot == null || cancelled) {
-            return
+            return EditorGestureCommand.NoOp
         }
         val dx = x - downX
         val dy = y - downY
         if (kotlin.math.abs(dy) > touchSlopPixels && kotlin.math.abs(dy) >= kotlin.math.abs(dx)) {
             cancelled = true
-            return
+            val initial = snapshot ?: return EditorGestureCommand.NoOp
+            previewSelection = initial.selection
+            return EditorGestureCommand.RestoreSelection(initial.selection, initial)
         }
         if (kotlin.math.abs(dx) > touchSlopPixels) {
             dragStarted = true
         }
+        if (!dragStarted) {
+            return EditorGestureCommand.NoOp
+        }
+        val initial = snapshot ?: return EditorGestureCommand.NoOp
+        val selection = previewFor(initial, dx)
+        previewSelection = selection
+        return EditorGestureCommand.PreviewSelection(selection, initial)
     }
 
     fun finish(x: Float, y: Float): EditorGestureCommand {
@@ -103,41 +126,53 @@ internal class EditorGestureController(
         if (!dragStarted) {
             return EditorGestureCommand.NoOp
         }
-        val dx = x - downX
-        val direction = if (dx < 0f) -1 else 1
-        val steps = horizontalSteps(dx)
-        if (steps == 0) {
+        val selection = previewSelection ?: previewFor(initial, x - downX)
+        if (selection.start != selection.end) {
             return EditorGestureCommand.NoOp
         }
-        val base = if (direction < 0) initial.selection.start else initial.selection.end
-        val target = moveByCodePoints(initial.text, base, direction, steps)
-        return EditorGestureCommand.MoveCaret(target, initial)
+        return if (selection == initial.selection) {
+            EditorGestureCommand.NoOp
+        } else {
+            EditorGestureCommand.MoveCaret(selection.start, initial)
+        }
     }
 
     private fun finishDelete(initial: EditorTextSnapshot, x: Float): EditorGestureCommand {
         if (!dragStarted) {
             return deleteTap(initial)
         }
-        val dx = x - downX
-        if (dx >= 0f) {
+        val selection = previewSelection ?: previewFor(initial, x - downX)
+        if (selection.start >= selection.end) {
             return EditorGestureCommand.NoOp
         }
-        val steps = horizontalSteps(dx)
-        if (steps == 0) {
-            return EditorGestureCommand.NoOp
+        return EditorGestureCommand.DeleteRange(selection.start, selection.end, initial)
+    }
+
+    private fun previewFor(initial: EditorTextSnapshot, dx: Float): EditorSelection {
+        return when (kind) {
+            EditorGestureKind.Cursor -> {
+                val direction = if (dx < 0f) -1 else 1
+                val steps = horizontalSteps(dx)
+                val base = if (direction < 0) initial.selection.start else initial.selection.end
+                val target = moveByCodePoints(initial.text, base, direction, steps)
+                EditorSelection(target, target)
+            }
+            EditorGestureKind.Delete -> {
+                val end = initial.selection.end
+                if (dx < 0f) {
+                    val start = moveByCodePoints(initial.text, end, -1, horizontalSteps(dx))
+                    EditorSelection(start, end)
+                } else {
+                    EditorSelection(end, end)
+                }
+            }
         }
-        val end = initial.selection.end
-        val start = moveByCodePoints(initial.text, end, -1, steps)
-        if (start >= end) {
-            return EditorGestureCommand.NoOp
-        }
-        return EditorGestureCommand.DeleteRange(start, end, initial)
     }
 
     private fun deleteTap(initial: EditorTextSnapshot): EditorGestureCommand {
         val selection = initial.selection
         if (selection.start < selection.end) {
-            return EditorGestureCommand.DeleteRange(selection.start, selection.end, initial)
+            return EditorGestureCommand.DeleteRange(selection.start, selection.end, initial, fromTap = true)
         }
         if (selection.end == 0) {
             return EditorGestureCommand.NoOp
@@ -145,7 +180,7 @@ internal class EditorGestureController(
         val caret = codePointBoundary(initial.text, selection.end)
         val start = moveByCodePoints(initial.text, caret, -1, 1)
         return if (start < caret) {
-            EditorGestureCommand.DeleteRange(start, caret, initial)
+            EditorGestureCommand.DeleteRange(start, caret, initial, fromTap = true)
         } else {
             EditorGestureCommand.NoOp
         }
@@ -186,6 +221,7 @@ internal class EditorGestureController(
         snapshot = null
         dragStarted = false
         cancelled = false
+        previewSelection = null
     }
 
     companion object {

@@ -116,6 +116,11 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(source.contains("currentEditorSnapshot()"))
         assertTrue(source.contains("EditorGestureController.deleteTap"))
         assertTrue(source.contains("inputConnection.commitText(\"\", 1)"))
+        assertTrue(source.contains("applyGesturePreview"))
+        assertTrue(source.contains("restoreActiveGesture"))
+        assertTrue(source.contains("deleteButton.performClick()"))
+        assertTrue(source.contains("current.text != active.expectedText"))
+        assertTrue(source.contains("current.selection != active.previewSelection"))
     }
 
     private fun serviceSourcePath(): Path {

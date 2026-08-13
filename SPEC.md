@@ -17,7 +17,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 - `hideAfterSuccess` takes precedence when post-insert keyboard return is disabled; enabled hide closes the panel after insertion.
 - App-specific language choice uses editor package identity, with global-language fallback.
 - Per-app language lookup uses local preferences only; no network or package enumeration on panel startup.
-- Cursor and Delete gestures mutate editor only on ACTION_UP; ACTION_CANCEL and vertical escape do not delete text.
+- Delete text mutation occurs only on ACTION_UP; cursor/selection preview may update on ACTION_MOVE, while ACTION_CANCEL and vertical escape restore the original selection without deletion.
 - Cursor pad horizontal slide moves caret by bounded Unicode code-point steps without splitting surrogate pairs.
 - Delete tap removes current selection, or one preceding Unicode code point when selection is empty; left slide selects backward from caret and release deletes that range.
 - Settings label translated in English and Spanish.
@@ -54,11 +54,12 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 - V11: Every uploaded release APK passes `apksigner verify`; release builds fail clearly when signing properties are unavailable.
 - V12: [Historical T5] Legacy tracked-insertion deletion was guarded by matching current editor selection/cursor.
 - V13: [Historical T5] Legacy Delete disabled without tracked insertion and cleared tracking after deletion; current controls use V15–V18.
-- V15: Cursor/Delete gesture state performs no editor mutation before ACTION_UP; ACTION_CANCEL and vertical escape produce no deletion.
+- V15: Delete content mutation occurs only on ACTION_UP; ACTION_CANCEL and vertical escape produce no deletion.
 - V16: Cursor slide clamps caret to editor bounds and advances by Unicode code-point boundaries, never splitting surrogate pairs.
 - V17: Delete tap removes current selection or exactly one preceding code point; left slide selects backward from original caret, rightward motion shrinks selection, and release deletes only resulting range.
 - V18: Missing InputConnection/extracted text or stale editor state causes safe no-op; controls expose localized English/Spanish/default accessible labels.
 - V19: Delete gesture treats vertical displacement at least as large as horizontal displacement as escape, and each horizontal step maps deterministically to one code point.
+- V20: Horizontal ACTION_MOVE emits live caret/selection previews; ACTION_UP commits the controller-owned preview, while ACTION_CANCEL/vertical escape restores the original selection only when editor text and ownership remain unchanged.
 
 ## §T
 
@@ -70,7 +71,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | T4 | x | Require release signing configuration, add APK signature regression coverage, and republish signed patch release; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V11,app/build.gradle.kts,AGENTS.md |
 | T5 | x | Add safe Delete button for last inserted transcription, localized labels, cursor/selection guard, and regression tests; run `./gradlew testDebugUnitTest assembleRelease`. | V12,V13,RemoteSttInputMethodService,ime_voice_input.xml |
 | T6 | x | Restore `hideAfterSuccess` precedence when keyboard return is disabled; add regression coverage; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V14,RemoteSttInputMethodService |
-| T7 | ~ | Add compact cursor-pad/Delete gestures with code-point-safe pure math, ACTION_UP-only editor mutations, cancel/vertical escape no-op, localized accessible labels, and regression tests; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V15,V16,V17,V18,V19,EditorGestureController,RemoteSttInputMethodService,ime_voice_input.xml |
+| T7 | ~ | Add compact cursor-pad/Delete gestures with live ACTION_MOVE previews, code-point-safe pure math, ACTION_UP-only text mutation, ownership-safe cancel restore, localized accessible labels, and regression tests; run `./gradlew testDebugUnitTest assembleRelease` plus `apksigner verify`. | V15,V16,V17,V18,V19,V20,EditorGestureController,RemoteSttInputMethodService,ime_voice_input.xml |
 
 ## §B
 
@@ -79,3 +80,4 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | B1 | 2026-08-04 | release signing properties absent; Gradle still produced unsigned APK published as v0.3.0 | V11 |
 | B2 | 2026-08-04 | keyboard-return-disabled branch bypassed `hideAfterSuccess`, so enabled hide setting could not close panel | V14 |
 | B3 | 2026-08-13 | gesture regression checks did not pin equal-axis escape and exact step distance; drag could be interpreted as delete | V19 |
+| B4 | 2026-08-13 | controller emitted only final ACTION_UP command, so caret/selection did not track finger and cancel could not restore preview | V20 |
