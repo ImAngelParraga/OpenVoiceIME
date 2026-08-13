@@ -6,6 +6,15 @@ import org.junit.Test
 
 class EditorGestureControllerTest {
     @Test
+    fun partialExtractedSnapshotKeepsLocalSelectionAndTranslatesOnce() {
+        val snapshot = EditorTextSnapshot("world", EditorSelection(1, 3), startOffset = 12)
+        assertEquals(1, snapshot.selection.start)
+        assertEquals(13, snapshot.globalPosition(snapshot.selection.start))
+        assertEquals(15, snapshot.globalPosition(snapshot.selection.end))
+        assertEquals(12, snapshot.globalPosition(-4))
+        assertEquals(17, snapshot.globalPosition(99))
+    }
+    @Test
     fun cursorSlideMovesByCodePointsAndDoesNotSplitSurrogatePair() {
         val snapshot = EditorTextSnapshot("a😀bc", EditorSelection(5, 5))
         val controller = controller(EditorGestureKind.Cursor)

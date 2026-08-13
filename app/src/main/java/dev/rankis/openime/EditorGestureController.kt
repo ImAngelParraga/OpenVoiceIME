@@ -10,7 +10,10 @@ internal data class EditorTextSnapshot(
         require(selection.start >= 0)
         require(selection.end >= selection.start)
         require(selection.end <= text.length)
+        require(startOffset >= 0)
     }
+
+    fun globalPosition(localPosition: Int): Int = startOffset + localPosition.coerceIn(0, text.length)
 }
 
 internal data class EditorSelection(

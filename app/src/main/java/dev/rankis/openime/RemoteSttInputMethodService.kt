@@ -93,6 +93,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private var inputViewVisible = false
     private var startRecordingScheduled = false
     private var activeEditorGesture: ActiveEditorGesture? = null
+    private var activeGestureMode: GestureMode? = null
     private var terminalGestureDragged = false
     private var terminalDownX = 0f
     private var terminalDownY = 0f
@@ -574,7 +575,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     private fun handleEditorGesture(controller: EditorGestureController, event: MotionEvent): Boolean {
-        if (usesTerminalFallback()) {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            activeGestureMode = if (usesTerminalFallback()) GestureMode.Terminal else GestureMode.Rich
+        }
+        if (activeGestureMode == GestureMode.Terminal) {
             return handleTerminalGesture(controller === cursorGesture, event)
         }
         when (event.actionMasked) {
@@ -586,6 +590,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
                 } else {
                     activeEditorGesture = ActiveEditorGesture(
                         expectedText = snapshot.text,
+                        expectedStartOffset = snapshot.startOffset,
                         originalSelection = snapshot.selection,
                         previewSelection = snapshot.selection,
                     )
@@ -605,11 +610,13 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
                     applyEditorCommand(command)
                     activeEditorGesture = null
                 }
+                activeGestureMode = null
             }
             MotionEvent.ACTION_CANCEL -> {
                 controller.cancel()
                 restoreActiveGesture()
                 activeEditorGesture = null
+                activeGestureMode = null
             }
         }
         return true
@@ -651,8 +658,12 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
                     sendTerminalDeleteKeys(gesture.deleteCount(event.x))
                 }
                 gesture.cancel()
+                activeGestureMode = null
             }
-            MotionEvent.ACTION_CANCEL -> gesture.cancel()
+            MotionEvent.ACTION_CANCEL -> {
+                gesture.cancel()
+                activeGestureMode = null
+            }
         }
         return true
     }
@@ -674,6 +685,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         val snapshot = currentEditorSnapshot() ?: return
         activeEditorGesture = ActiveEditorGesture(
             expectedText = snapshot.text,
+            expectedStartOffset = snapshot.startOffset,
             originalSelection = snapshot.selection,
             previewSelection = snapshot.selection,
         )
@@ -734,7 +746,9 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         if (
             !active.valid ||
             current.text != active.expectedText ||
+            current.startOffset != active.expectedStartOffset ||
             expected.text != active.expectedText ||
+            expected.startOffset != active.expectedStartOffset ||
             expected.selection != active.originalSelection ||
             current.selection != active.previewSelection ||
             selection.start < 0 ||
@@ -745,8 +759,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             return false
         }
         if (current.selection != selection && !inputConnection.setSelection(
-                selection.start + current.startOffset,
-                selection.end + current.startOffset,
+                current.globalPosition(selection.start),
+                current.globalPosition(selection.end),
             )) {
             active.valid = false
             return false
@@ -764,7 +778,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             active.valid = false
             return
         }
-        if (current.text != active.expectedText || current.selection != active.previewSelection) {
+        if (current.text != active.expectedText ||
+            current.startOffset != active.expectedStartOffset ||
+            current.selection != active.previewSelection
+        ) {
             active.valid = false
             return
         }
@@ -774,8 +791,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
                 return
             }
             if (!inputConnection.setSelection(
-                    active.originalSelection.start + current.startOffset,
-                    active.originalSelection.end + current.startOffset,
+                    current.globalPosition(active.originalSelection.start),
+                    current.globalPosition(active.originalSelection.end),
                 )) {
                 active.valid = false
                 return
@@ -793,8 +810,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
                 return null
             }
             val offset = extracted.startOffset.coerceAtLeast(0)
-            val start = (offset + min(extracted.selectionStart, extracted.selectionEnd)).coerceIn(0, text.length + offset)
-            val end = (offset + max(extracted.selectionStart, extracted.selectionEnd)).coerceIn(start, text.length + offset)
+            val start = min(extracted.selectionStart, extracted.selectionEnd).coerceIn(0, text.length)
+            val end = max(extracted.selectionStart, extracted.selectionEnd).coerceIn(start, text.length)
             EditorTextSnapshot(text, EditorSelection(start, end), offset)
         } catch (_: RuntimeException) {
             null
@@ -913,10 +930,13 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private data class ActiveEditorGesture(
         val expectedText: String,
+        val expectedStartOffset: Int,
         val originalSelection: EditorSelection,
         var previewSelection: EditorSelection,
         var valid: Boolean = true,
     )
+
+    private enum class GestureMode { Rich, Terminal }
 
     private companion object {
         const val TAG = "OpenVoiceIME"
