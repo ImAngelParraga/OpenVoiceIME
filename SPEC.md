@@ -86,7 +86,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T10 | x | Fix partial extracted-text local/global offset handling and latch rich/terminal routing for each gesture; verify signed v0.3.7 release and remote APK. | V23,EditorGestureController,RemoteSttInputMethodService |
 | T11 | x | Keep Delete tap mode latched through synchronous performClick, probe only when unlatched, and publish signed v0.3.8 with remote verification. | V24,RemoteSttInputMethodService |
 | T12 | x | Make IME configuration rebuilds clean up recorder/audio focus and transient work before UI recreation, keep cleanup idempotent across logical-state drift, verify rotation recovery, and publish signed release. | V25,RemoteSttInputMethodService,AudioRecorder |
-| T13 | ~ | Add four-direction cursor trackpad with dominant-axis lock, vertical key-event stepping, reversal/clamp tests, localized labels, and signed release publication. | V26,CursorTrackpadController,RemoteSttInputMethodService |
+| T13 | x | Add four-direction cursor trackpad with dominant-axis lock, vertical key-event stepping, reversal/clamp tests, localized labels, and signed release publication. | V26,CursorTrackpadController,RemoteSttInputMethodService |
 
 ## §B
 
