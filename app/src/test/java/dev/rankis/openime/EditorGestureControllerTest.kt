@@ -6,6 +6,14 @@ import org.junit.Test
 
 class EditorGestureControllerTest {
     @Test
+    fun deleteTapModeUsesLatchedModeAndOnlyProbesWhenUnlatched() {
+        var probes = 0
+        assertEquals(GestureModeForTap.Terminal, resolveDeleteTapMode(GestureModeForTap.Terminal) { probes++; false })
+        assertEquals(GestureModeForTap.Rich, resolveDeleteTapMode(GestureModeForTap.Rich) { probes++; true })
+        assertEquals(GestureModeForTap.Terminal, resolveDeleteTapMode(null) { probes++; true })
+        assertEquals(1, probes)
+    }
+    @Test
     fun partialExtractedSnapshotKeepsLocalSelectionAndTranslatesOnce() {
         val snapshot = EditorTextSnapshot("world", EditorSelection(1, 3), startOffset = 12)
         assertEquals(1, snapshot.selection.start)

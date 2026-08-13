@@ -678,7 +678,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     private fun handleDeleteTap() {
-        if (usesTerminalFallback()) {
+        val mode = resolveDeleteTapMode(activeGestureMode?.let {
+            if (it == GestureMode.Terminal) GestureModeForTap.Terminal else GestureModeForTap.Rich
+        }) { usesTerminalFallback() }
+        if (mode == GestureModeForTap.Terminal) {
             sendDownUpKeyEvents(android.view.KeyEvent.KEYCODE_DEL)
             return
         }

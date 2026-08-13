@@ -31,6 +31,13 @@ internal enum class EditorGestureKind {
     Delete,
 }
 
+internal enum class GestureModeForTap { Rich, Terminal }
+
+internal fun resolveDeleteTapMode(
+    latched: GestureModeForTap?,
+    probeFallback: () -> Boolean,
+): GestureModeForTap = latched ?: if (probeFallback()) GestureModeForTap.Terminal else GestureModeForTap.Rich
+
 internal sealed class EditorGestureCommand {
     data class PreviewSelection(
         val selection: EditorSelection,

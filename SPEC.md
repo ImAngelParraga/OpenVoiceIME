@@ -64,6 +64,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 - V21: Every completed user-facing implementation, unless explicitly opted out, bumps Android version, passes signed release build and `apksigner verify`, pushes `main` plus version tag, publishes GitHub release with APK asset, updates project-site APK, and verifies remote release state.
 - V22: Editors with `TYPE_NULL` or unavailable extracted text use bounded key-event gestures: cursor emits only newly crossed left/right arrows (including reversal), Delete tap emits one `KEYCODE_DEL`, drag defers bounded final count until release, and cancel/vertical escape emits none; rich snapshots apply `startOffset` to global selections.
 - V23: Rich extracted snapshots retain local selection offsets and validated nonnegative `startOffset`; every editor selection mutation translates local positions to global exactly once, and gesture capability mode is latched on ACTION_DOWN through UP/CANCEL.
+- V24: Delete tap honors latched Terminal/Rich mode without reprobe; only an unlatched accessibility/programmatic tap probes capability, and each tap causes at most one mutation.
 
 ## §T
 
@@ -79,6 +80,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | T8 | x | Publish cursor/Delete gestures as signed v0.3.5, update project-site APK, push `main` and tag, create GitHub release with verified asset, and persist automatic release policy. | V11,V21,AGENTS.md,README.md,app/build.gradle.kts |
 | T9 | x | Add terminal/non-rich key-event fallback and ExtractedText offset correctness; verify gesture math, service wiring, signed v0.3.6 release, and remote APK. | V22,TerminalGestureController,RemoteSttInputMethodService |
 | T10 | x | Fix partial extracted-text local/global offset handling and latch rich/terminal routing for each gesture; verify signed v0.3.7 release and remote APK. | V23,EditorGestureController,RemoteSttInputMethodService |
+| T11 | ~ | Keep Delete tap mode latched through synchronous performClick, probe only when unlatched, and publish signed v0.3.8 with remote verification. | V24,RemoteSttInputMethodService |
 
 ## §B
 
@@ -92,3 +94,4 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | B6 | 2026-08-13 | implementation stopped after local verification, so feature had no downloadable GitHub release or updated project-site APK | V21 |
 | B7 | 2026-08-13 | gestures assumed extracted text; terminal InputConnection returned null, making Termius controls no-op | V22 |
 | B8 | 2026-08-13 | nonzero extracted-text offsets were mixed between local snapshots and global selections; capability probing reran during gesture and could switch routes mid-touch | V23 |
+| B9 | 2026-08-13 | synchronous Delete performClick reprobed capability despite latched gesture mode, allowing transient route switch | V24 |
