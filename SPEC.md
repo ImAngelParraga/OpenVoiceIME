@@ -80,7 +80,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | T8 | x | Publish cursor/Delete gestures as signed v0.3.5, update project-site APK, push `main` and tag, create GitHub release with verified asset, and persist automatic release policy. | V11,V21,AGENTS.md,README.md,app/build.gradle.kts |
 | T9 | x | Add terminal/non-rich key-event fallback and ExtractedText offset correctness; verify gesture math, service wiring, signed v0.3.6 release, and remote APK. | V22,TerminalGestureController,RemoteSttInputMethodService |
 | T10 | x | Fix partial extracted-text local/global offset handling and latch rich/terminal routing for each gesture; verify signed v0.3.7 release and remote APK. | V23,EditorGestureController,RemoteSttInputMethodService |
-| T11 | ~ | Keep Delete tap mode latched through synchronous performClick, probe only when unlatched, and publish signed v0.3.8 with remote verification. | V24,RemoteSttInputMethodService |
+| T11 | x | Keep Delete tap mode latched through synchronous performClick, probe only when unlatched, and publish signed v0.3.8 with remote verification. | V24,RemoteSttInputMethodService |
 
 ## §B
 
