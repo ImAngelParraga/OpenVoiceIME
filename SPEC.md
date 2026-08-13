@@ -3,7 +3,7 @@
 ## §G
 
 Cancel panel visibility configurable. User choose whether Cancel hides IME panel; disabled hide keeps panel open for immediate fresh dictation. Post-insert keyboard return configurable; disabled return keeps panel active for hands-free dictation. Transcription language remembered per editor application. Editor text editable from compact cursor/Delete controls.
-Compact edit controls let user slide a cursor pad horizontally to move caret and slide Delete left to select text before caret, then release to delete.
+Compact edit controls let user slide a cursor pad in four directions to move caret and slide Delete left to select text before caret, then release to delete.
 
 ## §C
 
@@ -19,6 +19,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 - Per-app language lookup uses local preferences only; no network or package enumeration on panel startup.
 - Delete text mutation occurs only on ACTION_UP; cursor/selection preview may update on ACTION_MOVE, while ACTION_CANCEL and vertical escape restore the original selection without deletion.
 - Cursor pad horizontal slide moves caret by bounded Unicode code-point steps without splitting surrogate pairs.
+- Cursor pad locks to first dominant axis; vertical slide sends bounded Up/Down key events while horizontal rich-editor movement remains character-precise.
 - Delete tap removes current selection, or one preceding Unicode code point when selection is empty; left slide selects backward from caret and release deletes that range.
 - Completed user-facing implementation publishes signed GitHub release unless user explicitly opts out; project-site APK mirrors same build.
 - Settings label translated in English and Spanish.
@@ -37,6 +38,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | `InputMethodService.onStartInput` / `EditorInfo.packageName` | Identify current editor application for language selection. |
 | `SettingsStore` / `RemoteSttInputMethodService` | Load/save transcription language per app with global fallback. |
 | `EditorGestureController` | Pure cursor/Delete gesture math; code-point-safe bounds, tap/slide/cancel outcomes. |
+| `CursorTrackpadController` | Pure dominant-axis lock and bounded incremental horizontal/vertical step deltas. |
 | `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose compact cursor pad and Delete edit controls with localized accessible labels. |
 
 ## §V
@@ -66,6 +68,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 - V23: Rich extracted snapshots retain local selection offsets and validated nonnegative `startOffset`; every editor selection mutation translates local positions to global exactly once, and gesture capability mode is latched on ACTION_DOWN through UP/CANCEL.
 - V24: Delete tap honors latched Terminal/Rich mode without reprobe; only an unlatched accessibility/programmatic tap probes capability, and each tap causes at most one mutation.
 - V25: IME configuration changes leave at most one recorder active; rebuilt UI and logical state agree; Cancel/Stop remain usable without switching keyboards.
+- V26: Cursor pad locks once to dominant axis after touch slop; horizontal behavior stays unchanged, vertical movement emits only newly crossed bounded `KEYCODE_DPAD_UP`/`KEYCODE_DPAD_DOWN` steps including reversal, tap/cancel emits none, and accessible labels describe four directions.
 
 ## §T
 
@@ -83,6 +86,7 @@ Compact edit controls let user slide a cursor pad horizontally to move caret and
 | T10 | x | Fix partial extracted-text local/global offset handling and latch rich/terminal routing for each gesture; verify signed v0.3.7 release and remote APK. | V23,EditorGestureController,RemoteSttInputMethodService |
 | T11 | x | Keep Delete tap mode latched through synchronous performClick, probe only when unlatched, and publish signed v0.3.8 with remote verification. | V24,RemoteSttInputMethodService |
 | T12 | x | Make IME configuration rebuilds clean up recorder/audio focus and transient work before UI recreation, keep cleanup idempotent across logical-state drift, verify rotation recovery, and publish signed release. | V25,RemoteSttInputMethodService,AudioRecorder |
+| T13 | ~ | Add four-direction cursor trackpad with dominant-axis lock, vertical key-event stepping, reversal/clamp tests, localized labels, and signed release publication. | V26,CursorTrackpadController,RemoteSttInputMethodService |
 
 ## §B
 

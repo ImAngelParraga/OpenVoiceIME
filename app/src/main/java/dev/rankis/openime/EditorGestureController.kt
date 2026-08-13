@@ -114,6 +114,8 @@ internal class EditorGestureController(
         return EditorGestureCommand.PreviewSelection(selection, initial)
     }
 
+    fun moveHorizontal(x: Float): EditorGestureCommand = move(x, downY)
+
     fun finish(x: Float, y: Float): EditorGestureCommand {
         move(x, y)
         val initial = snapshot ?: return EditorGestureCommand.NoOp
@@ -128,6 +130,8 @@ internal class EditorGestureController(
         reset()
         return result
     }
+
+    fun finishHorizontal(x: Float): EditorGestureCommand = finish(x, downY)
 
     fun cancel() {
         reset()

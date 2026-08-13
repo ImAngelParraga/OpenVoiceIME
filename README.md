@@ -152,7 +152,7 @@ docs/downloads/OpenVoiceIME-release.apk
 
 OpenVoiceIME currently has one OpenAI-compatible transcription client. Providers with different upload flows, authentication schemes, or response formats need separate adapters.
 
-Terminal compatibility: editors that expose `TYPE_NULL` or no extracted text (including terminal-style apps) use arrow and Delete key events for the compact cursor/Delete controls. Rich text editors retain selection previews.
+Terminal compatibility: editors that expose `TYPE_NULL` or no extracted text (including terminal-style apps) use arrow and Delete key events for the compact cursor/Delete controls. Cursor pad supports left/right/up/down movement; rich text editors retain character-precise horizontal previews.
 
 | Service | Status | Base URL | Default model |
 | --- | --- | --- | --- |

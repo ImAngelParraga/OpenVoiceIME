@@ -77,7 +77,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private lateinit var cursorGesture: EditorGestureController
     private lateinit var deleteGesture: EditorGestureController
-    private lateinit var terminalCursorGesture: TerminalGestureController
+    private lateinit var cursorTrackpadGesture: CursorTrackpadController
     private lateinit var terminalDeleteGesture: TerminalGestureController
 
     private var state: ImeState = ImeState.Idle
@@ -157,7 +157,11 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             horizontalStepPixels = 18f * density,
             touchSlopPixels = touchSlop,
         )
-        terminalCursorGesture = TerminalGestureController(18f * density)
+        cursorTrackpadGesture = CursorTrackpadController(
+            horizontalStepPixels = 18f * density,
+            verticalStepPixels = 18f * density,
+            touchSlopPixels = touchSlop,
+        )
         terminalDeleteGesture = TerminalGestureController(18f * density)
 
         stopButton.setOnClickListener { onPrimaryAction() }
@@ -230,8 +234,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         if (::deleteGesture.isInitialized) {
             deleteGesture.cancel()
         }
-        if (::terminalCursorGesture.isInitialized) {
-            terminalCursorGesture.cancel()
+        if (::cursorTrackpadGesture.isInitialized) {
+            cursorTrackpadGesture.cancel()
         }
         if (::terminalDeleteGesture.isInitialized) {
             terminalDeleteGesture.cancel()
@@ -610,7 +614,92 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     private fun handleCursorGesture(event: MotionEvent): Boolean {
-        return handleEditorGesture(cursorGesture, event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                activeGestureMode = if (usesTerminalFallback()) GestureMode.Terminal else GestureMode.Rich
+                cursorTrackpadGesture.begin(event.x, event.y)
+                if (activeGestureMode == GestureMode.Rich) {
+                    val snapshot = currentEditorSnapshot()
+                    if (snapshot == null) {
+                        activeEditorGesture = null
+                        cursorGesture.cancel()
+                    } else {
+                        activeEditorGesture = ActiveEditorGesture(
+                            expectedText = snapshot.text,
+                            expectedStartOffset = snapshot.startOffset,
+                            originalSelection = snapshot.selection,
+                            previewSelection = snapshot.selection,
+                        )
+                        cursorGesture.begin(snapshot, event.x, event.y)
+                    }
+                } else {
+                    activeEditorGesture = null
+                    cursorGesture.cancel()
+                }
+            }
+            MotionEvent.ACTION_MOVE -> applyCursorTrackpadMove(event)
+            MotionEvent.ACTION_UP -> {
+                applyCursorTrackpadMove(event)
+                if (activeGestureMode == GestureMode.Rich &&
+                    cursorTrackpadGesture.axis == CursorTrackpadAxis.Horizontal
+                ) {
+                    applyEditorCommand(cursorGesture.finishHorizontal(event.x))
+                } else {
+                    cursorGesture.cancel()
+                }
+                activeEditorGesture = null
+                activeGestureMode = null
+                cursorTrackpadGesture.cancel()
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                if (activeGestureMode == GestureMode.Rich &&
+                    cursorTrackpadGesture.axis == CursorTrackpadAxis.Horizontal
+                ) {
+                    restoreActiveGesture()
+                }
+                cursorGesture.cancel()
+                cursorTrackpadGesture.cancel()
+                activeEditorGesture = null
+                activeGestureMode = null
+            }
+        }
+        return true
+    }
+
+    private fun applyCursorTrackpadMove(event: MotionEvent) {
+        val update = cursorTrackpadGesture.move(event.x, event.y) ?: return
+        when (update.axis) {
+            CursorTrackpadAxis.Horizontal -> {
+                if (activeGestureMode == GestureMode.Rich) {
+                    applyGesturePreview(cursorGesture.moveHorizontal(event.x))
+                } else {
+                    sendCursorKeys(update)
+                }
+            }
+            CursorTrackpadAxis.Vertical -> {
+                if (activeGestureMode == GestureMode.Rich && activeEditorGesture != null) {
+                    cursorGesture.cancel()
+                    activeEditorGesture = null
+                }
+                sendCursorKeys(update)
+            }
+        }
+    }
+
+    private fun sendCursorKeys(update: CursorTrackpadUpdate) {
+        val key = when (update.axis) {
+            CursorTrackpadAxis.Horizontal -> if (update.stepDelta < 0) {
+                android.view.KeyEvent.KEYCODE_DPAD_LEFT
+            } else {
+                android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+            }
+            CursorTrackpadAxis.Vertical -> if (update.stepDelta < 0) {
+                android.view.KeyEvent.KEYCODE_DPAD_UP
+            } else {
+                android.view.KeyEvent.KEYCODE_DPAD_DOWN
+            }
+        }
+        repeat(kotlin.math.abs(update.stepDelta)) { sendDownUpKeyEvents(key) }
     }
 
     private fun handleDeleteGesture(event: MotionEvent): Boolean {
@@ -622,7 +711,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             activeGestureMode = if (usesTerminalFallback()) GestureMode.Terminal else GestureMode.Rich
         }
         if (activeGestureMode == GestureMode.Terminal) {
-            return handleTerminalGesture(controller === cursorGesture, event)
+            return handleTerminalDeleteGesture(event)
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -643,8 +732,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             MotionEvent.ACTION_MOVE -> applyGesturePreview(controller.move(event.x, event.y))
             MotionEvent.ACTION_UP -> {
                 val command = controller.finish(event.x, event.y)
-                if (controller === deleteGesture &&
-                    command is EditorGestureCommand.DeleteRange &&
+                if (command is EditorGestureCommand.DeleteRange &&
                     command.fromTap
                 ) {
                     activeEditorGesture = null
@@ -670,8 +758,8 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         return currentEditorSnapshot() == null
     }
 
-    private fun handleTerminalGesture(cursor: Boolean, event: MotionEvent): Boolean {
-        val gesture = if (cursor) terminalCursorGesture else terminalDeleteGesture
+    private fun handleTerminalDeleteGesture(event: MotionEvent): Boolean {
+        val gesture = terminalDeleteGesture
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 gesture.begin(event.x)
@@ -689,15 +777,12 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
                     terminalGestureDragged = true
                 } else if (kotlin.math.abs(dx) >= ViewConfiguration.get(this).scaledTouchSlop) {
                     terminalGestureDragged = true
-                    if (cursor) {
-                        sendTerminalCursorKeys(gesture.cursorDelta(event.x))
-                    }
                 }
             }
             MotionEvent.ACTION_UP -> {
                 if (!terminalGestureDragged) {
-                    if (!cursor) deleteButton.performClick()
-                } else if (!cursor) {
+                    deleteButton.performClick()
+                } else {
                     sendTerminalDeleteKeys(gesture.deleteCount(event.x))
                 }
                 gesture.cancel()
@@ -709,11 +794,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             }
         }
         return true
-    }
-
-    private fun sendTerminalCursorKeys(delta: Int) {
-        val key = if (delta < 0) android.view.KeyEvent.KEYCODE_DPAD_LEFT else android.view.KeyEvent.KEYCODE_DPAD_RIGHT
-        repeat(kotlin.math.abs(delta)) { sendDownUpKeyEvents(key) }
     }
 
     private fun sendTerminalDeleteKeys(count: Int) {

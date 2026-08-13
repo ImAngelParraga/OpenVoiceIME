@@ -171,9 +171,25 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(source.contains("InputType.TYPE_NULL"))
         assertTrue(source.contains("KEYCODE_DPAD_LEFT"))
         assertTrue(source.contains("KEYCODE_DPAD_RIGHT"))
+        assertTrue(source.contains("KEYCODE_DPAD_UP"))
+        assertTrue(source.contains("KEYCODE_DPAD_DOWN"))
         assertTrue(source.contains("KEYCODE_DEL"))
         assertTrue(source.contains("sendDownUpKeyEvents"))
         assertTrue(source.contains("extracted.startOffset"))
+    }
+
+    @Test
+    fun cursorTrackpadSupportsFourDirectionsWithAxisLock() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val body = functionBody(source, "handleCursorGesture")
+
+        assertTrue(source.contains("CursorTrackpadController"))
+        assertTrue(body.contains("cursorTrackpadGesture.begin"))
+        assertTrue(body.contains("applyCursorTrackpadMove"))
+        assertTrue(source.contains("CursorTrackpadAxis.Horizontal"))
+        assertTrue(source.contains("CursorTrackpadAxis.Vertical"))
+        assertTrue(source.contains("cursorGesture.moveHorizontal"))
+        assertTrue(source.contains("cursorGesture.finishHorizontal"))
     }
 
     private fun serviceSourcePath(): Path {
