@@ -149,6 +149,15 @@
             android:layout_weight="1"
             android:contentDescription="@string/button_delete_description"
             android:text="@string/button_delete" />
+
+        <Button
+            android:id="@+id/keyboardButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:contentDescription="@string/button_return_to_keyboard_description"
+            android:text="@string/button_return_to_keyboard" />
     </LinearLayout>
 
     <Button

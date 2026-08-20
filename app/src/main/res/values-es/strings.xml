@@ -29,6 +29,8 @@
     <string name="button_cursor_symbol">↔ ↕</string>
     <string name="button_cursor_description">Mover el cursor a la izquierda, derecha, arriba o abajo</string>
     <string name="button_delete_description">Eliminar el texto seleccionado o el carácter anterior</string>
+    <string name="button_return_to_keyboard">Teclado</string>
+    <string name="button_return_to_keyboard_description">Volver al teclado normal</string>
     <string name="button_stop">Detener</string>
     <string name="button_retry">Reintentar</string>
     <string name="button_insert">Insertar</string>

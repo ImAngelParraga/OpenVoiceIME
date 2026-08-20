@@ -18,6 +18,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
 import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
@@ -73,6 +74,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private lateinit var cancelButton: Button
     private lateinit var cursorButton: Button
     private lateinit var deleteButton: Button
+    private lateinit var keyboardButton: Button
     private lateinit var retryButton: Button
 
     private lateinit var cursorGesture: EditorGestureController
@@ -143,6 +145,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         cancelButton = view.findViewById(R.id.cancelButton)
         cursorButton = view.findViewById(R.id.cursorButton)
         deleteButton = view.findViewById(R.id.deleteButton)
+        keyboardButton = view.findViewById(R.id.keyboardButton)
         retryButton = view.findViewById(R.id.retryButton)
 
         val density = resources.displayMetrics.density
@@ -169,6 +172,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         cursorButton.setOnTouchListener { _, event -> handleCursorGesture(event) }
         deleteButton.setOnClickListener { handleDeleteTap() }
         deleteButton.setOnTouchListener { _, event -> handleDeleteGesture(event) }
+        keyboardButton.setOnClickListener { returnToKeyboard() }
         retryButton.setOnClickListener {
             if (state == ImeState.Error) {
                 copyLastError()
@@ -499,6 +503,19 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             showLanguageControls()
             scheduleStartRecordingOrShowSetupError()
         }
+    }
+
+    private fun returnToKeyboard() {
+        cleanupForInputViewRecreation()
+        if (switchToPreviousOrFallbackKeyboard()) {
+            return
+        }
+
+        // Keep the panel usable if the platform refuses every switch request.
+        inputViewVisible = true
+        resetControls()
+        showLanguageControls()
+        scheduleStartRecordingOrShowSetupError()
     }
 
     private fun showError(message: String, error: TranscriptionError? = null) {
@@ -978,6 +995,37 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         } else {
             false
         }
+    }
+
+    private fun switchToPreviousOrFallbackKeyboard(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            runCatching { switchToPreviousInputMethod() }.getOrDefault(false)
+        ) {
+            return true
+        }
+
+        val otherInputMethods = enabledOtherInputMethods()
+        if (otherInputMethods.size == 1) {
+            // Do not use next-IME cycling here: one candidate must be deterministic.
+            return runCatching {
+                switchInputMethod(otherInputMethods.single().id)
+                true
+            }.getOrDefault(false)
+        }
+
+        return switchToNextKeyboard()
+    }
+
+    private fun enabledOtherInputMethods(): List<android.view.inputmethod.InputMethodInfo> {
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            ?: return emptyList()
+        return runCatching {
+            inputMethodManager.enabledInputMethodList
+                .asSequence()
+                .filter { it.packageName != packageName }
+                .distinctBy { it.id }
+                .toList()
+        }.getOrDefault(emptyList())
     }
 
     private fun copyLastError() {

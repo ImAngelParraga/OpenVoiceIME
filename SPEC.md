@@ -2,7 +2,7 @@
 
 ## §G
 
-Cancel panel visibility configurable. User choose whether Cancel hides IME panel; disabled hide keeps panel open for immediate fresh dictation. Post-insert keyboard return configurable; disabled return keeps panel active for hands-free dictation. Transcription language remembered per editor application. Editor text editable from compact cursor/Delete controls.
+Cancel panel visibility configurable. User choose whether Cancel hides IME panel; disabled hide keeps panel open for immediate fresh dictation. Post-insert keyboard return configurable; disabled return keeps panel active for hands-free dictation. Transcription language remembered per editor application. Editor text editable from compact cursor/Delete controls. Compact keyboard button returns directly to last-used normal keyboard without opening Android picker.
 Compact edit controls let user slide a cursor pad in four directions to move caret and slide Delete left to select text before caret, then release to delete.
 
 ## §C
@@ -23,6 +23,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - Delete tap removes current selection, or one preceding Unicode code point when selection is empty; left slide selects backward from caret and release deletes that range.
 - Completed user-facing implementation publishes signed GitHub release unless user explicitly opts out; project-site APK mirrors same build.
 - Settings label translated in English and Spanish.
+- Direct keyboard-return control cleans active recording/transient work before switching; Android 9+ prefers last-used IME, with safe fallback to sole other enabled IME where available.
 
 ## §I
 
@@ -40,6 +41,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | `EditorGestureController` | Pure cursor/Delete gesture math; code-point-safe bounds, tap/slide/cancel outcomes. |
 | `CursorTrackpadController` | Pure dominant-axis lock and bounded incremental horizontal/vertical step deltas. |
 | `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose compact cursor pad and Delete edit controls with localized accessible labels. |
+| `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose compact direct keyboard-return button with localized accessible label and safe IME switching fallback. |
 
 ## §V
 
@@ -69,6 +71,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V24: Delete tap honors latched Terminal/Rich mode without reprobe; only an unlatched accessibility/programmatic tap probes capability, and each tap causes at most one mutation.
 - V25: IME configuration changes leave at most one recorder active; rebuilt UI and logical state agree; Cancel/Stop remain usable without switching keyboards.
 - V26: Cursor pad locks once to dominant axis after touch slop; horizontal behavior stays unchanged, vertical movement emits only newly crossed bounded `KEYCODE_DPAD_UP`/`KEYCODE_DPAD_DOWN` steps including reversal, tap/cancel emits none, and accessible labels describe four directions.
+- V27: Keyboard-return button is always reachable in OpenVoiceIME panel, cancels recorder/audio focus/upload/scheduled work before switching, prefers `switchToPreviousInputMethod()` on Android 9+, falls back without opening picker when exactly one other enabled IME exists, and exposes localized English/Spanish/default label and content description.
 
 ## §T
 
@@ -87,6 +90,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T11 | x | Keep Delete tap mode latched through synchronous performClick, probe only when unlatched, and publish signed v0.3.8 with remote verification. | V24,RemoteSttInputMethodService |
 | T12 | x | Make IME configuration rebuilds clean up recorder/audio focus and transient work before UI recreation, keep cleanup idempotent across logical-state drift, verify rotation recovery, and publish signed release. | V25,RemoteSttInputMethodService,AudioRecorder |
 | T13 | x | Add four-direction cursor trackpad with dominant-axis lock, vertical key-event stepping, reversal/clamp tests, localized labels, and signed release publication. | V26,CursorTrackpadController,RemoteSttInputMethodService |
+| T14 | ~ | Add direct keyboard-return button, safe active-work cleanup, previous/sole-other IME switching fallback, localized accessibility resources, regression tests, and signed release publication. | V27,RemoteSttInputMethodService,ime_voice_input.xml |
 
 ## §B
 

@@ -192,6 +192,42 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(source.contains("cursorGesture.finishHorizontal"))
     }
 
+    @Test
+    fun directKeyboardReturnCleansActiveWorkBeforeSwitching() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val createViewBody = functionBody(source, "onCreateInputView")
+        val returnBody = functionBody(source, "returnToKeyboard")
+        val cleanupBody = functionBody(source, "cleanupForInputViewRecreation")
+
+        assertTrue(createViewBody.contains("keyboardButton.setOnClickListener"))
+        assertTrue(returnBody.indexOf("cleanupForInputViewRecreation()") < returnBody.indexOf("switchToPreviousOrFallbackKeyboard()"))
+        assertTrue(cleanupBody.contains("cancelScheduledStartRecording()"))
+        assertTrue(cleanupBody.contains("handler.removeCallbacks(tick)"))
+        assertTrue(cleanupBody.contains("uploadJob?.cancel()"))
+        assertTrue(cleanupBody.contains("recorder.cancel()"))
+        assertTrue(cleanupBody.contains("recordingAudioFocus.abandon()"))
+        assertTrue(cleanupBody.contains("audioFile?.delete()"))
+        assertTrue(cleanupBody.contains("pendingText = null"))
+        assertTrue(cleanupBody.contains("activeEditorGesture = null"))
+        assertTrue(cleanupBody.contains("activeGestureMode = null"))
+    }
+
+    @Test
+    fun directKeyboardReturnPrefersPreviousThenSoleOtherWithoutPicker() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val switchBody = functionBody(source, "switchToPreviousOrFallbackKeyboard")
+        val enabledBody = functionBody(source, "enabledOtherInputMethods")
+
+        assertTrue(switchBody.contains("Build.VERSION_CODES.P"))
+        assertTrue(switchBody.contains("switchToPreviousInputMethod()"))
+        assertTrue(switchBody.contains("enabledOtherInputMethods()"))
+        assertTrue(switchBody.contains("otherInputMethods.size == 1"))
+        assertTrue(switchBody.contains("switchInputMethod(otherInputMethods.single().id)"))
+        assertTrue(switchBody.contains("switchToNextKeyboard()"))
+        assertTrue(enabledBody.contains("filter { it.packageName != packageName }"))
+        assertTrue(enabledBody.contains("enabledInputMethodList"))
+    }
+
     private fun serviceSourcePath(): Path {
         val userDir = Paths.get(System.getProperty("user.dir"))
         val relativePath = Paths.get(
