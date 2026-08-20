@@ -92,7 +92,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T12 | x | Make IME configuration rebuilds clean up recorder/audio focus and transient work before UI recreation, keep cleanup idempotent across logical-state drift, verify rotation recovery, and publish signed release. | V25,RemoteSttInputMethodService,AudioRecorder |
 | T13 | x | Add four-direction cursor trackpad with dominant-axis lock, vertical key-event stepping, reversal/clamp tests, localized labels, and signed release publication. | V26,CursorTrackpadController,RemoteSttInputMethodService |
 | T14 | x | Add direct keyboard-return button, safe active-work cleanup, previous/sole-other IME switching fallback, localized accessibility resources, regression tests, and signed release publication. | V27,RemoteSttInputMethodService,ime_voice_input.xml |
-| T15 | ~ | Replace text keyboard-return button with compact upper-right header icon, left-align app/version label, preserve switching behavior, add layout regression test, and publish signed release. | V27,V28,RemoteSttInputMethodService,ime_voice_input.xml |
+| T15 | x | Replace text keyboard-return button with compact upper-right header icon, left-align app/version label, preserve switching behavior, add layout regression test, and publish signed release. | V27,V28,RemoteSttInputMethodService,ime_voice_input.xml |
 
 ## §B
 
