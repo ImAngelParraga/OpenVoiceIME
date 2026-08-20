@@ -72,6 +72,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V25: IME configuration changes leave at most one recorder active; rebuilt UI and logical state agree; Cancel/Stop remain usable without switching keyboards.
 - V26: Cursor pad locks once to dominant axis after touch slop; horizontal behavior stays unchanged, vertical movement emits only newly crossed bounded `KEYCODE_DPAD_UP`/`KEYCODE_DPAD_DOWN` steps including reversal, tap/cancel emits none, and accessible labels describe four directions.
 - V27: Keyboard-return button is always reachable in OpenVoiceIME panel, cancels recorder/audio focus/upload/scheduled work before switching, prefers `switchToPreviousInputMethod()` on Android 9+, falls back without opening picker when exactly one other enabled IME exists, and exposes localized English/Spanish/default label and content description.
+- V28: IME header places `OpenVoiceIME <version>` at upper left and one compact icon-only keyboard-return control at upper right; control keeps at least a 40dp square touch target, uses localized content description, and consumes no edit-controls-row width.
 
 ## §T
 
@@ -91,6 +92,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T12 | x | Make IME configuration rebuilds clean up recorder/audio focus and transient work before UI recreation, keep cleanup idempotent across logical-state drift, verify rotation recovery, and publish signed release. | V25,RemoteSttInputMethodService,AudioRecorder |
 | T13 | x | Add four-direction cursor trackpad with dominant-axis lock, vertical key-event stepping, reversal/clamp tests, localized labels, and signed release publication. | V26,CursorTrackpadController,RemoteSttInputMethodService |
 | T14 | x | Add direct keyboard-return button, safe active-work cleanup, previous/sole-other IME switching fallback, localized accessibility resources, regression tests, and signed release publication. | V27,RemoteSttInputMethodService,ime_voice_input.xml |
+| T15 | ~ | Replace text keyboard-return button with compact upper-right header icon, left-align app/version label, preserve switching behavior, add layout regression test, and publish signed release. | V27,V28,RemoteSttInputMethodService,ime_voice_input.xml |
 
 ## §B
 
@@ -106,3 +108,4 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | B8 | 2026-08-13 | nonzero extracted-text offsets were mixed between local snapshots and global selections; capability probing reran during gesture and could switch routes mid-touch | V23 |
 | B9 | 2026-08-13 | synchronous Delete performClick reprobed capability despite latched gesture mode, allowing transient route switch | V24 |
 | B10 | 2026-08-13 | configuration rebuild reset logical state while MediaRecorder survived, causing duplicate start and state-gated cleanup failure | V25 |
+| B11 | 2026-08-20 | keyboard-return control used full weighted text button in edit row, wasting primary editing space | V28 |

@@ -22,6 +22,7 @@ import android.view.inputmethod.InputMethodManager
 import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -74,7 +75,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     private lateinit var cancelButton: Button
     private lateinit var cursorButton: Button
     private lateinit var deleteButton: Button
-    private lateinit var keyboardButton: Button
+    private lateinit var keyboardButton: ImageButton
     private lateinit var retryButton: Button
 
     private lateinit var cursorGesture: EditorGestureController

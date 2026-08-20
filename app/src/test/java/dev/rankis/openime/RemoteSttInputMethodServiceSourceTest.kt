@@ -228,6 +228,24 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(enabledBody.contains("enabledInputMethodList"))
     }
 
+    @Test
+    fun testV28KeyboardReturnUsesCompactHeaderIcon() {
+        val layout = String(Files.readAllBytes(inputViewLayoutPath()))
+        val headerStart = layout.indexOf("android:id=\"@+id/imeHeaderRow\"")
+        val editControlsStart = layout.indexOf("android:id=\"@+id/editControlsRow\"")
+        val keyboardButtonStart = layout.indexOf("android:id=\"@+id/keyboardButton\"")
+
+        assertTrue(headerStart >= 0)
+        assertTrue(keyboardButtonStart > headerStart)
+        assertTrue(keyboardButtonStart < editControlsStart)
+        assertTrue(layout.contains("<ImageButton"))
+        assertTrue(layout.contains("android:layout_width=\"40dp\""))
+        assertTrue(layout.contains("android:layout_height=\"40dp\""))
+        assertTrue(layout.contains("android:src=\"@drawable/ic_keyboard_return\""))
+        assertTrue(layout.contains("android:contentDescription=\"@string/button_return_to_keyboard_description\""))
+        assertTrue(layout.contains("android:gravity=\"start|center_vertical\""))
+    }
+
     private fun serviceSourcePath(): Path {
         val userDir = Paths.get(System.getProperty("user.dir"))
         val relativePath = Paths.get(
@@ -239,6 +257,16 @@ class RemoteSttInputMethodServiceSourceTest {
             "openime",
             "RemoteSttInputMethodService.kt",
         )
+        val modulePath = userDir.resolve(relativePath)
+        if (Files.exists(modulePath)) {
+            return modulePath
+        }
+        return userDir.resolve("app").resolve(relativePath)
+    }
+
+    private fun inputViewLayoutPath(): Path {
+        val userDir = Paths.get(System.getProperty("user.dir"))
+        val relativePath = Paths.get("src", "main", "res", "layout", "ime_voice_input.xml")
         val modulePath = userDir.resolve(relativePath)
         if (Files.exists(modulePath)) {
             return modulePath

@@ -28,7 +28,6 @@
     <string name="button_cursor_symbol">↔ ↕</string>
     <string name="button_cursor_description">Move cursor left, right, up, or down</string>
     <string name="button_delete_description">Delete selected text or previous character</string>
-    <string name="button_return_to_keyboard">Keyboard</string>
     <string name="button_return_to_keyboard_description">Return to normal keyboard</string>
     <string name="button_stop">Stop</string>
     <string name="button_retry">Retry</string>
