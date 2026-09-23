@@ -29,12 +29,15 @@ import dev.rankis.openime.R
 import dev.rankis.openime.metrics.TranscriptionMetricsStore
 import dev.rankis.openime.metrics.formatTranscriptionMetrics
 import dev.rankis.openime.stt.DiagnosticResult
+import dev.rankis.openime.stt.AsrModelCatalog
 import dev.rankis.openime.stt.NetworkDiagnostics
 import dev.rankis.openime.stt.TranscriptionError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -45,6 +48,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val diagnostics = NetworkDiagnostics()
+    private val modelCatalog = AsrModelCatalog()
 
     private lateinit var store: SettingsStore
     private lateinit var metricsStore: TranscriptionMetricsStore
@@ -52,6 +56,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var baseUrlInput: EditText
     private lateinit var modelSpinner: Spinner
     private lateinit var customModelInput: EditText
+    private lateinit var modelCatalogStatus: TextView
     private lateinit var presetNameInput: EditText
     private lateinit var tokenInput: EditText
     private lateinit var appLanguageSpinner: Spinner
@@ -77,6 +82,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var selectInsertedTextCheck: CheckBox
     private var suppressPresetChanges = false
     private var suppressModelChanges = false
+    private var modelSpinnerUpdate = 0
     private var suppressAutosave = false
     private var selectedLanguageCode: String? = null
     private var favoriteLanguageCodes: List<String?> = emptyList()
@@ -84,6 +90,10 @@ class SettingsActivity : AppCompatActivity() {
     private var lastSavedConnectionFingerprint: String? = null
     private var presetOptions: List<ProviderPresetOption> = emptyList()
     private var modelChoices: List<String> = emptyList()
+    private var discoveredModels: List<String>? = null
+    private var modelCatalogSource: Pair<String, String>? = null
+    private var modelCatalogRequest = 0
+    private var modelCatalogJob: Job? = null
     private var languageOptions: List<TranscriptionLanguageOption> = emptyList()
 
     override fun attachBaseContext(newBase: Context) {
@@ -127,6 +137,7 @@ class SettingsActivity : AppCompatActivity() {
         if (::metricsOutput.isInitialized) {
             refreshMetrics()
             refreshSetupStatus()
+            refreshModelCatalog()
         }
     }
 
@@ -135,6 +146,7 @@ class SettingsActivity : AppCompatActivity() {
         baseUrlInput = findViewById(R.id.baseUrlInput)
         modelSpinner = findViewById(R.id.modelSpinner)
         customModelInput = findViewById(R.id.customModelInput)
+        modelCatalogStatus = findViewById(R.id.modelCatalogStatus)
         presetNameInput = findViewById(R.id.presetNameInput)
         tokenInput = findViewById(R.id.tokenInput)
         appLanguageSpinner = findViewById(R.id.appLanguageSpinner)
@@ -173,6 +185,7 @@ class SettingsActivity : AppCompatActivity() {
                     applyProviderPreset(preset)
                 }
                 saveSettingsSilently()
+                refreshModelCatalog()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
@@ -274,6 +287,10 @@ class SettingsActivity : AppCompatActivity() {
             testServerConnection()
         }
 
+        findViewById<Button>(R.id.refreshModelsButton).setOnClickListener {
+            refreshModelCatalog()
+        }
+
         findViewById<Button>(R.id.resetMetricsButton).setOnClickListener {
             metricsStore.clear()
             refreshMetrics()
@@ -299,9 +316,15 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun setupAutosave() {
-        baseUrlInput.doAfterTextChanged { saveSettingsSilently() }
+        baseUrlInput.doAfterTextChanged {
+            saveSettingsSilently()
+            if (!suppressAutosave) refreshModelCatalog(500)
+        }
         customModelInput.doAfterTextChanged { saveSettingsSilently() }
-        tokenInput.doAfterTextChanged { saveSettingsSilently() }
+        tokenInput.doAfterTextChanged {
+            saveSettingsSilently()
+            if (!suppressAutosave) refreshModelCatalog(500)
+        }
         transcriptionPromptInput.doAfterTextChanged { saveSettingsSilently() }
 
         trailingSpaceCheck.setOnCheckedChangeListener { _, _ -> saveSettingsSilently() }
@@ -338,18 +361,57 @@ class SettingsActivity : AppCompatActivity() {
     private fun refreshModelSpinner(model: String) {
         val preset = presetOptions.getOrNull(providerPresetSpinner.selectedItemPosition)
             ?: builtInProviderOptions().first()
-        modelChoices = modelChoicesFor(preset, model)
+        modelChoices = modelChoicesFor(preset, model, discoveredModels)
+        val update = ++modelSpinnerUpdate
+        suppressModelChanges = true
         modelSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, modelChoices)
         val selectedIndex = modelChoices.indexOf(model.trim()).takeIf { it >= 0 }
             ?: modelChoices.indexOf(CUSTOM_MODEL_LABEL)
-        suppressModelChanges = true
         modelSpinner.setSelection(selectedIndex.coerceAtLeast(0))
-        suppressModelChanges = false
+        modelSpinner.post {
+            if (update == modelSpinnerUpdate) suppressModelChanges = false
+        }
         customModelInput.setText(model)
         customModelInput.visibility = if (modelChoices.getOrNull(selectedIndex) == CUSTOM_MODEL_LABEL) {
             View.VISIBLE
         } else {
             View.GONE
+        }
+    }
+
+    private fun refreshModelCatalog(delayMs: Long = 0) {
+        val baseUrl = baseUrlInput.text.toString().trim().trimEnd('/')
+        val token = tokenInput.text.toString()
+        val source = baseUrl to token
+        val request = ++modelCatalogRequest
+        modelCatalogJob?.cancel()
+        if (source != modelCatalogSource) {
+            val selectedModel = currentModelValue()
+            modelCatalogSource = source
+            discoveredModels = null
+            runWithoutAutosave { refreshModelSpinner(selectedModel) }
+        }
+        if (!validateServerUrl(baseUrl).isValid || token.isBlank()) {
+            modelCatalogStatus.setText(R.string.model_catalog_needs_connection)
+            return
+        }
+        modelCatalogStatus.setText(R.string.model_catalog_loading)
+        modelCatalogJob = scope.launch {
+            if (delayMs > 0) delay(delayMs)
+            val result = modelCatalog.fetch(baseUrl, token)
+            if (request != modelCatalogRequest ||
+                baseUrl != baseUrlInput.text.toString().trim().trimEnd('/') ||
+                token != tokenInput.text.toString()
+            ) return@launch
+            val selectedModel = currentModelValue()
+            result.onSuccess { models ->
+                discoveredModels = models
+                modelCatalogStatus.text = getString(R.string.model_catalog_available, models.size)
+            }.onFailure {
+                discoveredModels = null
+                modelCatalogStatus.setText(R.string.model_catalog_unavailable)
+            }
+            runWithoutAutosave { refreshModelSpinner(selectedModel) }
         }
     }
 

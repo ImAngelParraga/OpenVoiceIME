@@ -89,6 +89,16 @@ class SettingsValidationTest {
     }
 
     @Test
+    fun discoveredModelsReplacePresetChoicesWithoutLosingCustomEntry() {
+        val preset = builtInProviderOptions().first { it.id == BuiltInProviderPreset.CUSTOM.id }
+        assertEquals(
+            listOf("future-asr-4b", "whisper-1", CUSTOM_MODEL_LABEL),
+            modelChoicesFor(preset, "saved-custom-id", listOf("future-asr-4b", "whisper-1")),
+        )
+        assertEquals(listOf(CUSTOM_MODEL_LABEL), modelChoicesFor(preset, "saved-custom-id"))
+    }
+
+    @Test
     fun validSettingsPass() {
         val result = validateSettings(AppSettings(apiToken = "secret"))
 

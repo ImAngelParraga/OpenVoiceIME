@@ -36,6 +36,7 @@
     <string name="button_copy_error">Copy error</string>
     <string name="button_save_preset">Save current connection as preset</string>
     <string name="button_test_server">Test server connection</string>
+    <string name="button_refresh_models">Refresh models</string>
     <string name="button_grant_microphone">Grant microphone permission</string>
     <string name="button_open_keyboard_settings">Open keyboard settings</string>
     <string name="button_copy">Copy</string>
@@ -45,6 +46,10 @@
     <string name="settings_preset">Preset</string>
     <string name="settings_server_url">Server URL</string>
     <string name="settings_model">Model</string>
+    <string name="model_catalog_loading">Loading available models…</string>
+    <string name="model_catalog_available">%1$d transcription models available from server.</string>
+    <string name="model_catalog_unavailable">Model list unavailable. Custom model remains editable.</string>
+    <string name="model_catalog_needs_connection">Enter a server URL and API token to load models.</string>
     <string name="settings_api_token">API token</string>
     <string name="settings_custom_preset">Custom preset</string>
     <string name="settings_language">Language</string>

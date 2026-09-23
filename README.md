@@ -50,7 +50,7 @@ By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`.
 2. Open **OpenVoiceIME** from the launcher.
 3. Grant microphone permission.
 4. Choose a provider preset or configure a custom OpenAI-compatible server.
-5. Enter an API token and model.
+5. Enter an API token. For servers supporting `GET /v1/audio/models`, choose a model from the refreshed list; otherwise enter a custom model ID.
 6. Tap the server test button to verify connectivity.
 7. Open Android keyboard settings and enable **OpenVoiceIME**.
 8. Switch to OpenVoiceIME from the keyboard picker when you want to dictate.
@@ -151,6 +151,8 @@ docs/downloads/OpenVoiceIME-release.apk
 ## Transcription compatibility
 
 OpenVoiceIME currently has one OpenAI-compatible transcription client. Providers with different upload flows, authentication schemes, or response formats need separate adapters.
+
+Settings fetches the authenticated `GET {baseUrl}/v1/audio/models` catalog when opened or when the provider URL or token changes. **Refresh models** fetches it again. Servers without this endpoint keep the built-in preset choices or the editable custom model field. New IDs advertised by the server appear without an app update.
 
 Terminal compatibility: editors that expose `TYPE_NULL` or no extracted text (including terminal-style apps) use arrow and Delete key events for the compact cursor/Delete controls. Cursor pad supports left/right/up/down movement; rich text editors retain character-precise horizontal previews.
 

@@ -91,6 +91,20 @@
             android:textColorHint="@color/openime_muted"
             android:visibility="gone" />
 
+        <Button
+            android:id="@+id/refreshModelsButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/button_refresh_models" />
+
+        <TextView
+            android:id="@+id/modelCatalogStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/model_catalog_needs_connection"
+            android:textColor="@color/openime_muted"
+            android:textSize="13sp" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

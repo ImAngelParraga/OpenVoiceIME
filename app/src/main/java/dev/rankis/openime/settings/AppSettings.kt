@@ -141,11 +141,16 @@ fun providerOptions(savedPresets: List<SavedProviderPreset>): List<ProviderPrese
     }
 }
 
-fun modelChoicesFor(option: ProviderPresetOption, currentModel: String): List<String> {
-    if (option.id == BuiltInProviderPreset.CUSTOM.id) {
-        return listOf(CUSTOM_MODEL_LABEL)
-    }
-    val knownModels = (option.models.ifEmpty { listOf(option.model) })
+fun modelChoicesFor(
+    option: ProviderPresetOption,
+    currentModel: String,
+    discoveredModels: List<String>? = null,
+): List<String> {
+    val knownModels = (discoveredModels ?: if (option.id == BuiltInProviderPreset.CUSTOM.id) {
+        emptyList()
+    } else {
+        option.models.ifEmpty { listOf(option.model) }
+    })
         .filter { it.isNotBlank() }
         .distinct()
     return knownModels + CUSTOM_MODEL_LABEL

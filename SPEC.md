@@ -42,6 +42,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | `CursorTrackpadController` | Pure dominant-axis lock and bounded incremental horizontal/vertical step deltas. |
 | `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose compact cursor pad and Delete edit controls with localized accessible labels. |
 | `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose compact direct keyboard-return button with localized accessible label and safe IME switching fallback. |
+| `AsrModelCatalog` / `SettingsActivity` | Fetch authenticated `GET {baseUrl}/v1/audio/models`, show advertised transcription IDs in model spinner, refresh on settings resume or connection changes, and keep custom entry when discovery fails. |
 
 ## §V
 
@@ -73,6 +74,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V26: Cursor pad locks once to dominant axis after touch slop; horizontal behavior stays unchanged, vertical movement emits only newly crossed bounded `KEYCODE_DPAD_UP`/`KEYCODE_DPAD_DOWN` steps including reversal, tap/cancel emits none, and accessible labels describe four directions.
 - V27: Keyboard-return button is always reachable in OpenVoiceIME panel, cancels recorder/audio focus/upload/scheduled work before switching, prefers `switchToPreviousInputMethod()` on Android 9+, falls back without opening picker when exactly one other enabled IME exists, and exposes localized English/Spanish/default label and content description.
 - V28: IME header places `OpenVoiceIME <version>` at upper left and one compact icon-only keyboard-return control at upper right; control keeps at least a 40dp square touch target, uses localized content description, and consumes no edit-controls-row width.
+- V29: Model picker uses authenticated server-advertised transcription IDs when available, refreshes after settings resume or connection changes, ignores stale responses, and preserves the current editable model if discovery fails. Future model IDs require no client update.
 
 ## §T
 
@@ -93,6 +95,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T13 | x | Add four-direction cursor trackpad with dominant-axis lock, vertical key-event stepping, reversal/clamp tests, localized labels, and signed release publication. | V26,CursorTrackpadController,RemoteSttInputMethodService |
 | T14 | x | Add direct keyboard-return button, safe active-work cleanup, previous/sole-other IME switching fallback, localized accessibility resources, regression tests, and signed release publication. | V27,RemoteSttInputMethodService,ime_voice_input.xml |
 | T15 | x | Replace text keyboard-return button with compact upper-right header icon, left-align app/version label, preserve switching behavior, add layout regression test, and publish signed release. | V27,V28,RemoteSttInputMethodService,ime_voice_input.xml |
+| T16 | x | Discover transcription model IDs from configured server, refresh the picker on open and connection changes, preserve custom fallback, verify request/auth/parser behavior, and publish signed release. | V21,V29,AsrModelCatalog,SettingsActivity |
 
 ## §B
 
