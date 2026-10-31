@@ -9,6 +9,60 @@ import java.nio.file.Paths
 
 class RemoteSttInputMethodServiceSourceTest {
     @Test
+    fun testV31RejectedInsertionRetainsTranscriptAndAudio() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val body = functionBody(source, "commitPendingText")
+        assertTrue(body.contains("if (insertionResult != TranscriptCommitResult.Accepted)"))
+        assertTrue(body.indexOf("showInsertionFailure(") < body.indexOf("audioFile?.delete()"))
+        assertTrue(body.substringBefore("audioFile?.delete()").contains("return"))
+    }
+
+    @Test
+    fun testV32ChangedEditorBlocksAutomaticInsertionAndOffersCopy() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val commit = functionBody(source, "commitPendingText")
+        val handle = functionBody(source, "handleTranscript")
+        val failure = functionBody(source, "showInsertionFailure")
+        assertTrue(functionBody(source, "onStartInput").contains("editorSessionId += 1"))
+        assertTrue(functionBody(source, "startRecordingOrShowSetupError").contains("recordingEditorSessionId = editorSessionId"))
+        assertTrue(commit.indexOf("recordingEditorSessionId != editorSessionId") < commit.indexOf("currentInputConnection.commitTranscript"))
+        assertTrue(handle.contains("recordingEditorSessionId != editorSessionId"))
+        assertTrue(failure.contains("state = ImeState.ReadyToInsert"))
+        assertTrue(failure.contains("R.string.button_copy_transcript"))
+        assertFalse(failure.contains("scheduleStartRecording"))
+        assertFalse(failure.contains("audioFile?.delete()"))
+    }
+
+    @Test
+    fun testV30UploadUsesBoundedDeadlineAndInvalidatesEveryAttempt() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val upload = functionBody(source, "upload")
+        assertTrue(upload.contains("transcriptionTimeoutMillis(audioDurationMillis, file.length())"))
+        assertTrue(upload.contains("withTimeout(timeoutMillis)"))
+        assertTrue(upload.indexOf("operationId += 1") < upload.indexOf("val uploadOperationId = operationId"))
+        assertTrue(upload.contains("uploadOperationId != operationId"))
+        assertTrue(upload.contains("catch (e: CancellationException)"))
+    }
+
+    @Test
+    fun testV35VariableContentScrollsWithoutPushingActionButtons() {
+        val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
+        val root = factory.newDocumentBuilder().parse(inputViewLayoutPath().toFile()).documentElement
+        val namespace = "http://schemas.android.com/apk/res/android"
+        val panel = root.getElementsByTagName("LinearLayout").item(0) as org.w3c.dom.Element
+        assertTrue(root.tagName == "FrameLayout")
+        assertTrue(panel.parentNode === root)
+        assertTrue(panel.getAttributeNS(namespace, "layout_height") == "300dp")
+        val views = root.getElementsByTagName("ScrollView")
+        val scroll = views.item(0) as org.w3c.dom.Element
+        assertTrue(scroll.getAttributeNS(namespace, "layout_height") == "0dp")
+        assertTrue(scroll.getAttributeNS(namespace, "layout_weight") == "1")
+        val details = scroll.getElementsByTagName("EditText").item(0) as org.w3c.dom.Element
+        assertTrue(details.getAttributeNS(namespace, "id") == "@+id/errorDetailsInput")
+        assertTrue(scroll.getElementsByTagName("Button").length == 0)
+    }
+
+    @Test
     fun testV25ConfigurationRebuildCleansBeforeRecreatingView() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val configurationBody = functionBody(source, "onConfigurationChanged")

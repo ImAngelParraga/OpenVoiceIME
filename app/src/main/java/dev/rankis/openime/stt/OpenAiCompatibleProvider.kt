@@ -1,10 +1,11 @@
 package dev.rankis.openime.stt
 
-import android.os.SystemClock
-import android.util.Log
 import dev.rankis.openime.settings.AppSettings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -17,7 +18,7 @@ import java.util.concurrent.TimeUnit
 class OpenAiCompatibleProvider(
     private val client: OkHttpClient = defaultClient(),
 ) : SttProvider {
-    override suspend fun transcribe(audioFile: File, settings: AppSettings): TranscriptionResult = withContext(Dispatchers.IO) {
+    override suspend fun transcribe(audioFile: File, settings: AppSettings, timeoutMillis: Long): TranscriptionResult = withContext(Dispatchers.IO) {
         if (!audioFile.exists() || audioFile.length() <= 0L) {
             return@withContext TranscriptionResult.Failure(TranscriptionError.Network("recording file is empty"))
         }
@@ -26,30 +27,23 @@ class OpenAiCompatibleProvider(
         val request = buildOpenAiTranscriptionRequest(audioFile, mediaType.toString(), settings)
 
         try {
-            val startedAt = SystemClock.elapsedRealtime()
-            Log.i(TAG, "Uploading ${audioFile.length()} bytes to ${settings.normalizedBaseUrl()} language=${settings.languageCode ?: "auto"}")
-            client.newCall(request).execute().use { response ->
-                val elapsedMs = SystemClock.elapsedRealtime() - startedAt
-                Log.i(TAG, "STT response HTTP ${response.code} after ${elapsedMs}ms")
-                if (!response.isSuccessful) {
-                    return@withContext TranscriptionResult.Failure(
-                        mapHttpResponse(response.code, response.body?.string()),
-                    )
+            withTimeout(timeoutMillis) {
+                val call = client.newCall(request)
+                call.timeout().timeout(timeoutMillis, TimeUnit.MILLISECONDS)
+                val response = call.awaitBody()
+                if (response.isSuccessful) {
+                    parseTranscriptionResponse(response.text)
+                } else {
+                    TranscriptionResult.Failure(mapHttpResponse(response.code, response.text))
                 }
-
-                val responseText = response.body?.string().orEmpty()
-                logServerTimings(responseText)
-                parseTranscriptionResponse(responseText)
             }
+        } catch (_: TimeoutCancellationException) {
+            TranscriptionResult.Failure(TranscriptionError.Timeout)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            val error = e.toTranscriptionError()
-            Log.w(TAG, "STT upload failed: ${error.userMessage}", e)
-            TranscriptionResult.Failure(error)
+            TranscriptionResult.Failure(e.toTranscriptionError())
         }
-    }
-
-    private companion object {
-        const val TAG = "OpenVoiceIME"
     }
 }
 
@@ -74,16 +68,9 @@ fun buildOpenAiTranscriptionRequest(
         .build()
 }
 
-private fun logServerTimings(json: String) {
-    runCatching {
-        val timings = JSONObject(json).optJSONObject("timings") ?: return
-        Log.i("OpenVoiceIME", "Server timings: $timings")
-    }
-}
-
 fun parseTranscriptText(json: String): String? {
     return runCatching {
-        JSONObject(json).takeIf { it.has("text") }?.getString("text")
+        JSONObject(json).opt("text") as? String
     }.getOrNull()
 }
 
@@ -100,6 +87,6 @@ private fun defaultClient(): OkHttpClient {
     return OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(300, TimeUnit.SECONDS)
+        .readTimeout(0, TimeUnit.SECONDS)
         .build()
 }

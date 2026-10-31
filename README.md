@@ -40,7 +40,11 @@ Not supported yet:
 1. The OpenVoiceIME keyboard starts a local microphone recording.
 2. The recording is sent as multipart audio to `{baseUrl}/v1/audio/transcriptions`.
 3. The configured provider returns a JSON response with a `text` field.
-4. OpenVoiceIME commits the text into the active input field.
+4. OpenVoiceIME commits the text into the original input field and checks whether the editor accepted it.
+
+Each transcription has a total timeout of 30 seconds plus twice the recording duration, with a minimum of 45 seconds and a maximum of 15 minutes. A one-minute recording gets 2 minutes 30 seconds; a five-minute recording gets 10 minutes 30 seconds. The remaining wait appears in the keyboard. Timeout keeps the recording for **Retry**; Cancel stops the HTTP request.
+
+If insertion fails, OpenVoiceIME keeps the transcript and recording, offers **Insert** to retry insertion without another server request, and provides **Copy transcript**. It does not start another recording. When readable editor text stays unchanged after an accepted request, check the field before retrying to avoid duplicates. Editors without readable text can only be checked through their InputConnection acceptance signal. Changing input fields blocks insertion and leaves the transcript available to copy.
 
 By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`. Groq and custom OpenAI-compatible servers can be selected in settings.
 

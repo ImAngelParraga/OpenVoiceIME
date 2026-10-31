@@ -76,6 +76,16 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V28: IME header places `OpenVoiceIME <version>` at upper left and one compact icon-only keyboard-return control at upper right; control keeps at least a 40dp square touch target, uses localized content description, and consumes no edit-controls-row width.
 - V29: Model picker uses authenticated server-advertised transcription IDs when available, refreshes after settings resume or connection changes, ignores stale responses, and preserves the current editable model if discovery fails. Future model IDs require no client update.
 
+- V30: Every transcription attempt has total deadline `clamp(30s + 2 × audio duration, 45s, 15min)` covering upload, server wait, and response body; unavailable duration falls back to 64 kbit/s audio size. Cancel/timeout cancels HTTP call; timeout retains audio for retry; each attempt invalidates stale results and shows remaining wait. Diagnostics/model discovery also cancel their HTTP calls and have total deadlines.
+- V31: Insertion checks InputConnection acceptance and optional editor readback; missing/rejected/throwing connection or unchanged readable text never deletes pending transcript/audio, reports success, switches keyboard, or starts fresh recording. Retry inserts existing transcript; Copy preserves it via explicit clipboard action. Optional selection failures never repeat accepted insertion.
+- V32: Recording captures editor session; changed input field before delivery blocks automatic/manual insertion into new field and retains transcript for copying. Same-session restart preserves eligibility.
+- V33: Only a JSON string `text` can become a transcript; null/numeric/boolean/object/array values fail parsing and cannot be inserted.
+- V34: Failed recorder finalization releases recorder, deletes incomplete audio, and returns failure instead of uploading corrupt bytes.
+
+- V35: An inner 300dp panel preserves height despite platform root-layout replacement; transcript/error content scrolls inside weighted status region; action buttons remain outside that region and readable transcript cannot be edited in the keyboard.
+
+- V36: Model-discovery controls/status have English and Spanish translations; full debug lint reports zero errors.
+
 ## §T
 
 | id | status | goal | cites |
@@ -97,6 +107,8 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T15 | x | Replace text keyboard-return button with compact upper-right header icon, left-align app/version label, preserve switching behavior, add layout regression test, and publish signed release. | V27,V28,RemoteSttInputMethodService,ime_voice_input.xml |
 | T16 | x | Discover transcription model IDs from configured server, refresh the picker on open and connection changes, preserve custom fallback, verify request/auth/parser behavior, and publish signed release. | V21,V29,AsrModelCatalog,SettingsActivity |
 
+| T17 | x | Add adaptive total transcription deadline, cancellable HTTP, countdown, stale-attempt invalidation, recoverable checked insertion, editor-session guard, strict response parsing, recorder-finalization failure handling, regression tests, and signed v0.3.14 release. | V21,V30,V31,V32,V33,V34,V35,V36 |
+
 ## §B
 
 | id | date | cause | fix |
@@ -112,3 +124,12 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | B9 | 2026-08-13 | synchronous Delete performClick reprobed capability despite latched gesture mode, allowing transient route switch | V24 |
 | B10 | 2026-08-13 | configuration rebuild reset logical state while MediaRecorder survived, causing duplicate start and state-gated cleanup failure | V25 |
 | B11 | 2026-08-20 | keyboard-return control used full weighted text button in edit row, wasting primary editing space | V28 |
+| B12 | 2026-11-01 | fixed socket read timeout did not bound whole request; cancelled coroutine left blocking HTTP active | V30 |
+| B13 | 2026-11-01 | insertion ignored missing connection and commit return value, discarded audio/text, and restarted recording even when editor had not changed | V31 |
+| B14 | 2026-11-01 | async transcript delivery used current editor without binding it to recording input session | V32 |
+| B15 | 2026-11-01 | JSON string coercion accepted non-string transcript values as dictation | V33 |
+| B16 | 2026-11-01 | recorder stop failure was swallowed and nonempty incomplete file remained eligible for upload | V34 |
+| B17 | 2026-11-01 | insertion adapter regression assumed no snapshot query before commit; readback verification requires one | V31 |
+| B18 | 2026-11-01 | fixed-height panel used unbounded status content and a second weighted error region, allowing long transcripts/errors to displace actions | V35 |
+| B19 | 2026-11-01 | mock response throttling also throttled multipart request reads, so body-cancel test stalled before headers; use delayed response body and await headers explicitly | V30 |
+| B20 | 2026-11-01 | model-discovery labels lacked en/es translations; XML framework tint was flagged by AppCompat lint | V36 |

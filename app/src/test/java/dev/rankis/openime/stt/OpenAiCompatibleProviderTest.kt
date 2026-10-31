@@ -15,6 +15,13 @@ import java.net.UnknownHostException
 
 class OpenAiCompatibleProviderTest {
     @Test
+    fun testV33RejectsNonStringTranscriptInsteadOfInsertingNullOrJson() {
+        listOf("null", "42", "true", "{}", "[]").forEach { value ->
+            assertNull(parseTranscriptText("""{"text":$value}"""))
+        }
+    }
+
+    @Test
     fun parsesTranscriptText() {
         assertEquals("hello", parseTranscriptText("""{"text":"hello"}"""))
     }

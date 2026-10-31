@@ -53,8 +53,12 @@ class AudioRecorder(private val context: Context) {
         if (mediaRecorder == null) {
             return file
         }
-        runCatching { mediaRecorder.stop() }
+        val stopped = runCatching { mediaRecorder.stop() }.isSuccess
         releaseRecorder(mediaRecorder)
+        if (!stopped) {
+            file?.delete()
+            return null
+        }
         return file
     }
 

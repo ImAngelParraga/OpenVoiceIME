@@ -2,7 +2,10 @@ package dev.rankis.openime.stt
 
 import dev.rankis.openime.settings.AppSettings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -11,6 +14,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
 
 class NetworkDiagnostics(
@@ -20,13 +24,16 @@ class NetworkDiagnostics(
         val request = buildOpenAiDiagnosticRequest(settings)
 
         try {
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    DiagnosticResult.Success("Transcription endpoint reachable")
-                } else {
-                    DiagnosticResult.Failure(mapHttpResponse(response.code, response.body?.string()))
-                }
+            val response = withTimeout(15_000L) { client.newCall(request).awaitBody() }
+            if (response.isSuccessful) {
+                DiagnosticResult.Success("Transcription endpoint reachable")
+            } else {
+                DiagnosticResult.Failure(mapHttpResponse(response.code, response.text))
             }
+        } catch (_: TimeoutCancellationException) {
+            DiagnosticResult.Failure(TranscriptionError.Timeout)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             DiagnosticResult.Failure(e.toTranscriptionError())
         }
@@ -60,6 +67,7 @@ sealed class DiagnosticResult {
 fun Throwable.toTranscriptionError(): TranscriptionError = when (this) {
     is UnknownHostException -> TranscriptionError.UnknownHost(message.orEmpty())
     is SocketTimeoutException -> TranscriptionError.Timeout
+    is InterruptedIOException -> TranscriptionError.Timeout
     is ConnectException -> TranscriptionError.ConnectionRefused(message.orEmpty())
     else -> TranscriptionError.Network(message ?: javaClass.simpleName)
 }
@@ -69,6 +77,7 @@ private fun diagnosticClient(): OkHttpClient {
         .connectTimeout(5, TimeUnit.SECONDS)
         .writeTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .build()
 }
 

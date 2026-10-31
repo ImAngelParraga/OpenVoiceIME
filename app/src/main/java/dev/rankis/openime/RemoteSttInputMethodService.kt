@@ -43,6 +43,8 @@ import dev.rankis.openime.stt.OpenAiCompatibleProvider
 import dev.rankis.openime.stt.SttProvider
 import dev.rankis.openime.stt.TranscriptionError
 import dev.rankis.openime.stt.TranscriptionResult
+import dev.rankis.openime.stt.transcriptionTimeoutMillis
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -50,6 +52,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.Locale
 import kotlin.math.max
@@ -85,6 +89,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private var state: ImeState = ImeState.Idle
     private var startedAtMillis = 0L
+    private var audioDurationMillis = 0L
+    private var uploadDeadlineMillis = 0L
+    private var editorSessionId = 0L
+    private var recordingEditorSessionId = 0L
     private var audioFile: File? = null
     private var pendingText: String? = null
     private var pendingHideAfterSuccess: Boolean = true
@@ -109,6 +117,10 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             if (state == ImeState.Recording) {
                 updateRecordingFeedback()
                 handler.postDelayed(this, 120)
+            } else if (state == ImeState.Uploading) {
+                val remainingSeconds = ((uploadDeadlineMillis - SystemClock.elapsedRealtime() + 999) / 1000).coerceAtLeast(0L)
+                timerText.text = getString(R.string.transcription_time_left_format, remainingSeconds / 60, remainingSeconds % 60)
+                handler.postDelayed(this, 250)
             }
         }
     }
@@ -139,6 +151,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         versionText = view.findViewById(R.id.versionText)
         statusText = view.findViewById(R.id.statusText)
         errorDetailsInput = view.findViewById(R.id.errorDetailsInput)
+        errorDetailsInput.keyListener = null
         timerText = view.findViewById(R.id.timerText)
         levelBar = view.findViewById(R.id.levelBar)
         languageButton = view.findViewById(R.id.languageButton)
@@ -147,6 +160,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         cursorButton = view.findViewById(R.id.cursorButton)
         deleteButton = view.findViewById(R.id.deleteButton)
         keyboardButton = view.findViewById(R.id.keyboardButton)
+        keyboardButton.imageTintList = ContextCompat.getColorStateList(this, R.color.openime_muted)
         retryButton = view.findViewById(R.id.retryButton)
 
         val density = resources.displayMetrics.density
@@ -175,7 +189,9 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         deleteButton.setOnTouchListener { _, event -> handleDeleteGesture(event) }
         keyboardButton.setOnClickListener { returnToKeyboard() }
         retryButton.setOnClickListener {
-            if (state == ImeState.Error) {
+            if (pendingText != null) {
+                copyPendingTranscript()
+            } else if (state == ImeState.Error) {
                 copyLastError()
             } else {
                 retryUpload()
@@ -197,6 +213,9 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     override fun onStartInput(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
+        if (!restarting || info?.packageName != currentEditorPackageName) {
+            editorSessionId += 1
+        }
         updateCurrentEditorPackageName(info)
     }
 
@@ -257,6 +276,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         }
         audioFile?.delete()
         audioFile = null
+        audioDurationMillis = 0L
         pendingText = null
         pendingHideAfterSuccess = true
         pendingSelectInsertedText = true
@@ -292,7 +312,9 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             pendingText = null
             lastErrorMessage = null
             state = ImeState.Recording
-            startedAtMillis = System.currentTimeMillis()
+            startedAtMillis = SystemClock.elapsedRealtime()
+            audioDurationMillis = 0L
+            recordingEditorSessionId = editorSessionId
             applyDefaultStatusStyle()
             clearErrorDetails()
             statusText.setText(R.string.status_recording)
@@ -325,6 +347,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private fun stopAndUpload() {
         handler.removeCallbacks(tick)
+        audioDurationMillis = (SystemClock.elapsedRealtime() - startedAtMillis).coerceAtLeast(1L)
         val file = recorder.stop()
         recordingAudioFocus.abandon()
         if (file == null || !file.exists() || file.length() <= 0L) {
@@ -351,7 +374,11 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             showError(readinessError)
             return
         }
+        uploadJob?.cancel()
+        operationId += 1
         val uploadOperationId = operationId
+        val timeoutMillis = transcriptionTimeoutMillis(audioDurationMillis, file.length())
+        uploadDeadlineMillis = SystemClock.elapsedRealtime() + timeoutMillis
         state = ImeState.Uploading
         lastErrorMessage = null
         applyDefaultStatusStyle()
@@ -361,17 +388,29 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         stopButton.isEnabled = false
         cancelButton.isEnabled = true
         retryButton.visibility = View.GONE
+        levelBar.visibility = View.GONE
+        timerText.visibility = View.VISIBLE
+        handler.removeCallbacks(tick)
+        handler.post(tick)
 
-        uploadJob?.cancel()
         uploadJob = scope.launch {
             Log.i(TAG, "Upload started for ${file.length()} bytes")
             val audioBytes = file.length()
             val startedAt = SystemClock.elapsedRealtime()
-            val result = provider.transcribe(file, settings)
+            val result = try {
+                withTimeout(timeoutMillis) { provider.transcribe(file, settings, timeoutMillis) }
+            } catch (_: TimeoutCancellationException) {
+                TranscriptionResult.Failure(TranscriptionError.Timeout)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                TranscriptionResult.Failure(TranscriptionError.Network(e.javaClass.simpleName))
+            }
             val durationMillis = SystemClock.elapsedRealtime() - startedAt
             if (uploadOperationId != operationId) {
                 return@launch
             }
+            handler.removeCallbacks(tick)
             when (result) {
                 is TranscriptionResult.Success -> handleTranscript(result.text, settings)
                 is TranscriptionResult.Failure -> showError(localizedTranscriptionError(result.error), result.error)
@@ -389,8 +428,12 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         pendingHideAfterSuccess = settings.hideAfterSuccess
         pendingSelectInsertedText = settings.selectInsertedText
         pendingReturnToKeyboardAfterInsert = settings.returnToKeyboardAfterInsert
+        pendingText = commitText
+        if (recordingEditorSessionId != editorSessionId) {
+            showInsertionFailure(getString(R.string.transcription_editor_changed))
+            return@withContext
+        }
         if (settings.confirmBeforeInsert) {
-            pendingText = commitText
             state = ImeState.ReadyToInsert
             lastErrorMessage = null
             applyDefaultStatusStyle()
@@ -402,7 +445,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             cancelButton.isEnabled = true
             retryButton.visibility = View.GONE
         } else {
-            pendingText = commitText
             commitPendingText()
         }
     }
@@ -455,7 +497,18 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private fun commitPendingText() {
         val text = pendingText ?: return
-        currentInputConnection.safeCommitText(text, pendingSelectInsertedText)
+        if (recordingEditorSessionId != editorSessionId) {
+            showInsertionFailure(getString(R.string.transcription_editor_changed))
+            return
+        }
+        val insertionResult = currentInputConnection.commitTranscript(text, pendingSelectInsertedText)
+        if (insertionResult != TranscriptCommitResult.Accepted) {
+            showInsertionFailure(getString(
+                if (insertionResult == TranscriptCommitResult.Unconfirmed) R.string.transcription_insert_unconfirmed
+                else R.string.transcription_insert_failed,
+            ))
+            return
+        }
         audioFile?.delete()
         audioFile = null
         pendingText = null
@@ -478,6 +531,32 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
             showLanguageControls()
             scheduleStartRecordingOrShowSetupError()
         }
+    }
+
+    private fun showInsertionFailure(message: String) {
+        state = ImeState.ReadyToInsert
+        lastErrorMessage = null
+        applyErrorStatusStyle()
+        statusText.text = message
+        errorDetailsInput.setText(pendingText)
+        errorDetailsInput.visibility = View.VISIBLE
+        timerText.visibility = View.GONE
+        levelBar.visibility = View.GONE
+        languageButton.visibility = View.GONE
+        stopButton.setText(R.string.button_insert)
+        stopButton.isEnabled = recordingEditorSessionId == editorSessionId
+        cancelButton.setText(R.string.button_discard)
+        cancelButton.isEnabled = true
+        retryButton.setText(R.string.button_copy_transcript)
+        retryButton.visibility = View.VISIBLE
+        retryButton.isEnabled = true
+    }
+
+    private fun copyPendingTranscript() {
+        val text = pendingText ?: return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.transcription_clip_label), text))
+        Toast.makeText(this, R.string.transcription_copied, Toast.LENGTH_SHORT).show()
     }
 
     private fun cancelCurrentWork() {
@@ -621,7 +700,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
     }
 
     private fun updateRecordingFeedback() {
-        val elapsed = ((System.currentTimeMillis() - startedAtMillis) / 1000).coerceAtLeast(0)
+        val elapsed = ((SystemClock.elapsedRealtime() - startedAtMillis) / 1000).coerceAtLeast(0)
         timerText.text = "%02d:%02d".format(elapsed / 60, elapsed % 60)
         val amplitude = recorder.maxAmplitude.coerceIn(0, 32767)
         levelBar.progress = ((amplitude / 32767.0) * 100).roundToInt()
@@ -962,34 +1041,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         }
     }
 
-    private fun InputConnection?.safeCommitText(text: String, selectInsertedText: Boolean): SelectionBounds? {
-        val inputConnection = this ?: return null
-        val selection = inputConnection.currentSelectionBounds()
-        if (!selectInsertedText) {
-            inputConnection.commitText(text, 1)
-            return selection?.let { bounds ->
-                SelectionBounds(bounds.start, bounds.start + text.length)
-            }
-        }
-        inputConnection.commitText(text, 1)
-        if (selection != null) {
-            inputConnection.setSelection(selection.start, selection.start + text.length)
-            return SelectionBounds(selection.start, selection.start + text.length)
-        }
-        return null
-    }
-
-    private fun InputConnection.currentSelectionBounds(): SelectionBounds? {
-        val extracted = getExtractedText(ExtractedTextRequest(), 0) ?: return null
-        if (extracted.selectionStart < 0 || extracted.selectionEnd < 0) {
-            return null
-        }
-        return SelectionBounds(
-            start = min(extracted.selectionStart, extracted.selectionEnd) + extracted.startOffset.coerceAtLeast(0),
-            end = max(extracted.selectionStart, extracted.selectionEnd) + extracted.startOffset.coerceAtLeast(0),
-        )
-    }
-
     private fun switchToNextKeyboard(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             runCatching { switchToNextInputMethod(false) }.getOrDefault(false)
@@ -1075,7 +1126,7 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
 
     private fun localizedTranscriptionError(error: TranscriptionError): String {
         return when (error) {
-            TranscriptionError.Timeout -> getString(R.string.transcription_timeout)
+            TranscriptionError.Timeout -> getString(R.string.transcription_timeout_retry)
             TranscriptionError.Unauthorized -> getString(R.string.transcription_unauthorized)
             TranscriptionError.ServerBusy -> getString(R.string.transcription_server_busy)
             TranscriptionError.EmptyTranscript -> getString(R.string.transcription_empty)
@@ -1097,11 +1148,6 @@ class RemoteSttInputMethodService : android.inputmethodservice.InputMethodServic
         Inserted,
         Error,
     }
-
-    private data class SelectionBounds(
-        val start: Int,
-        val end: Int,
-    )
 
     private data class ActiveEditorGesture(
         val expectedText: String,

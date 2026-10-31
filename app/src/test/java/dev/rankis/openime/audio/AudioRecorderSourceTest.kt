@@ -8,6 +8,15 @@ import java.nio.file.Paths
 
 class AudioRecorderSourceTest {
     @Test
+    fun testV34FailedStopDiscardsIncompleteFileInsteadOfUploadingIt() {
+        val body = functionBody(String(Files.readAllBytes(sourcePath())), "stop")
+        assertTrue(body.contains("val stopped = runCatching { mediaRecorder.stop() }.isSuccess"))
+        assertTrue(body.indexOf("releaseRecorder(mediaRecorder)") < body.indexOf("if (!stopped)"))
+        assertTrue(body.substringAfter("if (!stopped)").contains("file?.delete()"))
+        assertTrue(body.substringAfter("if (!stopped)").contains("return null"))
+    }
+
+    @Test
     fun teardownDetachesRecorderStateBeforeMediaRecorderCalls() {
         val source = String(Files.readAllBytes(sourcePath()))
 

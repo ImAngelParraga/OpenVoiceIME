@@ -4,7 +4,7 @@ import dev.rankis.openime.settings.AppSettings
 import java.io.File
 
 interface SttProvider {
-    suspend fun transcribe(audioFile: File, settings: AppSettings): TranscriptionResult
+    suspend fun transcribe(audioFile: File, settings: AppSettings, timeoutMillis: Long): TranscriptionResult
 }
 
 sealed class TranscriptionResult {
