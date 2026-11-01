@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <Button
+        android:id="@+id/setupGuideToggle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:layout_marginTop="16dp"
+        android:text="@string/setup_guide_title" />
+    <LinearLayout
+        android:id="@+id/setupGuidePanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/setupGuideIntro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setup_guide_intro"
+            android:textColor="@color/openime_text"
+            android:textSize="14sp" />
+        <TextView
+            android:id="@+id/setupRouteTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setup_route_title"
+            android:textColor="@color/openime_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <RadioGroup
+            android:id="@+id/setupRouteGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <RadioButton
+                android:id="@+id/setupUseHeliboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/setup_use_heliboard"
+                android:textColor="@color/openime_text" />
+            <RadioButton
+                android:id="@+id/setupKeepKeyboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/setup_keep_keyboard"
+                android:textColor="@color/openime_text" />
+        </RadioGroup>
+        <TextView
+            android:id="@+id/setupGboardWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setup_gboard_warning"
+            android:textColor="@color/openime_text"
+            android:textSize="14sp" />
+        <LinearLayout
+            android:id="@+id/setupHeliboardPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <TextView
+                android:id="@+id/setupHeliboardInstructions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/setup_heliboard_instructions"
+                android:textColor="@color/openime_text"
+                android:textSize="14sp" />
+            <Button
+                android:id="@+id/setupDownloadHeliboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/setup_download_heliboard" />
+            <Button
+                android:id="@+id/setupOpenHeliboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/setup_open_heliboard" />
+            <TextView
+                android:id="@+id/setupHeliboardStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/setup_heliboard_missing"
+                android:textColor="@color/openime_text"
+                android:textSize="14sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/setupCurrentKeyboardPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <TextView
+                android:id="@+id/setupCurrentInstructions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/setup_current_instructions"
+                android:textColor="@color/openime_text"
+                android:textSize="14sp" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/microphoneStepTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/settings_microphone_step"
+            android:textColor="@color/openime_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/settings_microphone_description"
+            android:textColor="@color/openime_muted"
+            android:textSize="13sp" />
+        <Button
+            android:id="@+id/permissionButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/button_grant_microphone" />
+        <LinearLayout
+            android:id="@+id/microphoneStatusRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="40dp"
+            android:layout_marginTop="6dp"
+            android:background="@color/openime_panel"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+            <TextView
+                android:id="@+id/microphoneStatusIcon"
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="•"
+                android:textColor="@color/openime_muted"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/microphoneStatusText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/status_permission_not_granted"
+                android:textColor="@color/openime_muted"
+                android:textSize="14sp" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/keyboardStepTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/settings_keyboard_step"
+            android:textColor="@color/openime_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/settings_keyboard_description"
+            android:textColor="@color/openime_muted"
+            android:textSize="13sp" />
+        <Button
+            android:id="@+id/enableImeButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/button_open_keyboard_settings" />
+        <LinearLayout
+            android:id="@+id/keyboardStatusRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="40dp"
+            android:layout_marginTop="6dp"
+            android:background="@color/openime_panel"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+            <TextView
+                android:id="@+id/keyboardStatusIcon"
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="•"
+                android:textColor="@color/openime_muted"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/keyboardStatusText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/status_keyboard_not_enabled"
+                android:textColor="@color/openime_muted"
+                android:textSize="14sp" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/setupTestTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setup_test_title"
+            android:textColor="@color/openime_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/setupTestHelp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setup_test_help"
+            android:textColor="@color/openime_text"
+            android:textSize="14sp" />
+        <EditText
+            android:id="@+id/setupTestInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:inputType="textCapSentences|textMultiLine"
+            android:hint="@string/setup_test_hint"
+            android:textColor="@color/openime_text"
+            android:textColorHint="@color/openime_muted"
+            android:importantForAutofill="no" />
+        <Button
+            android:id="@+id/setupChooseKeyboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/setup_choose_keyboard" />
+        <TextView
+            android:id="@+id/setupServerHelp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/setup_server_help"
+            android:textColor="@color/openime_text"
+            android:textSize="14sp" />
+        <Button
+            android:id="@+id/setupConfigureServer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/setup_configure_server" />
+        <TextView
+            android:id="@+id/setupActionStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/openime_danger"
+            android:accessibilityLiveRegion="polite"
+            android:visibility="gone" />
+    </LinearLayout>
+</LinearLayout>

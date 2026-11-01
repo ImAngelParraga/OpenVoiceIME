@@ -17,7 +17,7 @@ Three projects for dictation across devices. Use them together for a self-hosted
 ## Install and configure
 
 1. Download `OpenVoiceIME-release.apk` from [GitHub Releases](https://github.com/ImAngelParraga/OpenVoiceIME/releases/latest) and install it.
-2. Open **OpenVoiceIME** and grant microphone permission.
+2. Open **OpenVoiceIME → Keyboard setup** and choose **Use HeliBoard** or **Keep my current keyboard**. The guide offers downloads, keyboard settings, microphone permission, and a test field.
 3. Select a provider, enter its token, and choose a transcription model and language. Use **Custom** for your own server.
 4. Test connectivity, enable OpenVoiceIME in Android keyboard settings, then select it from the keyboard picker.
 5. Start dictation and tap **Stop** to send the recording.

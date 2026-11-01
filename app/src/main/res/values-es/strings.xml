@@ -62,9 +62,9 @@
     <string name="settings_select_inserted_text">Seleccionar texto insertado</string>
     <string name="settings_autosave_note">Los cambios se guardan automáticamente.</string>
     <string name="settings_required_setup">Configuración requerida</string>
-    <string name="settings_microphone_step">1. Concede permiso de micrófono</string>
+    <string name="settings_microphone_step">2. Concede permiso de micrófono</string>
     <string name="settings_microphone_description">OpenVoiceIME necesita acceso al micrófono para grabar audio antes de enviarlo a tu servidor de transcripción.</string>
-    <string name="settings_keyboard_step">2. Activa el teclado OpenVoiceIME</string>
+    <string name="settings_keyboard_step">3. Activa el teclado OpenVoiceIME</string>
     <string name="settings_keyboard_description">Android requiere activar OpenVoiceIME como método de entrada antes de que aparezca en el selector de teclado.</string>
     <string name="settings_response_metrics">Métricas de tiempo de respuesta</string>
     <string name="settings_quick_languages_format">Idiomas rápidos: %1$s</string>
@@ -135,4 +135,23 @@
     <string name="button_insert_here">Insertar aquí</string>
     <string name="button_send_audio">Enviar audio</string>
     <string name="status_recording_saved">Audio conservado. Pulsa Enviar audio para transcribirlo.</string>
+    <string name="setup_guide_title">Configurar teclado — mostrar u ocultar</string>
+    <string name="setup_guide_intro">OpenVoiceIME permite dictar junto a tu teclado habitual. Elige cómo quieres abrirlo. Esta guía nunca cambia tu teclado predeterminado.</string>
+    <string name="setup_route_title">1. Elige cómo abrir el dictado</string>
+    <string name="setup_use_heliboard">Usar HeliBoard — acceso con el micrófono</string>
+    <string name="setup_keep_keyboard">Mantener mi teclado — cambiar manualmente</string>
+    <string name="setup_gboard_warning">El micrófono de Gboard usa el dictado de Google y no puede abrir OpenVoiceIME. Puedes mantener Gboard para escribir; para abrir OpenVoiceIME debes cambiar de teclado.</string>
+    <string name="setup_heliboard_instructions">Instala HeliBoard y actívalo en los ajustes de teclado de Android. En HeliBoard → Barra de herramientas → Seleccionar teclas fijadas, activa Entrada de voz. Su micrófono podrá abrir OpenVoiceIME. Si abre otro teclado de voz, desactiva esa entrada de voz en los ajustes de teclado de Android. Mantén activado tu teclado para escribir. No necesitas otra tienda de aplicaciones.</string>
+    <string name="setup_download_heliboard">Descargar HeliBoard</string>
+    <string name="setup_open_heliboard">Abrir ajustes de HeliBoard</string>
+    <string name="setup_heliboard_missing">Los ajustes de HeliBoard no están disponibles. Instálalo y vuelve aquí. Puedes activarlo en los ajustes de teclado de Android de abajo.</string>
+    <string name="setup_heliboard_available">Los ajustes de HeliBoard están disponibles. Actívalo en los ajustes de teclado de Android y fija Entrada de voz en su barra.</string>
+    <string name="setup_current_instructions">Mantén activado tu teclado habitual. Usa el icono de teclado de Android o la notificación Cambiar teclado para elegir OpenVoiceIME al dictar. Algunos teléfonos ocultan los teclados de voz auxiliares, por lo que OpenVoiceIME puede no aparecer aunque esté activado. Si no aparece, usa la opción de HeliBoard. Cambiar el motor de reconocimiento de voz no redirige el micrófono de Gboard.</string>
+    <string name="setup_test_title">4. Prueba el cambio de teclado y el dictado</string>
+    <string name="setup_test_help">Toca el campo de prueba y usa el selector de teclado o el micrófono de HeliBoard. Dicta y pulsa Detener. Después usa Volver al teclado normal. El retorno automático sigue el orden de Android si hay varios teclados activados.</string>
+    <string name="setup_test_hint">Prueba el dictado aquí</string>
+    <string name="setup_choose_keyboard">Abrir selector de teclado</string>
+    <string name="setup_server_help">Para dictar también necesitas un servidor y un token válidos. Configúralos y prueba la conexión en Servidor, abajo. El texto de prueba no se guarda como ajuste.</string>
+    <string name="setup_configure_server">Configurar servidor de transcripción</string>
+    <string name="setup_action_failed">No se pudo abrir esta acción. Comprueba que hay un navegador o una aplicación de ajustes disponible, o abre manualmente los ajustes de teclado de Android.</string>
 </resources>

@@ -62,9 +62,9 @@
     <string name="settings_select_inserted_text">Select inserted text</string>
     <string name="settings_autosave_note">Changes save automatically.</string>
     <string name="settings_required_setup">Required setup</string>
-    <string name="settings_microphone_step">1. Grant microphone permission</string>
+    <string name="settings_microphone_step">2. Grant microphone permission</string>
     <string name="settings_microphone_description">OpenVoiceIME needs microphone access to record audio before sending it to your transcription server.</string>
-    <string name="settings_keyboard_step">2. Enable OpenVoiceIME keyboard</string>
+    <string name="settings_keyboard_step">3. Enable OpenVoiceIME keyboard</string>
     <string name="settings_keyboard_description">Android requires enabling OpenVoiceIME as an input method before it can appear in the keyboard picker.</string>
     <string name="settings_response_metrics">Response time metrics</string>
     <string name="settings_quick_languages_format">Quick languages: %1$s</string>
@@ -135,4 +135,23 @@
     <string name="button_insert_here">Insert here</string>
     <string name="button_send_audio">Send audio</string>
     <string name="status_recording_saved">Recording saved. Tap Send audio to transcribe it.</string>
+    <string name="setup_guide_title">Keyboard setup — show or hide</string>
+    <string name="setup_guide_intro">OpenVoiceIME handles dictation alongside your normal typing keyboard. Choose how you want to open it. This guide never changes your default keyboard.</string>
+    <string name="setup_route_title">1. Choose your keyboard route</string>
+    <string name="setup_use_heliboard">Use HeliBoard — microphone shortcut</string>
+    <string name="setup_keep_keyboard">Keep my current keyboard — switch manually</string>
+    <string name="setup_gboard_warning">Gboard’s microphone uses Google voice typing and cannot open OpenVoiceIME. You can keep Gboard for typing; opening OpenVoiceIME requires switching keyboards.</string>
+    <string name="setup_heliboard_instructions">Install HeliBoard, then enable it in Android keyboard settings. In HeliBoard Settings → Toolbar → Select pinned toolbar keys, enable Voice input. Its microphone can then open OpenVoiceIME. If another voice keyboard opens, disable that competing voice input in Android keyboard settings. Keep your typing keyboard enabled. No additional app store is required.</string>
+    <string name="setup_download_heliboard">Download HeliBoard</string>
+    <string name="setup_open_heliboard">Open HeliBoard settings</string>
+    <string name="setup_heliboard_missing">HeliBoard settings are unavailable. Install HeliBoard first, then return here. You can enable it in Android keyboard settings below.</string>
+    <string name="setup_heliboard_available">HeliBoard settings are available. Enable HeliBoard in Android keyboard settings and pin Voice input in its toolbar.</string>
+    <string name="setup_current_instructions">Keep your normal keyboard enabled. Use Android’s keyboard icon or Change keyboard notification to select OpenVoiceIME when dictating. Some phones hide auxiliary voice keyboards, so OpenVoiceIME may be missing even when enabled. If it is missing, use the HeliBoard route. Changing the system speech-recognition engine does not redirect Gboard’s microphone.</string>
+    <string name="setup_test_title">4. Try switching and dictation</string>
+    <string name="setup_test_help">Tap the test field, then use the keyboard picker or HeliBoard microphone. Dictate and tap Stop. Use Return to normal keyboard afterward. Automatic return follows Android’s keyboard order when several keyboards are enabled.</string>
+    <string name="setup_test_hint">Try dictation here</string>
+    <string name="setup_choose_keyboard">Open keyboard picker</string>
+    <string name="setup_server_help">Dictation also needs a working transcription endpoint and token. Configure and test them in Server below. Test text is not saved as a setting.</string>
+    <string name="setup_configure_server">Configure transcription server</string>
+    <string name="setup_action_failed">Could not open this action. Check that a browser or settings app is available, or open Android keyboard settings manually.</string>
 </resources>

@@ -9,6 +9,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:focusableInTouchMode="true"
         android:paddingStart="20dp"
         android:paddingTop="32dp"
         android:paddingEnd="20dp"
@@ -30,6 +31,8 @@
             android:text="@string/version_placeholder"
             android:textColor="@color/openime_muted"
             android:textSize="12sp" />
+
+        <include layout="@layout/keyboard_setup_guide" />
 
         <TextView
             android:layout_width="match_parent"
@@ -352,133 +355,6 @@
             android:text="@string/settings_autosave_note"
             android:textColor="@color/openime_muted"
             android:textSize="13sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_required_setup"
-            android:textColor="@color/openime_text"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/microphoneStepTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="@string/settings_microphone_step"
-            android:textColor="@color/openime_text"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/settings_microphone_description"
-            android:textColor="@color/openime_muted"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/permissionButton"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="8dp"
-            android:text="@string/button_grant_microphone" />
-
-        <LinearLayout
-            android:id="@+id/microphoneStatusRow"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="6dp"
-            android:background="@color/openime_panel"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp">
-
-            <TextView
-                android:id="@+id/microphoneStatusIcon"
-                android:layout_width="28dp"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="•"
-                android:textColor="@color/openime_muted"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/microphoneStatusText"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:singleLine="true"
-                android:text="@string/status_permission_not_granted"
-                android:textColor="@color/openime_muted"
-                android:textSize="14sp" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/keyboardStepTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/settings_keyboard_step"
-            android:textColor="@color/openime_text"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/settings_keyboard_description"
-            android:textColor="@color/openime_muted"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/enableImeButton"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="8dp"
-            android:text="@string/button_open_keyboard_settings" />
-
-        <LinearLayout
-            android:id="@+id/keyboardStatusRow"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="6dp"
-            android:background="@color/openime_panel"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp">
-
-            <TextView
-                android:id="@+id/keyboardStatusIcon"
-                android:layout_width="28dp"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="•"
-                android:textColor="@color/openime_muted"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/keyboardStatusText"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:singleLine="true"
-                android:text="@string/status_keyboard_not_enabled"
-                android:textColor="@color/openime_muted"
-                android:textSize="14sp" />
-        </LinearLayout>
 
         <TextView
             android:id="@+id/metricsTitle"

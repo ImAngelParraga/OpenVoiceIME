@@ -44,6 +44,8 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose compact direct keyboard-return button with localized accessible label and safe IME switching fallback. |
 | `AsrModelCatalog` / `SettingsActivity` | Fetch authenticated `GET {baseUrl}/v1/audio/models`, show advertised transcription IDs in model spinner, refresh on settings resume or connection changes, and keep custom entry when discovery fails. |
 
+| `KeyboardSetupGuide` / `keyboard_setup_guide.xml` | Localized, persisted keyboard-route guide with explicit external/settings actions and a test field; no automatic system keyboard changes. |
+
 ## §V
 
 - V1: Fresh `AppSettings` and legacy stored settings use `hideAfterCancel == true`.
@@ -99,6 +101,9 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V46: Explicit Auto language persists independently of legacy language keys and applies to unmapped editors; legacy fallback is used only before an explicit modern selection exists.
 - V47: Switching built-in providers clears the previous provider token before discovery/test requests; saved presets load only their own token.
 
+- V48: Guided keyboard setup offers persisted HeliBoard/current-keyboard routes, refreshes permission/IME readiness on resume, and never changes enabled/default keyboards. Gboard mic restriction and auxiliary-picker limits remain explicit in both locales.
+- V49: Setup buttons open official HeliBoard releases, installed HeliBoard settings, Android keyboard settings, or a user-invoked picker/test field. Missing apps/handlers give localized recovery; route changes preserve provider/token/model settings. Setup remains scrollable at narrow width and larger text.
+
 ## §T
 
 | id | status | goal | cites |
@@ -123,6 +128,8 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T17 | x | Add adaptive total transcription deadline, cancellable HTTP, countdown, stale-attempt invalidation, recoverable checked insertion, editor-session guard, strict response parsing, recorder-finalization failure handling, regression tests, and signed v0.3.14 release. | V21,V30,V31,V32,V33,V34,V35,V36 |
 
 | T18 | x | Review lifecycle/editor compatibility, shorten common dictation deadlines, preserve recovery across view changes, add isolated Android integration coverage, audit settings/storage/network/metrics/gestures, fix verified regressions, and publish signed release. | V21,V30,V32,V37,V38,V39,V40,V41,V42,V43,V44,V45,V46,V47 |
+
+| T19 | x | Add localized guided keyboard setup, route persistence, safe external/settings actions, isolated Android verification, and signed v0.3.16 publication. | V21,V36,V48,V49 |
 
 ## §B
 

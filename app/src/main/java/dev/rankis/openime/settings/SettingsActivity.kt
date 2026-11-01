@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -51,6 +50,7 @@ class SettingsActivity : AppCompatActivity() {
     private val modelCatalog = AsrModelCatalog()
 
     private lateinit var store: SettingsStore
+    private lateinit var keyboardSetupGuide: KeyboardSetupGuide
     private lateinit var metricsStore: TranscriptionMetricsStore
     private lateinit var providerPresetSpinner: Spinner
     private lateinit var baseUrlInput: EditText
@@ -118,6 +118,23 @@ class SettingsActivity : AppCompatActivity() {
         store = SettingsStore(this)
         metricsStore = TranscriptionMetricsStore(this)
         bindViews()
+        keyboardSetupGuide = KeyboardSetupGuide(
+            this,
+            findViewById(android.R.id.content),
+            getSharedPreferences(KeyboardSetupGuide.PREFERENCES, Context.MODE_PRIVATE),
+            launch = { startActivity(it) },
+            showPicker = {
+                val input = findViewById<EditText>(R.id.setupTestInput)
+                input.requestFocus()
+                val manager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                manager.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+                manager.showInputMethodPicker()
+            },
+            configureServer = {
+                baseUrlInput.requestFocus()
+                baseUrlInput.post { baseUrlInput.requestRectangleOnScreen(android.graphics.Rect(0, 0, baseUrlInput.width, baseUrlInput.height)) }
+            },
+        )
         runWithoutAutosave {
             setupProviderPresetSpinner()
             setupModelSpinner()
@@ -282,10 +299,6 @@ class SettingsActivity : AppCompatActivity() {
             } else {
                 requestMicPermission.launch(Manifest.permission.RECORD_AUDIO)
             }
-        }
-
-        findViewById<Button>(R.id.enableImeButton).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
         }
 
         findViewById<Button>(R.id.testServerButton).setOnClickListener {
@@ -757,7 +770,14 @@ class SettingsActivity : AppCompatActivity() {
             granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED,
         )
-        showKeyboardStatus(enabled = isOpenImeEnabled())
+        val imeEnabled = isOpenImeEnabled()
+        showKeyboardStatus(enabled = imeEnabled)
+        if (::keyboardSetupGuide.isInitialized) {
+            keyboardSetupGuide.refresh(
+                ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
+                imeEnabled,
+            )
+        }
     }
 
     private fun showMicrophoneStatus(granted: Boolean) {

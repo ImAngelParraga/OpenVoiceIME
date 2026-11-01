@@ -2,6 +2,8 @@
 
 ## Choose how to open dictation
 
+In OpenVoiceIME, open **Keyboard setup** at the top of Settings. Choose **Use HeliBoard** or **Keep my current keyboard**. The guide remembers your choice, opens official downloads and available keyboard settings, and provides a field for trying dictation. It never changes Android's enabled or default keyboards automatically.
+
 OpenVoiceIME is a separate voice input method, not a full typing keyboard and not a plug-in for Gboard's microphone. Enable it in Android's **On-screen keyboard / Manage keyboards** settings after configuring your transcription endpoint and granting microphone access. Keep a normal typing keyboard enabled.
 
 ### Keep Gboard or your existing keyboard
