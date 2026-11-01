@@ -242,7 +242,11 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         if (!restarting || info?.packageName != currentEditorPackageName ||
             info?.fieldId != currentEditorFieldId || info?.inputType != currentEditorInputType
         ) {
-            detachInputView(restoreGesture = false)
+            if (rebuildingInputView) {
+                detachInputView(preserveUpload = true, restoreGesture = false)
+            } else {
+                discardCurrentWork(restoreGesture = false)
+            }
             editorSessionId += 1
         }
         updateCurrentEditorPackageName(info)
@@ -265,12 +269,12 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        detachInputView(preserveUpload = rebuildingInputView)
+        if (rebuildingInputView) detachInputView(preserveUpload = true) else discardCurrentWork()
         super.onFinishInputView(finishingInput)
     }
 
     override fun onFinishInput() {
-        detachInputView(preserveUpload = rebuildingInputView)
+        if (rebuildingInputView) detachInputView(preserveUpload = true) else discardCurrentWork()
         if (!rebuildingInputView) editorSessionId += 1
         super.onFinishInput()
     }
@@ -282,7 +286,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         super.onDestroy()
     }
 
-    private fun detachInputView(preserveUpload: Boolean = false, restoreGesture: Boolean = true) {
+    private fun detachInputView(preserveUpload: Boolean = false, restoreGesture: Boolean = true, preserveRecording: Boolean = true) {
         inputViewVisible = false
         cancelScheduledStartRecording()
         handler.removeCallbacks(tick)
@@ -290,7 +294,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         clearEditorGestures()
 
         if (::recorder.isInitialized) {
-            if (state == ImeState.Recording) {
+            if (preserveRecording && state == ImeState.Recording) {
                 audioDurationMillis = (SystemClock.elapsedRealtime() - startedAtMillis).coerceAtLeast(1L)
                 audioFile = recorder.stop()
                 if (audioFile?.exists() == true && audioFile!!.length() > 0L) {
@@ -329,8 +333,8 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         terminalGestureDragged = false
     }
 
-    private fun discardCurrentWork() {
-        detachInputView()
+    private fun discardCurrentWork(restoreGesture: Boolean = true) {
+        detachInputView(restoreGesture = restoreGesture, preserveRecording = false)
         operationId += 1
         uploadJob?.cancel()
         uploadJob = null

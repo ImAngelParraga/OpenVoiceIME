@@ -174,44 +174,40 @@ class ImeLifecycleTest {
     }
 
     @Test
-    fun testV37HideCancelsUploadRetainsAudioAndIgnoresLateReply() = withIme { ime ->
+    fun closingPanelCancelsUploadDiscardsAudioAndIgnoresLateReply() = withIme { ime ->
         main { ime.show() }; idle()
         main { ime.primary() }
         val oldReply = ime.provider.next()
         val file = ime.recorder.lastFile!!
         main { ime.service.onFinishInputView(false) }; idle()
-        assertTrue(file.exists())
+        assertFalse(file.exists())
         oldReply.complete(TranscriptionResult.Success("stale")); idle()
+        main { ime.show(restarting = true) }; idle()
         main {
             assertEquals("", ime.host.editor.text.toString())
-            ime.show(restarting = true)
+            assertFreshPanel(ime)
         }
-        idle()
-        assertEquals(1, ime.recorder.starts)
-        main { ime.primary() }
-        ime.provider.next().complete(TranscriptionResult.Success("retry result")); idle()
-        main { assertEquals("retry result", ime.view.findViewById<TextView>(R.id.statusText).text.toString()) }
+        assertEquals(2, ime.recorder.starts)
     }
 
     @Test
-    fun testV37HidingRecordingFinalizesOnceAndRetainsAudioForExplicitSend() = withIme { ime ->
+    fun closingRecordingDiscardsItEvenWhenReopeningSameField() = withIme { ime ->
         main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
         main { ime.service.onFinishInputView(false) }; idle()
         assertFalse(ime.recorder.active)
-        assertEquals(1, ime.recorder.stops)
-        assertTrue(ime.recorder.lastFile!!.exists())
+        assertEquals(0, ime.recorder.stops)
+        assertFalse(file.exists())
         main { ime.show(restarting = true) }; idle()
-        assertEquals(1, ime.recorder.starts)
-        main { ime.primary() }
-        ime.provider.next().complete(TranscriptionResult.Success("saved recording")); idle()
-        main { assertEquals("saved recording", ime.view.findViewById<TextView>(R.id.statusText).text.toString()) }
+        main { assertFreshPanel(ime) }
+        assertEquals(2, ime.recorder.starts)
     }
 
     @Test
-    fun testV38PendingTextSurvivesHideAndChangedEditorRequiresExplicitInsert() = withIme { ime ->
+    fun pendingConfirmationDoesNotFollowUserIntoAnotherApplication() = withIme { ime ->
         main { ime.show() }; idle()
         main { ime.primary() }
-        ime.provider.next().complete(TranscriptionResult.Success("recoverable text")); idle()
+        ime.provider.next().complete(TranscriptionResult.Success("old transcript")); idle()
         val file = ime.recorder.lastFile!!
         main {
             ime.service.onFinishInputView(true)
@@ -219,15 +215,68 @@ class ImeLifecycleTest {
             ime.info = EditorInfo().apply { packageName = "editor.second"; fieldId = 200 }
             ime.service.onStartInput(ime.info, false)
             ime.show()
-        }
-        idle()
-        assertTrue(file.exists())
+        }; idle()
+        assertFalse(file.exists())
         main {
             assertEquals("", ime.host.editor.text.toString())
-            assertEquals(View.VISIBLE, ime.view.findViewById<View>(R.id.retryButton).visibility)
-            ime.primary()
-            assertEquals("recoverable text", ime.host.editor.text.toString())
+            assertFreshPanel(ime)
         }
+    }
+
+    @Test
+    fun acceptedCommitWithPermanentlyStaleReadbackDoesNotFollowSameAppChatChange() = withIme { ime ->
+        main {
+            val store = SettingsStore(ime.host)
+            store.save(store.load().copy(confirmBeforeInsert = false))
+            val actual = ime.service.connection!!
+            val stale = actual.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+            ime.service.connection = object : InputConnectionWrapper(actual, false) {
+                override fun getExtractedText(request: android.view.inputmethod.ExtractedTextRequest?, flags: Int) = stale
+            }
+            ime.show()
+        }; idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("already delivered"))
+        android.os.SystemClock.sleep(700); idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            assertEquals("already delivered", ime.host.editor.text.toString())
+            assertEquals(View.VISIBLE, ime.view.findViewById<View>(R.id.retryButton).visibility)
+            // Chat editors can reuse both the package and field ID.
+            ime.service.onFinishInputView(false)
+            ime.service.onFinishInput()
+            ime.host.editor.setText("")
+            ime.service.connection = ime.host.editor.onCreateInputConnection(EditorInfo())
+            ime.service.onStartInput(ime.info, false)
+            ime.show()
+        }; idle()
+        assertFalse(file.exists())
+        main {
+            assertEquals("", ime.host.editor.text.toString())
+            assertFreshPanel(ime)
+        }
+    }
+
+    @Test
+    fun newInputSessionDiscardsOldWorkWithoutFinishCallbacks() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("old confirmation")); idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.service.onStartInput(ime.info, false)
+            ime.show()
+        }; idle()
+        assertFalse(file.exists())
+        main { assertFreshPanel(ime) }
+    }
+
+    private fun assertFreshPanel(ime: Harness) {
+        assertEquals(View.GONE, ime.view.findViewById<View>(R.id.retryButton).visibility)
+        assertEquals(View.GONE, ime.view.findViewById<View>(R.id.errorDetailsInput).visibility)
+        assertEquals(ime.host.getString(R.string.button_stop), ime.view.findViewById<Button>(R.id.stopButton).text.toString())
+        assertTrue(ime.view.findViewById<View>(R.id.stopButton).isEnabled)
+        assertTrue(ime.recorder.active)
     }
 
     @Test
