@@ -81,6 +81,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var confirmBeforeInsertCheck: CheckBox
     private lateinit var selectInsertedTextCheck: CheckBox
     private var suppressPresetChanges = false
+    private var boundPresetId: String? = null
     private var suppressModelChanges = false
     private var modelSpinnerUpdate = 0
     private var suppressAutosave = false
@@ -94,6 +95,8 @@ class SettingsActivity : AppCompatActivity() {
     private var modelCatalogSource: Pair<String, String>? = null
     private var modelCatalogRequest = 0
     private var modelCatalogJob: Job? = null
+    private var connectionTestJob: Job? = null
+    private var connectionTestRequest = 0L
     private var languageOptions: List<TranscriptionLanguageOption> = emptyList()
 
     override fun attachBaseContext(newBase: Context) {
@@ -181,6 +184,8 @@ class SettingsActivity : AppCompatActivity() {
                     return
                 }
                 val preset = presetOptions.getOrNull(position) ?: return
+                if (position != providerPresetSpinner.selectedItemPosition || preset.id == boundPresetId) return
+                boundPresetId = preset.id
                 runWithoutAutosave {
                     applyProviderPreset(preset)
                 }
@@ -339,9 +344,10 @@ class SettingsActivity : AppCompatActivity() {
     private fun refreshPresetSpinner(selectedPresetId: String) {
         presetOptions = providerOptions(store.loadCustomPresets())
         val labels = presetOptions.map { it.displayName }
-        providerPresetSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
         val selectedIndex = presetOptions.indexOfFirst { it.id == selectedPresetId }.takeIf { it >= 0 } ?: 0
         suppressPresetChanges = true
+        boundPresetId = presetOptions.getOrNull(selectedIndex)?.id
+        providerPresetSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
         providerPresetSpinner.setSelection(selectedIndex)
         suppressPresetChanges = false
     }
@@ -352,9 +358,7 @@ class SettingsActivity : AppCompatActivity() {
             return
         }
         baseUrlInput.setText(preset.baseUrl)
-        if (preset.isSaved) {
-            tokenInput.setText(preset.apiToken)
-        }
+        tokenInput.setText(preset.apiToken)
         refreshModelSpinner(preset.model)
     }
 
@@ -590,6 +594,8 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun testServerConnection() {
+        connectionTestJob?.cancel()
+        val request = ++connectionTestRequest
         val settings = currentFormSettings()
         val validation = validateSettings(settings)
         if (!validation.isValid) {
@@ -603,8 +609,12 @@ class SettingsActivity : AppCompatActivity() {
         Toast.makeText(this, R.string.toast_testing_server, Toast.LENGTH_SHORT).show()
         hideDiagnosticDetails()
         showServerStatusTesting()
-        scope.launch {
-            when (val result = diagnostics.test(settings)) {
+        connectionTestJob = scope.launch {
+            val result = diagnostics.test(settings)
+            if (request != connectionTestRequest ||
+                connectionTestFingerprint(settings) != connectionTestFingerprint(currentFormSettings())
+            ) return@launch
+            when (result) {
                 is DiagnosticResult.Success -> {
                     val message = getString(R.string.diagnostic_endpoint_reachable)
                     store.markConnectionTestSucceeded(settings)
@@ -639,6 +649,9 @@ class SettingsActivity : AppCompatActivity() {
         store.save(settings)
         val fingerprint = connectionTestFingerprint(settings)
         if (lastSavedConnectionFingerprint != fingerprint) {
+            connectionTestRequest += 1
+            connectionTestJob?.cancel()
+            connectionTestJob = null
             lastSavedConnectionFingerprint = fingerprint
             showConnectionTestStatus(settings)
         }

@@ -6,7 +6,12 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.util.Log
 
-class RecordingAudioFocus(context: Context) {
+interface RecordingFocus {
+    fun request()
+    fun abandon()
+}
+
+class RecordingAudioFocus(context: Context) : RecordingFocus {
     private val audioManager = context.getSystemService(AudioManager::class.java)
     private val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
         .setAudioAttributes(
@@ -20,7 +25,7 @@ class RecordingAudioFocus(context: Context) {
 
     private var focusGranted = false
 
-    fun request() {
+    override fun request() {
         if (focusGranted) {
             return
         }
@@ -31,7 +36,7 @@ class RecordingAudioFocus(context: Context) {
         }
     }
 
-    fun abandon() {
+    override fun abandon() {
         if (!focusGranted) {
             return
         }

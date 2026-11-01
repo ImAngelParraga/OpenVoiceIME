@@ -1,0 +1,266 @@
+package dev.rankis.openime
+
+import android.Manifest
+import android.content.Context
+import android.content.res.Configuration
+import android.text.InputFilter
+import android.view.MotionEvent
+import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import dev.rankis.openime.audio.RecordingFocus
+import dev.rankis.openime.audio.VoiceRecorder
+import dev.rankis.openime.settings.AppSettings
+import dev.rankis.openime.settings.SettingsStore
+import dev.rankis.openime.stt.SttProvider
+import dev.rankis.openime.stt.TranscriptionResult
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+
+@RunWith(AndroidJUnit4::class)
+class ImeLifecycleTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+
+    @Test
+    fun testV39TruncationKeepsFullTranscriptAndDoesNotStartAnotherRecording() = withIme { ime ->
+        main {
+            val store = SettingsStore(ime.host)
+            store.save(store.load().copy(confirmBeforeInsert = false))
+            ime.host.editor.filters = arrayOf(InputFilter.LengthFilter(5))
+            ime.show()
+        }; idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("full transcript survives")); idle()
+        main {
+            assertEquals("full ", ime.host.editor.text.toString())
+            assertEquals("full transcript survives", ime.view.findViewById<EditText>(R.id.errorDetailsInput).text.toString())
+            assertEquals(View.VISIBLE, ime.view.findViewById<View>(R.id.retryButton).visibility)
+        }
+        assertTrue(ime.recorder.lastFile!!.exists())
+        assertEquals(1, ime.recorder.starts)
+    }
+
+    @Test
+    fun testV43HideRestoresOwnedCursorPreview() = withIme { ime ->
+        main { ime.show() }; idle()
+        main {
+            ime.host.editor.setText("abcdef")
+            ime.host.editor.setSelection(3)
+            val pad = ime.view.findViewById<View>(R.id.cursorButton)
+            val distance = 54f * ime.host.resources.displayMetrics.density
+            touch(pad, MotionEvent.ACTION_DOWN, 1f, 1f)
+            touch(pad, MotionEvent.ACTION_MOVE, 1f + distance, 1f)
+            assertEquals(6, ime.host.editor.selectionStart)
+            ime.service.onFinishInputView(false)
+            assertEquals(3, ime.host.editor.selectionStart)
+            assertEquals("abcdef", ime.host.editor.text.toString())
+        }
+    }
+
+    @Test
+    fun testV44NewServiceRemovesOnlyAbandonedRecordingFiles() {
+        val context = instrumentation.targetContext
+        val abandoned = File.createTempFile("openime-", ".m4a", context.cacheDir)
+        val unrelated = File.createTempFile("other-", ".m4a", context.cacheDir)
+        try {
+            withIme { _ -> assertFalse(abandoned.exists()); assertTrue(unrelated.exists()) }
+        } finally { abandoned.delete(); unrelated.delete() }
+    }
+
+    @Test
+    fun testV37CreatingViewDoesNotRecordUntilItIsShown() = withIme { ime ->
+        idle()
+        assertEquals(0, ime.recorder.starts)
+        main { ime.show() }
+        idle()
+        assertEquals(1, ime.recorder.starts)
+        assertTrue(ime.recorder.active)
+    }
+
+    @Test
+    fun testV37RebuildRetainsUploadAndTranscriptWithoutStartingNewRecorder() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { ime.primary() }
+        val reply = ime.provider.next()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.service.onConfigurationChanged(Configuration(ime.service.resources.configuration))
+            ime.rebuild()
+        }
+        reply.complete(TranscriptionResult.Success("retained after rebuild")); idle()
+        main { assertEquals("retained after rebuild", ime.view.findViewById<TextView>(R.id.statusText).text.toString()) }
+        assertTrue(file.exists())
+        assertEquals(1, ime.recorder.starts)
+        assertFalse(ime.recorder.active)
+    }
+
+    @Test
+    fun testV37HideCancelsUploadRetainsAudioAndIgnoresLateReply() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { ime.primary() }
+        val oldReply = ime.provider.next()
+        val file = ime.recorder.lastFile!!
+        main { ime.service.onFinishInputView(false) }; idle()
+        assertTrue(file.exists())
+        oldReply.complete(TranscriptionResult.Success("stale")); idle()
+        main {
+            assertEquals("", ime.host.editor.text.toString())
+            ime.show(restarting = true)
+        }
+        idle()
+        assertEquals(1, ime.recorder.starts)
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("retry result")); idle()
+        main { assertEquals("retry result", ime.view.findViewById<TextView>(R.id.statusText).text.toString()) }
+    }
+
+    @Test
+    fun testV37HidingRecordingFinalizesOnceAndRetainsAudioForExplicitSend() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { ime.service.onFinishInputView(false) }; idle()
+        assertFalse(ime.recorder.active)
+        assertEquals(1, ime.recorder.stops)
+        assertTrue(ime.recorder.lastFile!!.exists())
+        main { ime.show(restarting = true) }; idle()
+        assertEquals(1, ime.recorder.starts)
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("saved recording")); idle()
+        main { assertEquals("saved recording", ime.view.findViewById<TextView>(R.id.statusText).text.toString()) }
+    }
+
+    @Test
+    fun testV38PendingTextSurvivesHideAndChangedEditorRequiresExplicitInsert() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("recoverable text")); idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.service.onFinishInputView(true)
+            ime.service.onFinishInput()
+            ime.info = EditorInfo().apply { packageName = "editor.second"; fieldId = 200 }
+            ime.service.onStartInput(ime.info, false)
+            ime.show()
+        }
+        idle()
+        assertTrue(file.exists())
+        main {
+            assertEquals("", ime.host.editor.text.toString())
+            assertEquals(View.VISIBLE, ime.view.findViewById<View>(R.id.retryButton).visibility)
+            ime.primary()
+            assertEquals("recoverable text", ime.host.editor.text.toString())
+        }
+    }
+
+    @Test
+    fun testV37DestroyDeletesAudioAndCancelsPendingWork() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { ime.primary() }
+        val reply = ime.provider.next()
+        val file = ime.recorder.lastFile!!
+        main { ime.destroy() }
+        reply.complete(TranscriptionResult.Success("late")); idle()
+        assertFalse(file.exists())
+        assertFalse(ime.recorder.active)
+        main { assertEquals("", ime.host.editor.text.toString()) }
+    }
+
+    private fun withIme(test: (Harness) -> Unit) {
+        val context = instrumentation.targetContext
+        instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.RECORD_AUDIO)
+        var harness: Harness? = null
+        ActivityScenario.launch(IntegrationHostActivity::class.java).use { scenario ->
+            scenario.onActivity { host ->
+                val settings = AppSettings(apiToken = "integration-test", confirmBeforeInsert = true, hideAfterSuccess = false, returnToKeyboardAfterInsert = false)
+                SettingsStore(host).apply { save(settings); markConnectionTestSucceeded(settings) }
+                harness = Harness(host)
+            }
+            try { test(harness!!) } finally { main { harness?.destroy() } }
+        }
+    }
+
+    private fun idle() = instrumentation.waitForIdleSync()
+    private fun main(block: () -> Unit) = instrumentation.runOnMainSync(block)
+
+    private fun touch(view: View, action: Int, x: Float, y: Float) {
+        val now = android.os.SystemClock.uptimeMillis()
+        MotionEvent.obtain(now, now, action, x, y, 0).also { event ->
+            try { view.dispatchTouchEvent(event) } finally { event.recycle() }
+        }
+    }
+
+    private class Harness(val host: IntegrationHostActivity) {
+        val recorder = FakeRecorder(host)
+        val provider = PendingProvider()
+        var info = EditorInfo().apply { packageName = "editor.first"; fieldId = 100 }
+        val service = TestIme(host, recorder, provider)
+        var view: View
+        private var destroyed = false
+
+        init {
+            service.onCreate()
+            service.connection = host.editor.onCreateInputConnection(EditorInfo())
+            service.onStartInput(info, false)
+            view = service.onCreateInputView()
+        }
+
+        fun show(restarting: Boolean = false) { service.onStartInputView(info, restarting) }
+        fun rebuild() { view = service.onCreateInputView(); show(restarting = true) }
+        fun primary() { view.findViewById<Button>(R.id.stopButton).performClick() }
+        fun destroy() { if (!destroyed) { destroyed = true; service.onDestroy() } }
+    }
+
+    private class TestIme(context: Context, val fakeRecorder: VoiceRecorder, val fakeProvider: SttProvider) : RemoteSttInputMethodService() {
+        var connection: InputConnection? = null
+        init { attachBaseContext(context) }
+        override fun getCurrentInputConnection() = connection
+        override fun createRecorder() = fakeRecorder
+        override fun createSttProvider() = fakeProvider
+        override fun createRecordingFocus() = object : RecordingFocus {
+            override fun request() { }
+            override fun abandon() { }
+        }
+    }
+
+    private class FakeRecorder(private val context: Context) : VoiceRecorder {
+        var starts = 0
+        var stops = 0
+        var active = false
+        var lastFile: File? = null
+        override val maxAmplitude = 0
+        override fun start(): File {
+            check(!active)
+            active = true; starts += 1
+            return File.createTempFile("integration-audio-", ".m4a", context.cacheDir).apply {
+                writeBytes(byteArrayOf(1, 2, 3)); lastFile = this
+            }
+        }
+        override fun stop(): File? {
+            if (!active) return null
+            active = false; stops += 1
+            return lastFile
+        }
+        override fun cancel() { if (active) { active = false; lastFile?.delete() } }
+    }
+
+    private class PendingProvider : SttProvider {
+        private val requests = Channel<CompletableDeferred<TranscriptionResult>>(Channel.UNLIMITED)
+        override suspend fun transcribe(audioFile: File, settings: AppSettings, timeoutMillis: Long): TranscriptionResult {
+            val reply = CompletableDeferred<TranscriptionResult>()
+            requests.send(reply)
+            return reply.await()
+        }
+        fun next() = runBlocking { withTimeout(3_000L) { requests.receive() } }
+    }
+}

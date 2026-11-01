@@ -33,7 +33,7 @@ Supported today:
 Not supported yet:
 
 - Provider-specific adapters for Deepgram, AssemblyAI, Google Speech-to-Text, or Azure Speech.
-- End-to-end Android instrumented tests.
+- Automated coverage of every third-party editor and system IME binding path.
 
 ## How it works
 
@@ -42,11 +42,13 @@ Not supported yet:
 3. The configured provider returns a JSON response with a `text` field.
 4. OpenVoiceIME commits the text into the original input field and checks whether the editor accepted it.
 
-Each transcription has a total timeout of 30 seconds plus twice the recording duration, with a minimum of 45 seconds and a maximum of 15 minutes. A one-minute recording gets 2 minutes 30 seconds; a five-minute recording gets 10 minutes 30 seconds. The remaining wait appears in the keyboard. Timeout keeps the recording for **Retry**; Cancel stops the HTTP request.
+Each transcription has a total timeout of 5 seconds plus the recording duration, with a minimum of 10 seconds and a maximum of 15 minutes. A 3-second recording gets 10 seconds, a 10-second recording gets 15 seconds, and a one-minute recording gets 65 seconds. The remaining wait appears in the keyboard. Timeout keeps the recording for **Retry**; Cancel stops the HTTP request.
 
-If insertion fails, OpenVoiceIME keeps the transcript and recording, offers **Insert** to retry insertion without another server request, and provides **Copy transcript**. It does not start another recording. When readable editor text stays unchanged after an accepted request, check the field before retrying to avoid duplicates. Editors without readable text can only be checked through their InputConnection acceptance signal. Changing input fields blocks insertion and leaves the transcript available to copy.
+If insertion fails, OpenVoiceIME keeps the transcript and recording, offers **Insert** to retry insertion without another server request, and provides **Copy transcript**. It does not start another recording. When readable editor text stays unchanged after an accepted request, check the field before retrying to avoid duplicates. Editors without readable text can only be checked through their InputConnection acceptance signal. Changing input fields blocks automatic insertion and leaves the transcript available to copy or explicitly **Insert here**. Existing composing text is finished before dictation; truncated or filtered insertion keeps the full transcript for recovery.
 
 By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`. Groq and custom OpenAI-compatible servers can be selected in settings.
+
+Hiding the keyboard stops capture and preserves usable audio for **Send audio** when reopened. It cancels an upload without discarding the recording; pending transcripts survive hiding or view recreation. **Cancel/Discard** still deletes the current dictation. Service destruction clears owned temporary work, and a later service start removes abandoned recording files left by process death.
 
 ## Setup
 
@@ -215,6 +217,18 @@ app/src/main/java/dev/rankis/openime/
 ```
 
 Resources live in `app/src/main/res/`. JVM tests live in `app/src/test/java/`.
+
+## Android integration tests
+
+Connect an Android device with USB debugging enabled, then run:
+
+```bash
+./gradlew testDebugUnitTest connectedDebugAndroidTest
+```
+
+Debug builds use the separate application ID `dev.rankis.openime.testbed`. Tests do not replace the signed keyboard, alter its preferences, or select another system IME. They launch isolated editor/settings activities and exercise real Android InputConnections, lifecycle callbacks, layout measurement, encrypted settings, local HTTP probes, and concurrent metrics. Lifecycle tests use fake audio capture and controlled server completion, so they do not record microphone audio.
+
+Validated on Android 13 (API 33). Real system IME binding paths and third-party editor behavior still need device-specific checks.
 
 ## Contributing
 

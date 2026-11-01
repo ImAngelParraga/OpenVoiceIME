@@ -5,14 +5,19 @@ import android.media.MediaRecorder
 import android.os.Build
 import java.io.File
 
-class AudioRecorder(private val context: Context) {
+internal fun deleteAbandonedRecordings(cacheDir: File) {
+    cacheDir.listFiles()?.filter { it.isFile && it.name.startsWith("openime-") && it.extension == "m4a" }
+        ?.forEach { it.delete() }
+}
+
+class AudioRecorder(private val context: Context) : VoiceRecorder {
     private var recorder: MediaRecorder? = null
     private var currentFile: File? = null
 
-    val maxAmplitude: Int
+    override val maxAmplitude: Int
         get() = runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
 
-    fun start(): File {
+    override fun start(): File {
         check(recorder == null) { "Recorder already running" }
         val file = File.createTempFile("openime-", ".m4a", context.cacheDir)
         var mediaRecorder: MediaRecorder? = null
@@ -45,7 +50,7 @@ class AudioRecorder(private val context: Context) {
         }
     }
 
-    fun stop(): File? {
+    override fun stop(): File? {
         val file = currentFile
         val mediaRecorder = recorder
         recorder = null
@@ -62,7 +67,7 @@ class AudioRecorder(private val context: Context) {
         return file
     }
 
-    fun cancel() {
+    override fun cancel() {
         val file = currentFile
         val mediaRecorder = recorder
         recorder = null

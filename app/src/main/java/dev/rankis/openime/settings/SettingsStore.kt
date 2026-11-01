@@ -9,6 +9,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 class SettingsStore(context: Context) {
     private val appContext = context.applicationContext
@@ -56,9 +57,10 @@ class SettingsStore(context: Context) {
         val appLanguageKey = normalizedPackageName?.let(::transcriptionLanguageKey)
         val selectedLanguageCode = if (appLanguageKey != null && prefs.contains(appLanguageKey)) {
             decodeStoredTranscriptionLanguage(prefs.getString(appLanguageKey, AUTO_LANGUAGE_CODE))
+        } else if (prefs.contains(KEY_TRANSCRIPTION_LANGUAGE_CODE)) {
+            decodeStoredTranscriptionLanguage(prefs.getString(KEY_TRANSCRIPTION_LANGUAGE_CODE, AUTO_LANGUAGE_CODE))
         } else {
-            prefs.getString(KEY_TRANSCRIPTION_LANGUAGE_CODE, null)
-                ?: legacyLanguageCode()
+            legacyLanguageCode()
         }
         return TranscriptionLanguageSettings(
             languageCode = selectedLanguageCode,
@@ -75,11 +77,7 @@ class SettingsStore(context: Context) {
             return
         }
         prefs.edit {
-            if (languageCode.isNullOrBlank()) {
-                remove(KEY_TRANSCRIPTION_LANGUAGE_CODE)
-            } else {
-                putString(KEY_TRANSCRIPTION_LANGUAGE_CODE, languageCode.trim())
-            }
+            putString(KEY_TRANSCRIPTION_LANGUAGE_CODE, encodeStoredTranscriptionLanguage(languageCode))
         }
     }
 
@@ -109,11 +107,7 @@ class SettingsStore(context: Context) {
                 .putBoolean(KEY_RETURN_TO_KEYBOARD_AFTER_INSERT, settings.returnToKeyboardAfterInsert)
                 .putBoolean(KEY_CONFIRM_BEFORE_INSERT, settings.confirmBeforeInsert)
                 .putBoolean(KEY_SELECT_INSERTED_TEXT, settings.selectInsertedText)
-            if (settings.languageCode.isNullOrBlank()) {
-                remove(KEY_TRANSCRIPTION_LANGUAGE_CODE)
-            } else {
-                putString(KEY_TRANSCRIPTION_LANGUAGE_CODE, settings.languageCode)
-            }
+            putString(KEY_TRANSCRIPTION_LANGUAGE_CODE, encodeStoredTranscriptionLanguage(settings.languageCode))
             putString(
                 KEY_FAVORITE_TRANSCRIPTION_LANGUAGE_CODES,
                 encodeLanguageCodes(settings.favoriteTranscriptionLanguageCodes),
@@ -165,9 +159,11 @@ class SettingsStore(context: Context) {
         val normalizedName = name.trim()
         val normalizedBaseUrl = baseUrl.trim().trimEnd('/')
         val normalizedModel = model.trim()
-        val existing = loadCustomPresets().filterNot { it.displayName.equals(normalizedName, ignoreCase = true) }
+        val previous = loadCustomPresets()
+        val replaced = previous.firstOrNull { it.displayName.equals(normalizedName, ignoreCase = true) }
+        val existing = previous.filterNot { it.displayName.equals(normalizedName, ignoreCase = true) }
         val preset = SavedProviderPreset(
-            id = "saved_${System.currentTimeMillis()}",
+            id = replaced?.id ?: "saved_${UUID.randomUUID()}",
             displayName = normalizedName,
             baseUrl = normalizedBaseUrl,
             model = normalizedModel,
@@ -191,7 +187,10 @@ class SettingsStore(context: Context) {
         prefs.edit {
             putString(KEY_CUSTOM_PRESETS, array.toString())
         }
+        val tokenKeys = presets.map { customPresetTokenKey(it.id) }.toSet()
+        val orphanedKeys = securePrefs.all.keys.filter { it.startsWith(KEY_CUSTOM_PRESET_TOKEN_PREFIX) && it !in tokenKeys }
         securePrefs.edit {
+            orphanedKeys.forEach { remove(it) }
             presets.forEach { preset ->
                 putString(customPresetTokenKey(preset.id), preset.apiToken)
             }

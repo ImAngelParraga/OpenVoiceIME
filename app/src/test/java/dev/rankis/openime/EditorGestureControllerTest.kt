@@ -6,6 +6,15 @@ import org.junit.Test
 
 class EditorGestureControllerTest {
     @Test
+    fun testV43EscapeOnReleaseRestoresOriginalSelection() {
+        val initial = EditorTextSnapshot("abcdef", EditorSelection(6, 6))
+        val controller = controller(EditorGestureKind.Delete)
+        controller.begin(initial, 100f, 0f)
+        controller.move(80f, 0f)
+        assertEquals(EditorGestureCommand.RestoreSelection(initial.selection, initial), controller.finish(80f, 60f))
+    }
+
+    @Test
     fun deleteTapModeUsesLatchedModeAndOnlyProbesWhenUnlatched() {
         var probes = 0
         assertEquals(GestureModeForTap.Terminal, resolveDeleteTapMode(GestureModeForTap.Terminal) { probes++; false })

@@ -22,6 +22,7 @@ class TranscriptInserterTest {
         val calls = mutableListOf<String>()
         val connection = connection { method, args ->
             if (method == "getExtractedText") return@connection null
+            if (method == "finishComposingText") return@connection true
             calls += method
             assertEquals("commitText", method)
             assertEquals("hello 😀", args!![0])
@@ -80,7 +81,7 @@ class TranscriptInserterTest {
         assertEquals(1, editor.commitCount)
         val formatted = FakeEditor()
         formatted.transform = true
-        assertEquals(TranscriptCommitResult.Accepted, insertTranscript(formatted, "x", false))
+        assertEquals(TranscriptCommitResult.Unconfirmed, insertTranscript(formatted, "x", false))
         assertEquals("aXc", formatted.current.text)
         assertEquals(1, formatted.commitCount)
     }

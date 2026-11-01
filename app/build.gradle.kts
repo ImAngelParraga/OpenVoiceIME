@@ -11,8 +11,8 @@ android {
         applicationId = "dev.rankis.openime"
         minSdk = 26
         targetSdk = 35
-        versionCode = 26
-        versionName = "0.3.14"
+        versionCode = 27
+        versionName = "0.3.15"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +35,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".testbed"
+            versionNameSuffix = "-testbed"
+        }
         release {
             val releaseSigning = signingConfigs.getByName("release")
             if (releaseSigning.storeFile != null) {
@@ -92,4 +96,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }

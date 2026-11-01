@@ -52,7 +52,7 @@ fun buildAsrModelCatalogRequest(baseUrl: String, token: String): Request {
 fun parseAsrModelIds(json: String): List<String> {
     val data = JSONObject(json).getJSONArray("data")
     return (0 until data.length())
-        .map { index -> data.getJSONObject(index).getString("id").trim() }
+        .mapNotNull { index -> (data.optJSONObject(index)?.opt("id") as? String)?.trim() }
         .filter { it.isNotEmpty() }
         .distinct()
 }

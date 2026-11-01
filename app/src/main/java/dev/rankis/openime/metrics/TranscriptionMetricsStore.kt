@@ -6,7 +6,7 @@ import androidx.core.content.edit
 class TranscriptionMetricsStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    fun record(audioBytes: Long, durationMillis: Long, success: Boolean) {
+    fun record(audioBytes: Long, durationMillis: Long, success: Boolean) = synchronized(LOCK) {
         val bucket = sizeBucketFor(audioBytes)
         prefs.edit {
             increment(KEY_TOTAL_COUNT)
@@ -25,8 +25,8 @@ class TranscriptionMetricsStore(context: Context) {
         }
     }
 
-    fun load(): TranscriptionMetricsSnapshot {
-        return TranscriptionMetricsSnapshot(
+    fun load(): TranscriptionMetricsSnapshot = synchronized(LOCK) {
+        TranscriptionMetricsSnapshot(
             totalCount = prefs.getLong(KEY_TOTAL_COUNT, 0L),
             successCount = prefs.getLong(KEY_SUCCESS_COUNT, 0L),
             failureCount = prefs.getLong(KEY_FAILURE_COUNT, 0L),
@@ -45,7 +45,7 @@ class TranscriptionMetricsStore(context: Context) {
         )
     }
 
-    fun clear() {
+    fun clear() = synchronized(LOCK) {
         prefs.edit { clear() }
     }
 
@@ -59,6 +59,7 @@ class TranscriptionMetricsStore(context: Context) {
     private fun String.durationKey(): String = "bucket_${this}_duration_ms"
 
     private companion object {
+        val LOCK = Any()
         const val PREFS_NAME = "openime_transcription_metrics"
         const val KEY_TOTAL_COUNT = "total_count"
         const val KEY_SUCCESS_COUNT = "success_count"

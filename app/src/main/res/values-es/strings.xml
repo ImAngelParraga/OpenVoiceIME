@@ -121,7 +121,7 @@
     <string name="transcription_parse_detail_format">No se pudo interpretar la respuesta del servidor: %1$s</string>
     <string name="transcription_time_left_format">Tiempo restante: %1$d:%2$02d</string>
     <string name="transcription_insert_failed">No se pudo insertar el texto. Reintenta o copia la transcripción.</string>
-    <string name="transcription_editor_changed">El campo de texto cambió. Copia la transcripción para conservarla.</string>
+    <string name="transcription_editor_changed">El campo de texto cambió. Pulsa Insertar aquí o copia la transcripción.</string>
     <string name="button_copy_transcript">Copiar transcripción</string>
     <string name="transcription_clip_label">Transcripción</string>
     <string name="transcription_copied">Transcripción copiada</string>
@@ -132,4 +132,7 @@
     <string name="model_catalog_available">%1$d modelos de transcripción disponibles en el servidor.</string>
     <string name="model_catalog_unavailable">No se pudo obtener la lista de modelos. Puedes editar el modelo personalizado.</string>
     <string name="model_catalog_needs_connection">Introduce la URL del servidor y el token de API para cargar modelos.</string>
+    <string name="button_insert_here">Insertar aquí</string>
+    <string name="button_send_audio">Enviar audio</string>
+    <string name="status_recording_saved">Audio conservado. Pulsa Enviar audio para transcribirlo.</string>
 </resources>

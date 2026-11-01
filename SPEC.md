@@ -76,15 +76,28 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V28: IME header places `OpenVoiceIME <version>` at upper left and one compact icon-only keyboard-return control at upper right; control keeps at least a 40dp square touch target, uses localized content description, and consumes no edit-controls-row width.
 - V29: Model picker uses authenticated server-advertised transcription IDs when available, refreshes after settings resume or connection changes, ignores stale responses, and preserves the current editable model if discovery fails. Future model IDs require no client update.
 
-- V30: Every transcription attempt has total deadline `clamp(30s + 2 × audio duration, 45s, 15min)` covering upload, server wait, and response body; unavailable duration falls back to 64 kbit/s audio size. Cancel/timeout cancels HTTP call; timeout retains audio for retry; each attempt invalidates stale results and shows remaining wait. Diagnostics/model discovery also cancel their HTTP calls and have total deadlines.
+- V30: Every transcription attempt has total deadline `clamp(5s + audio duration, 10s, 15min)` covering upload, server wait, and response body; unavailable duration falls back to 64 kbit/s audio size. Cancel/timeout cancels HTTP call; timeout retains audio for retry; each attempt invalidates stale results and shows remaining wait. Diagnostics/model discovery also cancel their HTTP calls and have total deadlines.
 - V31: Insertion checks InputConnection acceptance and optional editor readback; missing/rejected/throwing connection or unchanged readable text never deletes pending transcript/audio, reports success, switches keyboard, or starts fresh recording. Retry inserts existing transcript; Copy preserves it via explicit clipboard action. Optional selection failures never repeat accepted insertion.
-- V32: Recording captures editor session; changed input field before delivery blocks automatic/manual insertion into new field and retains transcript for copying. Same-session restart preserves eligibility.
+- V32: Recording captures editor session; changed input field before delivery blocks automatic insertion and retains transcript for copying or an explicit Insert here action. Same-session restart preserves eligibility.
 - V33: Only a JSON string `text` can become a transcript; null/numeric/boolean/object/array values fail parsing and cannot be inserted.
 - V34: Failed recorder finalization releases recorder, deletes incomplete audio, and returns failure instead of uploading corrupt bytes.
 
 - V35: An inner 300dp panel preserves height despite platform root-layout replacement; transcript/error content scrolls inside weighted status region; action buttons remain outside that region and readable transcript cannot be edited in the keyboard.
 
 - V36: Model-discovery controls/status have English and Spanish translations; full debug lint reports zero errors.
+
+- V37: View creation does not start capture before `onStartInputView`; hide stops capture/finalizes usable audio and cancels upload without deleting recovery data; recreation preserves eligible work; reopening renders pending state without fresh capture; explicit discard and destruction clear owned work.
+- V38: New editor ownership blocks automatic transcript delivery; explicit Send/Retry or Insert here binds only that user action to current editor. Hidden upload completion retains pending text without insertion; same-editor restart preserves ownership.
+- V39: Dictation finishes prior composing text; comparable editor readback must equal expected replacement, otherwise full transcript/audio stay recoverable. Unicode, selection replacement, partial offsets, missing snapshots, truncation, rejected commit, and failed selection verified on Android.
+- V40: Settings initial spinner callbacks preserve saved URL/model/token; connection edits and newer probes cancel/invalidate old probes, which cannot update status or tested fingerprint.
+- V41: Concurrent metrics writers across store instances atomically update totals/buckets; snapshots and reset share same process lock.
+- V42: Replacing named preset preserves its ID, uses unique IDs for new presets, and removes orphaned encrypted preset tokens without removing active API token.
+- V43: Gesture escape on release returns owned original selection; hide restores valid owned preview, while new-editor binding drops prior gesture ownership without applying it to the new field.
+- V44: Service startup removes only abandoned `openime-*.m4a` regular files from own cache; unrelated cache content survives.
+- V45: Discovered model IDs accept only nonblank JSON strings; malformed catalog entries cannot become selectable pseudo-models.
+
+- V46: Explicit Auto language persists independently of legacy language keys and applies to unmapped editors; legacy fallback is used only before an explicit modern selection exists.
+- V47: Switching built-in providers clears the previous provider token before discovery/test requests; saved presets load only their own token.
 
 ## §T
 
@@ -108,6 +121,8 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T16 | x | Discover transcription model IDs from configured server, refresh the picker on open and connection changes, preserve custom fallback, verify request/auth/parser behavior, and publish signed release. | V21,V29,AsrModelCatalog,SettingsActivity |
 
 | T17 | x | Add adaptive total transcription deadline, cancellable HTTP, countdown, stale-attempt invalidation, recoverable checked insertion, editor-session guard, strict response parsing, recorder-finalization failure handling, regression tests, and signed v0.3.14 release. | V21,V30,V31,V32,V33,V34,V35,V36 |
+
+| T18 | x | Review lifecycle/editor compatibility, shorten common dictation deadlines, preserve recovery across view changes, add isolated Android integration coverage, audit settings/storage/network/metrics/gestures, fix verified regressions, and publish signed release. | V21,V30,V32,V37,V38,V39,V40,V41,V42,V43,V44,V45,V46,V47 |
 
 ## §B
 
@@ -133,3 +148,16 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | B18 | 2026-11-01 | fixed-height panel used unbounded status content and a second weighted error region, allowing long transcripts/errors to displace actions | V35 |
 | B19 | 2026-11-01 | mock response throttling also throttled multipart request reads, so body-cancel test stalled before headers; use delayed response body and await headers explicitly | V30 |
 | B20 | 2026-11-01 | model-discovery labels lacked en/es translations; XML framework tint was flagged by AppCompat lint | V36 |
+| B21 | 2026-11-01 | 45-second minimum made normal 3–10 second dictation failures wait too long | V30 |
+| B22 | 2026-11-01 | view creation scheduled recording before visibility; hide/config cleanup discarded recoverable audio/text and cancelled uploads | V37,V38 |
+| B23 | 2026-11-01 | accepted editor request could truncate dictation; commit replaced an existing composing word instead of appending voice text | V39 |
+| B24 | 2026-11-01 | posted initial preset selection reapplied built-in defaults over saved connection/model | V40 |
+| B25 | 2026-11-01 | stale connection-test response marked changed form reachable and replaced tested fingerprint | V40 |
+| B26 | 2026-11-01 | unsynchronized SharedPreferences read-modify-write lost concurrent upload metrics | V41 |
+| B27 | 2026-11-01 | replacing named preset generated new ID but retained old encrypted token indefinitely | V42 |
+| B28 | 2026-11-01 | release-only vertical escape discarded restore command; view detach discarded owned cursor preview without restoring selection | V43 |
+| B29 | 2026-11-01 | process death skipped destructor, leaving abandoned audio in cache after later service startup | V44 |
+| B30 | 2026-11-01 | model-ID parser coerced non-string values or failed entire catalog on malformed entries | V45 |
+| B31 | 2026-11-01 | saving Auto removed modern language key and reactivated obsolete legacy Spanish/English choice | V46 |
+| B32 | 2026-11-01 | built-in provider switch changed URL/model while retaining previous provider credential for subsequent requests | V47 |
+| B33 | 2026-11-01 | debug integration host assigned literal view ID, rejected by Android resource-type lint | V36 |

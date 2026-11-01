@@ -117,10 +117,10 @@ internal class EditorGestureController(
     fun moveHorizontal(x: Float): EditorGestureCommand = move(x, downY)
 
     fun finish(x: Float, y: Float): EditorGestureCommand {
-        move(x, y)
+        val update = move(x, y)
         val initial = snapshot ?: return EditorGestureCommand.NoOp
         val result = if (cancelled) {
-            EditorGestureCommand.NoOp
+            if (update is EditorGestureCommand.RestoreSelection) update else EditorGestureCommand.NoOp
         } else {
             when (kind) {
                 EditorGestureKind.Cursor -> finishCursor(initial, x)

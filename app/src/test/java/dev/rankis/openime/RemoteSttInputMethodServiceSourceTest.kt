@@ -22,7 +22,7 @@ class RemoteSttInputMethodServiceSourceTest {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val commit = functionBody(source, "commitPendingText")
         val handle = functionBody(source, "handleTranscript")
-        val failure = functionBody(source, "showInsertionFailure")
+        val failure = functionBody(source, "showInsertionFailure") + functionBody(source, "renderPendingTranscript")
         assertTrue(functionBody(source, "onStartInput").contains("editorSessionId += 1"))
         assertTrue(functionBody(source, "startRecordingOrShowSetupError").contains("recordingEditorSessionId = editorSessionId"))
         assertTrue(commit.indexOf("recordingEditorSessionId != editorSessionId") < commit.indexOf("currentInputConnection.commitTranscript"))
@@ -63,36 +63,6 @@ class RemoteSttInputMethodServiceSourceTest {
     }
 
     @Test
-    fun testV25ConfigurationRebuildCleansBeforeRecreatingView() {
-        val source = String(Files.readAllBytes(serviceSourcePath()))
-        val configurationBody = functionBody(source, "onConfigurationChanged")
-        val inputViewBody = functionBody(source, "onCreateInputView")
-
-        assertTrue(configurationBody.indexOf("cleanupForInputViewRecreation()") < configurationBody.indexOf("super.onConfigurationChanged"))
-        assertTrue(inputViewBody.indexOf("cleanupForInputViewRecreation()") < inputViewBody.indexOf("LayoutInflater"))
-    }
-
-    @Test
-    fun testV25CleanupInvalidatesTransientWorkRegardlessOfLogicalState() {
-        val source = String(Files.readAllBytes(serviceSourcePath()))
-        val cleanupBody = functionBody(source, "cleanupForInputViewRecreation")
-        val cancelBody = functionBody(source, "cancelCurrentWork")
-
-        assertTrue(cleanupBody.contains("operationId += 1"))
-        assertTrue(cleanupBody.contains("cancelScheduledStartRecording()"))
-        assertTrue(cleanupBody.contains("uploadJob?.cancel()"))
-        assertTrue(cleanupBody.contains("activeEditorGesture = null"))
-        assertTrue(cleanupBody.contains("activeGestureMode = null"))
-        assertTrue(cleanupBody.contains("recorder.cancel()"))
-        assertTrue(cleanupBody.contains("recordingAudioFocus.abandon()"))
-        assertTrue(cleanupBody.contains("state = ImeState.Idle"))
-        assertFalse(cleanupBody.contains("state == ImeState.Recording"))
-        assertTrue(cancelBody.contains("recorder.cancel()"))
-        assertTrue(cancelBody.contains("recordingAudioFocus.abandon()"))
-        assertFalse(cancelBody.contains("if (state == ImeState.Recording)"))
-    }
-
-    @Test
     fun testV25RecorderStartFailureCleansRecorderAndFileState() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val body = functionBody(source, "startRecordingOrShowSetupError")
@@ -108,8 +78,8 @@ class RemoteSttInputMethodServiceSourceTest {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val body = functionBody(source, "onCreateInputView")
 
-        assertTrue(body.contains("scheduleStartRecordingOrShowSetupError()"))
-        assertTrue(body.indexOf("showLanguageControls()") < body.indexOf("scheduleStartRecordingOrShowSetupError()"))
+        assertTrue(body.contains("renderCurrentState()"))
+        assertFalse(body.contains("scheduleStartRecordingOrShowSetupError()"))
         assertFalse(
             Regex("""(?m)^\s*startRecordingOrShowSetupError\(\)""").containsMatchIn(body),
         )
@@ -151,8 +121,8 @@ class RemoteSttInputMethodServiceSourceTest {
         val source = String(Files.readAllBytes(serviceSourcePath()))
 
         assertTrue(functionBody(source, "stopAndUpload").contains("recordingAudioFocus.abandon()"))
-        assertTrue(functionBody(source, "cancelCurrentWork").contains("recordingAudioFocus.abandon()"))
-        assertTrue(functionBody(source, "onFinishInputView").contains("recordingAudioFocus.abandon()"))
+        assertTrue(functionBody(source, "discardCurrentWork").contains("recordingAudioFocus.abandon()"))
+        assertTrue(functionBody(source, "detachInputView").contains("recordingAudioFocus.abandon()"))
         assertTrue(functionBody(source, "onDestroy").contains("recordingAudioFocus.abandon()"))
         assertTrue(functionBody(source, "validateRecordingSettingsAsync").contains("recordingAudioFocus.abandon()"))
     }
@@ -229,7 +199,6 @@ class RemoteSttInputMethodServiceSourceTest {
         assertTrue(source.contains("KEYCODE_DPAD_DOWN"))
         assertTrue(source.contains("KEYCODE_DEL"))
         assertTrue(source.contains("sendDownUpKeyEvents"))
-        assertTrue(source.contains("extracted.startOffset"))
     }
 
     @Test
@@ -251,10 +220,10 @@ class RemoteSttInputMethodServiceSourceTest {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val createViewBody = functionBody(source, "onCreateInputView")
         val returnBody = functionBody(source, "returnToKeyboard")
-        val cleanupBody = functionBody(source, "cleanupForInputViewRecreation")
+        val cleanupBody = functionBody(source, "discardCurrentWork") + functionBody(source, "detachInputView") + functionBody(source, "clearEditorGestures")
 
         assertTrue(createViewBody.contains("keyboardButton.setOnClickListener"))
-        assertTrue(returnBody.indexOf("cleanupForInputViewRecreation()") < returnBody.indexOf("switchToPreviousOrFallbackKeyboard()"))
+        assertTrue(returnBody.indexOf("discardCurrentWork()") < returnBody.indexOf("switchToPreviousOrFallbackKeyboard()"))
         assertTrue(cleanupBody.contains("cancelScheduledStartRecording()"))
         assertTrue(cleanupBody.contains("handler.removeCallbacks(tick)"))
         assertTrue(cleanupBody.contains("uploadJob?.cancel()"))

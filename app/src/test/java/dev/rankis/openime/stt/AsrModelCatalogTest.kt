@@ -12,6 +12,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AsrModelCatalogTest {
+    @org.junit.Test
+    fun testV45ModelIdsMustBeNonblankStrings() {
+        org.junit.Assert.assertEquals(listOf("valid"), parseAsrModelIds("""{"data":[null,{"id":null},{"id":12},{"id":{}},{"id":" "},{"id":"valid"}]}"""))
+    }
+
     @Test
     fun requestUsesSelectedEndpointAndBearerToken() {
         val request = buildAsrModelCatalogRequest("https://asr.example.test/", "test-token")

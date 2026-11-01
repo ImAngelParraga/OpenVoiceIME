@@ -125,10 +125,13 @@
     <string name="transcription_parse_detail_format">Could not parse server response: %1$s</string>
     <string name="transcription_time_left_format">Time left: %1$d:%2$02d</string>
     <string name="transcription_insert_failed">Could not insert text. Retry insertion or copy the transcript.</string>
-    <string name="transcription_editor_changed">The input field changed. Copy the transcript to keep it.</string>
+    <string name="transcription_editor_changed">The input field changed. Tap Insert here or copy the transcript.</string>
     <string name="button_copy_transcript">Copy transcript</string>
     <string name="transcription_clip_label">Transcript</string>
     <string name="transcription_copied">Transcript copied</string>
     <string name="transcription_insert_unconfirmed">Could not confirm insertion. Check the field before retrying, or copy the transcript.</string>
     <string name="transcription_timeout_retry">Transcription timed out. Your recording is kept for retry.</string>
+    <string name="button_insert_here">Insert here</string>
+    <string name="button_send_audio">Send audio</string>
+    <string name="status_recording_saved">Recording saved. Tap Send audio to transcribe it.</string>
 </resources>
