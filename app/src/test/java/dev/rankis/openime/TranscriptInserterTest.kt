@@ -3,6 +3,7 @@ package dev.rankis.openime
 import android.view.inputmethod.InputConnection
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import kotlinx.coroutines.runBlocking
 import java.lang.reflect.Proxy
 
 class TranscriptInserterTest {
@@ -84,6 +85,46 @@ class TranscriptInserterTest {
         assertEquals(TranscriptCommitResult.Unconfirmed, insertTranscript(formatted, "x", false))
         assertEquals("aXc", formatted.current.text)
         assertEquals(1, formatted.commitCount)
+    }
+
+    @Test
+    fun delayedReadbackConfirmsOneCommitWithoutOfferingItAgain() = runBlocking {
+        val editor = FakeEditor()
+        editor.ignoreCommit = true
+        var polls = 0
+        val result = insertTranscriptAwaitingReadback(editor, "voice", true, awaitReadback = {
+            polls++
+            if (polls == 2) editor.current = editor.current.copy(text = "avoicec")
+        })
+        assertEquals(TranscriptCommitResult.Accepted, result)
+        assertEquals(1, editor.commitCount)
+        assertEquals(2, polls)
+        assertEquals(11 to 16, editor.selected)
+    }
+
+    @Test
+    fun ignoredOrTruncatedCommitRemainsRecoverableAfterBoundedReadback() = runBlocking {
+        val editor = FakeEditor().apply { ignoreCommit = true }
+        var polls = 0
+        assertEquals(TranscriptCommitResult.Unconfirmed, insertTranscriptAwaitingReadback(
+            editor, "voice", true, awaitReadback = { polls++ },
+        ))
+        assertEquals(5, polls)
+        assertEquals(1, editor.commitCount)
+        assertEquals(null, editor.selected)
+    }
+
+    @Test
+    fun lostReadbackAfterMismatchCannotConfirmInsertionOrSelectNewEditor() = runBlocking {
+        val editor = FakeEditor().apply { ignoreCommit = true }
+        assertEquals(TranscriptCommitResult.Unconfirmed, insertTranscriptAwaitingReadback(
+            editor, "voice", true, awaitReadback = { editor.hideReadback = true },
+        ))
+        val accepted = FakeEditor()
+        assertEquals(TranscriptCommitResult.Accepted, insertTranscriptAwaitingReadback(
+            accepted, "voice", true, canSelect = { false },
+        ))
+        assertEquals(null, accepted.selected)
     }
 
     private class FakeEditor : TranscriptEditor {

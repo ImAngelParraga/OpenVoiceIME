@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputConnectionWrapper
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -34,6 +35,72 @@ class ImeLifecycleTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
+    fun navigationInsetsKeepDeleteAboveSystemKeyboardSwitcher() = withIme { ime ->
+        main {
+            val density = ime.host.resources.displayMetrics.density
+            for (bottomDp in listOf(24, 48)) {
+                val bottom = (bottomDp * density).toInt()
+                val insets = androidx.core.view.WindowInsetsCompat.Builder()
+                    .setInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars(), androidx.core.graphics.Insets.of(0, 0, 0, bottom))
+                    .build()
+                androidx.core.view.ViewCompat.dispatchApplyWindowInsets(ime.view, insets)
+                val width = (360 * density).toInt()
+                ime.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                ime.view.layout(0, 0, width, ime.view.measuredHeight)
+                assertEquals(bottom, ime.view.paddingBottom)
+                for (id in listOf(R.id.deleteButton, R.id.cursorButton, R.id.stopButton, R.id.cancelButton)) {
+                    val action = ime.view.findViewById<View>(id)
+                    val bounds = android.graphics.Rect()
+                    action.getDrawingRect(bounds)
+                    (ime.view as android.view.ViewGroup).offsetDescendantRectToMyCoords(action, bounds)
+                    assertTrue(bounds.bottom <= ime.view.height - bottom)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun delayedEditorCommitDoesNotReappearAfterSwitchingApplications() = withIme { ime ->
+        lateinit var nextEditor: EditText
+        main {
+            val store = SettingsStore(ime.host)
+            store.save(store.load().copy(confirmBeforeInsert = false, hideAfterSuccess = true))
+            val actual = ime.service.connection!!
+            ime.service.connection = object : InputConnectionWrapper(actual, false) {
+                override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean {
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ actual.commitText(text, newCursorPosition) }, 150)
+                    return true
+                }
+            }
+            ime.show()
+        }; idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("delivered once")); idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            assertFalse(ime.view.findViewById<View>(R.id.stopButton).isEnabled)
+            ime.service.onFinishInputView(true)
+            ime.service.onFinishInput()
+            ime.info = EditorInfo().apply { packageName = "editor.second"; fieldId = 200 }
+            nextEditor = EditText(ime.host).apply { setText("second application"); setSelection(length()) }
+            ime.service.connection = nextEditor.onCreateInputConnection(EditorInfo())
+            ime.service.onStartInput(ime.info, false)
+            ime.show()
+        }
+        android.os.SystemClock.sleep(700); idle()
+        main {
+            assertEquals("delivered once", ime.host.editor.text.toString())
+            assertEquals("second application", nextEditor.text.toString())
+            assertEquals(nextEditor.length(), nextEditor.selectionStart)
+            assertEquals(View.GONE, ime.view.findViewById<View>(R.id.retryButton).visibility)
+            assertEquals(ime.host.getString(R.string.button_stop), ime.view.findViewById<Button>(R.id.stopButton).text.toString())
+            assertTrue(ime.view.findViewById<View>(R.id.stopButton).isEnabled)
+        }
+        assertFalse(file.exists())
+        assertEquals(2, ime.recorder.starts)
+    }
+
+    @Test
     fun testV39TruncationKeepsFullTranscriptAndDoesNotStartAnotherRecording() = withIme { ime ->
         main {
             val store = SettingsStore(ime.host)
@@ -42,7 +109,7 @@ class ImeLifecycleTest {
             ime.show()
         }; idle()
         main { ime.primary() }
-        ime.provider.next().complete(TranscriptionResult.Success("full transcript survives")); idle()
+        ime.provider.next().complete(TranscriptionResult.Success("full transcript survives")); android.os.SystemClock.sleep(700); idle()
         main {
             assertEquals("full ", ime.host.editor.text.toString())
             assertEquals("full transcript survives", ime.view.findViewById<EditText>(R.id.errorDetailsInput).text.toString())

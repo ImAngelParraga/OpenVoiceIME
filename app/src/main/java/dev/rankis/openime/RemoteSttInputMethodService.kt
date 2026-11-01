@@ -28,6 +28,8 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import dev.rankis.openime.audio.AudioRecorder
 import dev.rankis.openime.audio.RecordingAudioFocus
 import dev.rankis.openime.audio.VoiceRecorder
@@ -160,6 +162,15 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     override fun onCreateInputView(): View {
         detachInputView(preserveUpload = true)
         val view = LayoutInflater.from(this).inflate(R.layout.ime_voice_input, null)
+        ViewCompat.setOnApplyWindowInsetsListener(view) { root, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            root.setPadding(bars.left, 0, bars.right, bars.bottom)
+            insets
+        }
+        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) { ViewCompat.requestApplyInsets(v) }
+            override fun onViewDetachedFromWindow(v: View) = Unit
+        })
         versionText = view.findViewById(R.id.versionText)
         statusText = view.findViewById(R.id.statusText)
         errorDetailsInput = view.findViewById(R.id.errorDetailsInput)
@@ -562,35 +573,54 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             showInsertionFailure(getString(R.string.transcription_editor_changed))
             return
         }
-        val insertionResult = currentInputConnection.commitTranscript(text, pendingSelectInsertedText)
-        if (insertionResult != TranscriptCommitResult.Accepted) {
-            showInsertionFailure(getString(
-                if (insertionResult == TranscriptCommitResult.Unconfirmed) R.string.transcription_insert_unconfirmed
-                else R.string.transcription_insert_failed,
-            ))
-            return
-        }
-        audioFile?.delete()
-        audioFile = null
-        pendingText = null
-        state = ImeState.Inserted
-        lastErrorMessage = null
-        applyDefaultStatusStyle()
-        clearErrorDetails()
-        statusText.setText(R.string.status_inserted)
+        val insertionOperationId = operationId
+        val insertionSessionId = editorSessionId
+        val connection = currentInputConnection
+        state = ImeState.VerifyingInsertion
         stopButton.isEnabled = false
         retryButton.visibility = View.GONE
-        if (pendingReturnToKeyboardAfterInsert) {
-            val switched = switchToNextKeyboard()
-            if (!switched && pendingHideAfterSuccess) {
-                requestHideSelf(0)
+        scope.launch {
+            val insertionResult = connection.commitTranscriptAwaitingReadback(text, pendingSelectInsertedText) {
+                inputViewVisible && editorSessionId == insertionSessionId && operationId == insertionOperationId
             }
-        } else if (pendingHideAfterSuccess) {
-            requestHideSelf(0)
-        } else {
-            resetControls()
-            showLanguageControls()
-            scheduleStartRecordingOrShowSetupError()
+            if (operationId != insertionOperationId) return@launch
+            if (insertionResult != TranscriptCommitResult.Accepted) {
+                showInsertionFailure(getString(
+                    if (insertionResult == TranscriptCommitResult.Unconfirmed) R.string.transcription_insert_unconfirmed
+                    else R.string.transcription_insert_failed,
+                ))
+                return@launch
+            }
+            audioFile?.delete()
+            audioFile = null
+            pendingText = null
+            state = ImeState.Inserted
+            lastErrorMessage = null
+            pendingInsertionMessage = null
+            if (!inputViewVisible || editorSessionId != insertionSessionId) {
+                if (inputViewVisible) {
+                    renderCurrentState()
+                    scheduleStartRecordingOrShowSetupError()
+                }
+                return@launch
+            }
+            applyDefaultStatusStyle()
+            clearErrorDetails()
+            statusText.setText(R.string.status_inserted)
+            stopButton.isEnabled = false
+            retryButton.visibility = View.GONE
+            if (pendingReturnToKeyboardAfterInsert) {
+                val switched = switchToNextKeyboard()
+                if (!switched && pendingHideAfterSuccess) {
+                    requestHideSelf(0)
+                }
+            } else if (pendingHideAfterSuccess) {
+                requestHideSelf(0)
+            } else {
+                resetControls()
+                showLanguageControls()
+                scheduleStartRecordingOrShowSetupError()
+            }
         }
     }
 
@@ -720,6 +750,10 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
                 stopButton.isEnabled = audioFile?.exists() == true
                 cancelButton.setText(R.string.button_discard)
                 cancelButton.isEnabled = true
+                retryButton.visibility = View.GONE
+            }
+            ImeState.VerifyingInsertion -> {
+                stopButton.isEnabled = false
                 retryButton.visibility = View.GONE
             }
             ImeState.ReadyToInsert -> renderPendingTranscript()
@@ -1234,6 +1268,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         ReadyToUpload,
         Uploading,
         ReadyToInsert,
+        VerifyingInsertion,
         Inserted,
         Error,
     }

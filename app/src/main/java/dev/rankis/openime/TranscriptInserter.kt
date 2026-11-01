@@ -2,6 +2,7 @@ package dev.rankis.openime
 
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import kotlinx.coroutines.delay
 import kotlin.math.min
 import kotlin.math.max
 
@@ -30,39 +31,96 @@ internal fun InputConnection?.editorSnapshot(): EditorTextSnapshot? {
 }
 
 internal fun InputConnection?.commitTranscript(text: String, selectInsertedText: Boolean): TranscriptCommitResult {
-    val connection = this ?: return TranscriptCommitResult.Rejected
-    return insertTranscript(object : TranscriptEditor {
+    val editor = transcriptEditor() ?: return TranscriptCommitResult.Rejected
+    return insertTranscript(editor, text, selectInsertedText)
+}
+
+internal suspend fun InputConnection?.commitTranscriptAwaitingReadback(
+    text: String,
+    selectInsertedText: Boolean,
+    canSelect: () -> Boolean,
+): TranscriptCommitResult {
+    val editor = transcriptEditor() ?: return TranscriptCommitResult.Rejected
+    return insertTranscriptAwaitingReadback(editor, text, selectInsertedText, canSelect)
+}
+
+private fun InputConnection?.transcriptEditor(): TranscriptEditor? {
+    val connection = this ?: return null
+    return object : TranscriptEditor {
         override fun snapshot() = connection.editorSnapshot()
         override fun finishComposition() { connection.finishComposingText() }
 
         override fun commit(text: String) = connection.commitText(text, 1)
         override fun select(start: Int, end: Int) { connection.setSelection(start, end) }
-    }, text, selectInsertedText)
+    }
 }
 
 internal fun insertTranscript(editor: TranscriptEditor, text: String, selectInsertedText: Boolean): TranscriptCommitResult {
-    runCatching { editor.finishComposition() }
-    val before = runCatching { editor.snapshot() }.getOrNull()
-    val accepted = try {
-        editor.commit(text)
-    } catch (_: RuntimeException) {
-        return TranscriptCommitResult.Unconfirmed
-    }
-    if (!accepted) return TranscriptCommitResult.Rejected
+    val insertion = TranscriptInsertion(editor, text)
+    val result = insertion.commit()
+    if (result == TranscriptCommitResult.Accepted && selectInsertedText) insertion.select()
+    return result
+}
 
-    // Acceptance can hide truncation, filtering, or an ignored request.
-    if (before != null) {
-        val after = runCatching { editor.snapshot() }.getOrNull()
-        val expected = before.text.replaceRange(before.selection.start, before.selection.end, text)
-        if (after != null && after.startOffset == before.startOffset && after.text != expected) {
-            return TranscriptCommitResult.Unconfirmed
+internal suspend fun insertTranscriptAwaitingReadback(
+    editor: TranscriptEditor,
+    text: String,
+    selectInsertedText: Boolean,
+    canSelect: () -> Boolean = { true },
+    awaitReadback: suspend () -> Unit = { delay(100) },
+): TranscriptCommitResult {
+    val insertion = TranscriptInsertion(editor, text)
+    var result = insertion.commit()
+    // Remote editors may acknowledge the queued edit before exposing its text.
+    if (insertion.accepted) {
+        repeat(5) {
+            if (result == TranscriptCommitResult.Unconfirmed) {
+                awaitReadback()
+                result = insertion.verify()
+            }
         }
     }
+    if (result == TranscriptCommitResult.Accepted && selectInsertedText && canSelect()) insertion.select()
+    return result
+}
 
-    // Selection is optional; its failure must never cause a second insertion.
-    if (selectInsertedText && before != null) runCatching {
-        val start = before.globalPosition(before.selection.start)
-        editor.select(start, start + text.length)
+private class TranscriptInsertion(private val editor: TranscriptEditor, private val text: String) {
+    private var before: EditorTextSnapshot? = null
+    private var sawMismatch = false
+    var accepted = false
+        private set
+
+    fun commit(): TranscriptCommitResult {
+        runCatching { editor.finishComposition() }
+        before = runCatching { editor.snapshot() }.getOrNull()
+        accepted = try {
+            editor.commit(text)
+        } catch (_: RuntimeException) {
+            return TranscriptCommitResult.Unconfirmed
+        }
+        return if (accepted) verify() else TranscriptCommitResult.Rejected
     }
-    return TranscriptCommitResult.Accepted
+
+    fun verify(): TranscriptCommitResult {
+        val original = before ?: return TranscriptCommitResult.Accepted
+        val after = runCatching { editor.snapshot() }.getOrNull()
+        val expected = original.text.replaceRange(original.selection.start, original.selection.end, text)
+        if (after == null || after.startOffset != original.startOffset) {
+            return if (sawMismatch) TranscriptCommitResult.Unconfirmed else TranscriptCommitResult.Accepted
+        }
+        if (after.text != expected) {
+            sawMismatch = true
+            return TranscriptCommitResult.Unconfirmed
+        }
+        return TranscriptCommitResult.Accepted
+    }
+
+    fun select() {
+        val original = before ?: return
+        // Selection failure must never cause another insertion.
+        runCatching {
+            val start = original.globalPosition(original.selection.start)
+            editor.select(start, start + text.length)
+        }
+    }
 }

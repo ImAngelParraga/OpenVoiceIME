@@ -25,7 +25,7 @@ class RemoteSttInputMethodServiceSourceTest {
         val failure = functionBody(source, "showInsertionFailure") + functionBody(source, "renderPendingTranscript")
         assertTrue(functionBody(source, "onStartInput").contains("editorSessionId += 1"))
         assertTrue(functionBody(source, "startRecordingOrShowSetupError").contains("recordingEditorSessionId = editorSessionId"))
-        assertTrue(commit.indexOf("recordingEditorSessionId != editorSessionId") < commit.indexOf("currentInputConnection.commitTranscript"))
+        assertTrue(commit.indexOf("recordingEditorSessionId != editorSessionId") < commit.indexOf("connection.commitTranscriptAwaitingReadback"))
         assertTrue(handle.contains("recordingEditorSessionId != editorSessionId"))
         assertTrue(failure.contains("state = ImeState.ReadyToInsert"))
         assertTrue(failure.contains("R.string.button_copy_transcript"))
