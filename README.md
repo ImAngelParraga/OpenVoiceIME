@@ -22,6 +22,8 @@ Three projects for dictation across devices. Use them together for a self-hosted
 4. Test connectivity, enable OpenVoiceIME in Android keyboard settings, then select it from the keyboard picker.
 5. Start dictation and tap **Stop** to send the recording.
 
+OpenVoiceIME is a **voice-only keyboard** used alongside your normal typing keyboard. HeliBoard can open it from its microphone button; HeliBoard is optional and can be installed directly from its [official GitHub APK](https://github.com/HeliBorg/HeliBoard/releases/latest), without another app store. Gboard's microphone does not provide a supported way to select OpenVoiceIME. You can keep Gboard for typing and use Android's keyboard picker where your phone exposes voice keyboards. See [keyboard setup and HeliBoard instructions](docs/usage.md#choose-how-to-open-dictation).
+
 For a self-hosted backend, follow the [Portable ASR setup guide](https://github.com/ImAngelParraga/portable-asr#quickstart). Enter its **HTTPS base URL** (without `/v1/audio/transcriptions`), bearer token, and `whisper-1`. Refresh the model list to select other enabled engines. `localhost` on the phone refers to the phone, not your server.
 
 Release builds require HTTPS. Debug builds allow HTTP for local development. Transcription prompt context is an optional vocabulary hint; cleanup is configured on the server.

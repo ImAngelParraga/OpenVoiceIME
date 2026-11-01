@@ -1,5 +1,31 @@
 # Usage and compatibility
 
+## Choose how to open dictation
+
+OpenVoiceIME is a separate voice input method, not a full typing keyboard and not a plug-in for Gboard's microphone. Enable it in Android's **On-screen keyboard / Manage keyboards** settings after configuring your transcription endpoint and granting microphone access. Keep a normal typing keyboard enabled.
+
+### Keep Gboard or your existing keyboard
+
+1. Open a text field so the keyboard is visible.
+2. Open Android's keyboard picker, usually through the keyboard icon in the navigation area or the **Change keyboard** system notification. The location varies by phone.
+3. Select **OpenVoiceIME**, dictate, and tap **Stop**.
+4. Use OpenVoiceIME's **Return to normal keyboard** button, or the system picker, to resume typing. **Return to keyboard after insert** is enabled by default; with several keyboards enabled, Android's next-keyboard order can select a different keyboard.
+
+This route needs no replacement typing keyboard **if your device lists OpenVoiceIME**. It currently declares an auxiliary voice subtype, which some pickers hide. If it is enabled but missing from the picker, use a keyboard with a voice-input shortcut such as HeliBoard. Manual switching and Gboard behavior still need device-specific testing; the HeliBoard microphone route has been reported working by the maintainer.
+
+Gboard's microphone uses Google's own voice typing; there is no supported setting for redirecting it to OpenVoiceIME. Changing the system speech-recognition engine is a different mechanism: OpenVoiceIME currently provides a voice keyboard, not a `RecognitionService`. See [Gboard's voice-typing instructions](https://support.google.com/gboard/answer/2781851?hl=en) and the [FUTO Voice Input project's keyboard compatibility notes](https://github.com/futo-org/voice-input#keyboard-support), which document the same third-party voice-keyboard limitation.
+
+### HeliBoard microphone shortcut
+
+1. Download HeliBoard's APK from its [official GitHub Releases](https://github.com/HeliBorg/HeliBoard/releases/latest). Allow that browser/file manager to install it when Android asks. **F-Droid is optional**; no additional store is required. Updates from a direct APK are manual; keep using the same distribution source for compatible updates.
+2. Enable HeliBoard and use it as your normal typing keyboard. Keep OpenVoiceIME enabled as well.
+3. In **HeliBoard Settings → Toolbar → Select pinned toolbar keys**, enable **Voice input**. Menu names vary by version and language.
+4. Open a text field and tap HeliBoard's microphone. It uses Android's enabled voice-input shortcut to open the voice keyboard.
+5. If it opens Google Voice Typing or another voice keyboard, check Android's **Manage keyboards** settings. Select OpenVoiceIME if your phone offers a voice-keyboard choice; otherwise disable competing **voice input methods** so OpenVoiceIME is the only enabled voice option. Keep HeliBoard enabled. The separate Google Voice Typing switch is different from Gboard's normal typing keyboard; some phones do not expose it separately.
+6. Dictate and tap **Stop**. Use **Return to normal keyboard** if needed. To make the return path predictable, keep only your intended typing keyboard and OpenVoiceIME enabled during initial setup.
+
+HeliBoard itself describes both [direct APK installation](https://github.com/HeliBorg/HeliBoard/wiki#installation) and [toolbar customization](https://github.com/HeliBorg/HeliBoard/wiki/5.-Toolbar). Its [voice shortcut implementation](https://github.com/HeliBorg/HeliBoard/blob/main/app/src/main/java/helium314/keyboard/latin/RichInputMethodManager.kt) selects from Android's voice-IME shortcuts; it does not configure OpenVoiceIME's server or models. Installing HeliBoard does not replace the endpoint/token setup in OpenVoiceIME.
+
 ## How it works
 
 1. The OpenVoiceIME keyboard starts a local microphone recording.
