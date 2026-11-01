@@ -2,6 +2,18 @@
 
 Android voice keyboard for OpenAI, Groq, and self-hosted OpenAI-compatible transcription servers. Audio is recorded on your phone, sent to the selected server, and the returned text is inserted into the focused app. Requires Android 8.0 or newer.
 
+## OpenVoice family
+
+Three projects for dictation across devices. Use them together for a self-hosted setup, or use each with other compatible clients and services.
+
+| Project | Role |
+| --- | --- |
+| [Portable ASR](https://github.com/ImAngelParraga/portable-asr) | Self-hosted transcription server with optional transcript cleanup |
+| [OpenVoiceIME](https://github.com/ImAngelParraga/OpenVoiceIME) | Android voice keyboard |
+| [OpenVoiceDesktop](https://github.com/ImAngelParraga/OpenVoiceDesktop) | Dictation client for Linux and Windows |
+
+[Explore the OpenVoice family](https://imangelparraga.github.io/OpenVoiceIME/#openvoice-family).
+
 ## Install and configure
 
 1. Download `OpenVoiceIME-release.apk` from [GitHub Releases](https://github.com/ImAngelParraga/OpenVoiceIME/releases/latest) and install it.
@@ -36,6 +48,5 @@ On Windows, use `gradlew.bat`. The debug APK is `app/build/outputs/apk/debug/Ope
 
 [Development guide](docs/development.md): SDK setup, signing your own release, and device tests.
 
-[OpenVoiceDesktop](https://github.com/ImAngelParraga/OpenVoiceDesktop) provides desktop dictation with the same backend.
 
 Licensed under [Apache 2.0](LICENSE).
