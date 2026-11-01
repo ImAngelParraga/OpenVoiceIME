@@ -1,254 +1,41 @@
 # OpenVoiceIME
 
-<p align="center">
-  <img src="docs/logo.svg" alt="OpenVoiceIME logo" width="144" height="144">
-</p>
+Android voice keyboard for OpenAI, Groq, and self-hosted OpenAI-compatible transcription servers. Audio is recorded on your phone, sent to the selected server, and the returned text is inserted into the focused app. Requires Android 8.0 or newer.
 
-OpenVoiceIME is an Android voice input method editor (IME) that records speech locally, sends the audio to an OpenAI-compatible transcription endpoint, and inserts the returned text into the focused app.
+## Install and configure
 
-It is meant for people who want a configurable voice keyboard instead of a fixed vendor keyboard, and for developers who want a small Android IME codebase to extend with other speech-to-text providers.
+1. Download `OpenVoiceIME-release.apk` from [GitHub Releases](https://github.com/ImAngelParraga/OpenVoiceIME/releases/latest) and install it.
+2. Open **OpenVoiceIME** and grant microphone permission.
+3. Select a provider, enter its token, and choose a transcription model and language. Use **Custom** for your own server.
+4. Test connectivity, enable OpenVoiceIME in Android keyboard settings, then select it from the keyboard picker.
+5. Start dictation and tap **Stop** to send the recording.
 
-## Related Project
+For a self-hosted backend, follow the [Portable ASR setup guide](https://github.com/ImAngelParraga/portable-asr#quickstart). Enter its **HTTPS base URL** (without `/v1/audio/transcriptions`), bearer token, and `whisper-1`. Refresh the model list to select other enabled engines. `localhost` on the phone refers to the phone, not your server.
 
-[Portable ASR](https://github.com/ImAngelParraga/portable-asr) is a self-hosted OpenAI-compatible transcription server. OpenVoiceIME can use it as a custom provider by setting the server base URL, token, model, and language in settings.
+Release builds require HTTPS. Debug builds allow HTTP for local development. Transcription prompt context is an optional vocabulary hint; cleanup is configured on the server.
 
-## Who this is for
+## Recover a dictation
 
-- **Android users** who want voice typing through OpenAI, Groq, or a compatible self-hosted transcription server.
-- **Self-hosters** who already expose an OpenAI-compatible `/v1/audio/transcriptions` endpoint.
-- **Android developers** who want to add provider adapters, improve IME behavior, or use this as a reference for remote speech-to-text input.
+**Retry** resends retained audio after a timeout. **Insert** retries a retained transcript without uploading again; **Copy transcript** provides manual recovery. Changing fields prevents automatic insertion into the new field. Hiding the keyboard preserves pending work while the service remains alive; **Cancel/Discard** deletes it.
 
-## Current status
+See [usage and compatibility](docs/usage.md) for timeout, lifecycle, editor, and API details.
 
-OpenVoiceIME is early project software. It supports manual installation, configuration, and testing through the published APK, GitHub Releases, or local builds.
+## Privacy
 
-Supported today:
+Audio goes to the provider you configure. Tokens use encrypted local storage; settings and response-time metrics stay on the device. Remote retention depends on your provider. See the [privacy policy](docs/privacy-policy.md).
 
-- Android IME service for recording, uploading, and inserting transcribed text.
-- Settings screen for provider URL, model, token, language, custom presets, and insertion behavior.
-- OpenAI-compatible multipart transcription requests.
-- Built-in presets for OpenAI and Groq.
-- Local response-time metrics and basic network diagnostics.
+## Build and contribute
 
-Not supported yet:
-
-- Provider-specific adapters for Deepgram, AssemblyAI, Google Speech-to-Text, or Azure Speech.
-- Automated coverage of every third-party editor and system IME binding path.
-
-## How it works
-
-1. The OpenVoiceIME keyboard starts a local microphone recording.
-2. The recording is sent as multipart audio to `{baseUrl}/v1/audio/transcriptions`.
-3. The configured provider returns a JSON response with a `text` field.
-4. OpenVoiceIME commits the text into the original input field and checks whether the editor accepted it.
-
-Each transcription has a total timeout of 5 seconds plus the recording duration, with a minimum of 10 seconds and a maximum of 15 minutes. A 3-second recording gets 10 seconds, a 10-second recording gets 15 seconds, and a one-minute recording gets 65 seconds. The remaining wait appears in the keyboard. Timeout keeps the recording for **Retry**; Cancel stops the HTTP request.
-
-If insertion fails, OpenVoiceIME keeps the transcript and recording, offers **Insert** to retry insertion without another server request, and provides **Copy transcript**. It does not start another recording. When readable editor text stays unchanged after an accepted request, check the field before retrying to avoid duplicates. Editors without readable text can only be checked through their InputConnection acceptance signal. Changing input fields blocks automatic insertion and leaves the transcript available to copy or explicitly **Insert here**. Existing composing text is finished before dictation; truncated or filtered insertion keeps the full transcript for recovery.
-
-By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`. Groq and custom OpenAI-compatible servers can be selected in settings.
-
-Hiding the keyboard stops capture and preserves usable audio for **Send audio** when reopened. It cancels an upload without discarding the recording; pending transcripts survive hiding or view recreation. **Cancel/Discard** still deletes the current dictation. Service destruction clears owned temporary work, and a later service start removes abandoned recording files left by process death.
-
-## Setup
-
-1. Download the published APK from the project site or GitHub Releases, or build one locally.
-2. Open **OpenVoiceIME** from the launcher.
-3. Grant microphone permission.
-4. Choose a provider preset or configure a custom OpenAI-compatible server.
-5. Enter an API token. For servers supporting `GET /v1/audio/models`, choose a model from the refreshed list; otherwise enter a custom model ID.
-6. Tap the server test button to verify connectivity.
-7. Open Android keyboard settings and enable **OpenVoiceIME**.
-8. Switch to OpenVoiceIME from the keyboard picker when you want to dictate.
-
-## Build
-
-Run commands from the repository root.
-
-For local debug builds, use:
-
-```powershell
-.\gradlew.bat testDebugUnitTest assembleDebug
-```
-
-On macOS/Linux, use:
+With JDK 21 for Gradle, a JDK 17 Kotlin toolchain, and Android SDK 35 installed:
 
 ```bash
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-Debug APK is written to `app/build/outputs/apk/debug/OpenVoiceIME-debug.apk`.
+On Windows, use `gradlew.bat`. The debug APK is `app/build/outputs/apk/debug/OpenVoiceIME-debug.apk`; it installs separately from the release keyboard.
 
-### Maintainer signed release build
+[Development guide](docs/development.md): SDK setup, signing your own release, and device tests.
 
-Release signing credentials are not stored in repository or loaded automatically by Gradle. On maintainer machine they live in:
+[OpenVoiceDesktop](https://github.com/ImAngelParraga/OpenVoiceDesktop) provides desktop dictation with the same backend.
 
-```text
-/home/rankis/.openime/openvoiceime-release.properties
-/home/rankis/.openime/openvoiceime-release.jks
-```
-
-Properties file must define all four values below and remain private (`chmod 600`):
-
-```properties
-OPENIME_RELEASE_STORE_FILE=/absolute/path/to/openvoiceime-release.jks
-OPENIME_RELEASE_STORE_PASSWORD=...
-OPENIME_RELEASE_KEY_ALIAS=...
-OPENIME_RELEASE_KEY_PASSWORD=...
-```
-
-Load private file and expose values as Gradle project properties without copying secrets into repository:
-
-```bash
-set -a
-. /home/rankis/.openime/openvoiceime-release.properties
-set +a
-
-export ORG_GRADLE_PROJECT_OPENIME_RELEASE_STORE_FILE="$OPENIME_RELEASE_STORE_FILE"
-export ORG_GRADLE_PROJECT_OPENIME_RELEASE_STORE_PASSWORD="$OPENIME_RELEASE_STORE_PASSWORD"
-export ORG_GRADLE_PROJECT_OPENIME_RELEASE_KEY_ALIAS="$OPENIME_RELEASE_KEY_ALIAS"
-export ORG_GRADLE_PROJECT_OPENIME_RELEASE_KEY_PASSWORD="$OPENIME_RELEASE_KEY_PASSWORD"
-
-./gradlew testDebugUnitTest assembleRelease
-```
-
-Plain `./gradlew assembleRelease` intentionally fails when these Gradle project properties are unavailable. Presence of `~/.openime/openvoiceime-release.properties` alone is insufficient; Gradle does not automatically read that path.
-
-Release APK is written to:
-
-```text
-app/build/outputs/apk/release/OpenVoiceIME-release.apk
-```
-
-Verify signature before installation or upload:
-
-```bash
-ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/home/rankis/Android/Sdk}}"
-"$ANDROID_SDK/build-tools/35.0.0/apksigner" verify --verbose \
-  app/build/outputs/apk/release/OpenVoiceIME-release.apk
-```
-
-Output must start with `Verifies` and report at least one verified APK signature scheme. Never upload an unsigned APK.
-
-Install verified APK on connected device or emulator:
-
-```bash
-adb install -r app/build/outputs/apk/release/OpenVoiceIME-release.apk
-```
-
-## Releases
-
-Public APKs are distributed through GitHub Releases. Each release should include:
-
-- `OpenVoiceIME-release.apk`
-- A short changelog.
-- Any known setup or compatibility notes.
-
-Maintainer policy: every completed user-facing implementation gets a new signed GitHub release unless publication is explicitly disabled for that change.
-
-Release builds block cleartext HTTP and disable app backup to protect provider credentials. Debug builds allow cleartext HTTP for local development endpoints.
-
-The project site also hosts the latest signed APK at:
-
-```text
-docs/downloads/OpenVoiceIME-release.apk
-```
-
-## Transcription compatibility
-
-OpenVoiceIME currently has one OpenAI-compatible transcription client. Providers with different upload flows, authentication schemes, or response formats need separate adapters.
-
-Settings fetches the authenticated `GET {baseUrl}/v1/audio/models` catalog when opened or when the provider URL or token changes. **Refresh models** fetches it again. Servers without this endpoint keep the built-in preset choices or the editable custom model field. New IDs advertised by the server appear without an app update.
-
-Terminal compatibility: editors that expose `TYPE_NULL` or no extracted text (including terminal-style apps) use arrow and Delete key events for the compact cursor/Delete controls. Cursor pad supports left/right/up/down movement; rich text editors retain character-precise horizontal previews.
-
-| Service | Status | Base URL | Default model |
-| --- | --- | --- | --- |
-| OpenAI | Supported default | `https://api.openai.com` | `gpt-4o-transcribe` |
-| Groq | Supported | `https://api.groq.com/openai` | `whisper-large-v3-turbo` |
-| Custom OpenAI-compatible server | Supported as saved custom preset | User-provided | User-provided |
-| Deepgram | Needs adapter | Different endpoint/auth/response | N/A |
-| AssemblyAI | Needs adapter | Upload + async polling flow | N/A |
-| Google Speech-to-Text | Needs adapter | Google recognizer JSON/OAuth flow | N/A |
-| Azure Speech | Needs adapter | Azure speech REST path/auth/body | N/A |
-
-Expected compatible request shape:
-
-```http
-POST {baseUrl}/v1/audio/transcriptions
-Authorization: Bearer <token>
-Content-Type: multipart/form-data
-```
-
-Multipart fields:
-
-- `file`: recorded audio
-- `model`: configured transcription model
-- `language`: optional language code
-- `temperature`: `0.0`
-
-Expected success response:
-
-```json
-{
-  "text": "Transcribed text"
-}
-```
-
-## Privacy and security
-
-OpenVoiceIME records audio on device, but transcription happens on the configured remote server. Audio and API credentials are therefore subject to the provider or self-hosted service you configure.
-
-Project rules:
-
-- API tokens are stored locally using encrypted app storage.
-- API tokens and transcript text should not be logged.
-- Private server URLs, API tokens, and generated APKs should not be committed.
-- Custom cleartext HTTP endpoints are possible for local development, but public usage should prefer HTTPS.
-
-## Project layout
-
-```text
-app/src/main/java/dev/rankis/openime/
-  audio/       Local microphone recording
-  stt/         Transcription provider client and diagnostics
-  settings/    Settings models, persistence, and screen
-  metrics/     Local response-time statistics
-```
-
-Resources live in `app/src/main/res/`. JVM tests live in `app/src/test/java/`.
-
-## Android integration tests
-
-Connect an Android device with USB debugging enabled, then run:
-
-```bash
-./gradlew testDebugUnitTest connectedDebugAndroidTest
-```
-
-Debug builds use the separate application ID `dev.rankis.openime.testbed`. Tests do not replace the signed keyboard, alter its preferences, or select another system IME. They launch isolated editor/settings activities and exercise real Android InputConnections, lifecycle callbacks, layout measurement, encrypted settings, local HTTP probes, and concurrent metrics. Lifecycle tests use fake audio capture and controlled server completion, so they do not record microphone audio.
-
-Validated on Android 13 (API 33). Real system IME binding paths and third-party editor behavior still need device-specific checks.
-
-## Contributing
-
-Useful first areas:
-
-- Add a provider adapter behind the `SttProvider` interface.
-- Improve setup diagnostics for Android IME edge cases.
-- Add focused tests for parsing, validation, metrics formatting, and provider request mapping.
-- Improve release packaging and install documentation.
-
-Before opening a pull request, run local verification:
-
-```powershell
-.\gradlew.bat testDebugUnitTest assembleDebug
-```
-
-Maintainers must also run signed release workflow above before publishing.
-
-Use Conventional Commit subjects such as `feat(stt): add provider adapter` or `fix(ime): handle empty recording`.
-
-## License
-
-OpenVoiceIME is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
+Licensed under [Apache 2.0](LICENSE).

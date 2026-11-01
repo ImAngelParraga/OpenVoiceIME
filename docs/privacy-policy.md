@@ -5,7 +5,7 @@ permalink: /privacy-policy/
 
 # OpenVoiceIME Privacy Policy
 
-Effective date: 2026-07-02
+Effective date: 2026-11-01
 
 OpenVoiceIME is an Android input method that records speech, sends it to a user-configured speech-to-text provider, and inserts the returned transcript into the active text field.
 
@@ -48,8 +48,10 @@ OpenVoiceIME sends audio and authentication data only to the transcription provi
 
 OpenVoiceIME stores settings and local metrics on your device. You can delete local data by clearing the app's storage in Android settings or uninstalling the app.
 
+Temporary recordings may remain in app-private storage while a dictation is pending for retry. Cancel/discard, successful insertion, or service destruction removes the owned recording; the next service start removes abandoned recordings after process death. Pending transcripts remain in memory while the service lives.
+
 Remote provider retention is controlled by the provider you choose.
 
 ## Contact
 
-For privacy questions, use the contact address listed in the project repository.
+For privacy questions, open a [GitHub issue](https://github.com/ImAngelParraga/OpenVoiceIME/issues). Do not include tokens, recordings, or private transcripts.

@@ -57,7 +57,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V14: After successful insertion with keyboard return disabled, `hideAfterSuccess == true` calls `requestHideSelf(0)`; only `hideAfterSuccess == false` keeps the panel for fresh recording.
 - V9: Current editor package is captured from `EditorInfo.packageName`; language selection loads/saves under that package, while missing package mappings use global language.
 - V10: Per-app language resolution performs only local preference access; it does not perform network I/O, package enumeration, or transcription work during panel startup.
-- V11: Every uploaded release APK passes `apksigner verify`; release builds fail clearly when signing properties are unavailable; canonical maintainer workflow explicitly loads `/home/rankis/.openime/openvoiceime-release.properties` and maps all four values to Gradle project properties.
+- V11: Every uploaded release APK passes `apksigner verify`; release builds fail clearly when signing properties are unavailable; canonical maintainer workflow explicitly loads `$HOME/.openime/openvoiceime-release.properties` and maps all four values to Gradle project properties.
 - V12: [Historical T5] Legacy tracked-insertion deletion was guarded by matching current editor selection/cursor.
 - V13: [Historical T5] Legacy Delete disabled without tracked insertion and cleared tracking after deletion; current controls use V15–V18.
 - V15: Delete content mutation occurs only on ACTION_UP; ACTION_CANCEL and vertical escape produce no deletion.

@@ -13,11 +13,11 @@
 
 ## Canonical signed release command
 
-Signing properties live outside repository at `/home/rankis/.openime/openvoiceime-release.properties`; Gradle does not load this file automatically. Source it, map values to Gradle project-property environment variables, then build:
+Signing properties live outside repository at `$HOME/.openime/openvoiceime-release.properties`; Gradle does not load this file automatically. Source it, map values to Gradle project-property environment variables, then build:
 
 ```bash
 set -a
-. /home/rankis/.openime/openvoiceime-release.properties
+. "$HOME/.openime/openvoiceime-release.properties"
 set +a
 
 export ORG_GRADLE_PROJECT_OPENIME_RELEASE_STORE_FILE="$OPENIME_RELEASE_STORE_FILE"
@@ -26,7 +26,7 @@ export ORG_GRADLE_PROJECT_OPENIME_RELEASE_KEY_ALIAS="$OPENIME_RELEASE_KEY_ALIAS"
 export ORG_GRADLE_PROJECT_OPENIME_RELEASE_KEY_PASSWORD="$OPENIME_RELEASE_KEY_PASSWORD"
 
 ./gradlew testDebugUnitTest assembleRelease
-ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/home/rankis/Android/Sdk}}"
+ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
 "$ANDROID_SDK/build-tools/35.0.0/apksigner" verify --verbose \
   app/build/outputs/apk/release/OpenVoiceIME-release.apk
 ```
@@ -37,5 +37,5 @@ Never print property values, commit private property file, or commit keystore. I
 
 - `v0.3.0` was initially published unsigned because `OPENIME_RELEASE_*` properties were missing; Android rejected it as an invalid package.
 - `v0.3.0` asset was replaced with a signed APK; `v0.3.1` contains the permanent fix.
-- Release signing uses existing `/home/rankis/.openime/openvoiceime-release.jks` through local `OPENIME_RELEASE_*` properties; never commit keystore files or passwords.
+- Release signing uses existing `$HOME/.openime/openvoiceime-release.jks` through local `OPENIME_RELEASE_*` properties; never commit keystore files or passwords.
 - Missing signing properties must fail release builds before APK upload.
