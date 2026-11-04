@@ -159,8 +159,23 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     protected open fun createRecorder(): VoiceRecorder = AudioRecorder(this)
     protected open fun createRecordingFocus(): RecordingFocus = RecordingAudioFocus(this)
 
+    @Suppress("DEPRECATION")
+    private fun configureInputWindow() {
+        val inputWindow = window?.window ?: return
+        val background = ContextCompat.getColor(this, R.color.openime_bg)
+        inputWindow.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(background))
+        inputWindow.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        inputWindow.navigationBarColor = background
+        androidx.core.view.WindowCompat.getInsetsController(inputWindow, inputWindow.decorView)
+            .isAppearanceLightNavigationBars = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            inputWindow.isNavigationBarContrastEnforced = false
+        }
+    }
+
     override fun onCreateInputView(): View {
         detachInputView(preserveUpload = true)
+        configureInputWindow()
         val view = LayoutInflater.from(this).inflate(R.layout.ime_voice_input, null)
         ViewCompat.setOnApplyWindowInsetsListener(view) { root, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())

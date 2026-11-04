@@ -21,6 +21,27 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EditorCompatibilityTest {
     @Test
+    fun testV50CompactRecordingPanelKeepsStatusNearTimer() = withEditor { activity ->
+        val root = LayoutInflater.from(activity).inflate(R.layout.ime_voice_input, null)
+        val density = activity.resources.displayMetrics.density
+        val width = (360 * density).toInt()
+        root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        root.layout(0, 0, width, root.measuredHeight)
+        assertEquals((260 * density).toInt(), root.height)
+        val status = root.findViewById<View>(R.id.statusText)
+        val timer = root.findViewById<View>(R.id.timerText)
+        fun bounds(view: View) = android.graphics.Rect().also {
+            view.getDrawingRect(it)
+            (root as android.view.ViewGroup).offsetDescendantRectToMyCoords(view, it)
+        }
+        assertTrue("Recording status too far from timer",
+            bounds(timer).top - bounds(status).bottom <= 50 * density)
+        val background = root.background as android.graphics.drawable.ColorDrawable
+        assertEquals(activity.getColor(R.color.openime_bg), background.color)
+    }
+
+    @Test
     fun testV35LongRecoveryContentKeepsActionsWithinMeasuredKeyboard() = withEditor { activity ->
         for (scale in listOf(1f, 1.3f)) {
             val config = Configuration(activity.resources.configuration).apply { fontScale = scale }

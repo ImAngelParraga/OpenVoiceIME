@@ -104,6 +104,8 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V48: Guided keyboard setup offers persisted HeliBoard/current-keyboard routes, refreshes permission/IME readiness on resume, and never changes enabled/default keyboards. Gboard mic restriction and auxiliary-picker limits remain explicit in both locales.
 - V49: Setup buttons open official HeliBoard releases, installed HeliBoard settings, Android keyboard settings, or a user-invoked picker/test field. Missing apps/handlers give localized recovery; route changes preserve provider/token/model settings. Setup remains scrollable at narrow width and larger text.
 
+- V50: IME panel height 260dp, bottom padding 8dp; root/inset and navigation backgrounds use openime_bg with light navigation icons; scrollable recovery keeps actions reachable.
+
 ## §T
 
 | id | status | goal | cites |
@@ -168,3 +170,4 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | B31 | 2026-11-01 | saving Auto removed modern language key and reactivated obsolete legacy Spanish/English choice | V46 |
 | B32 | 2026-11-01 | built-in provider switch changed URL/model while retaining previous provider credential for subsequent requests | V47 |
 | B33 | 2026-11-01 | debug integration host assigned literal view ID, rejected by Android resource-type lint | V36 |
+| B34 | 2026-11-04 | 300dp weighted panel wasted recording space; transparent inset and unstyled navigation window exposed mismatched background | V50 |

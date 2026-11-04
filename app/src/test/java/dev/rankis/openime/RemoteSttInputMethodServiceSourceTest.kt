@@ -45,6 +45,20 @@ class RemoteSttInputMethodServiceSourceTest {
     }
 
     @Test
+    fun testV50PanelAndNavigationInsetsUseOwnBackground() {
+        val layout = String(Files.readAllBytes(inputViewLayoutPath()))
+        val root = layout.substringBefore("<!--")
+        assertTrue(root.contains("android:background=\"@color/openime_bg\""))
+        assertTrue(layout.contains("android:paddingBottom=\"8dp\""))
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        assertTrue(functionBody(source, "onCreateInputView").contains("configureInputWindow()"))
+        val window = functionBody(source, "configureInputWindow")
+        assertTrue(window.contains("setBackgroundDrawable"))
+        assertTrue(window.contains("navigationBarColor = background"))
+        assertTrue(window.contains("isAppearanceLightNavigationBars = false"))
+    }
+
+    @Test
     fun testV35VariableContentScrollsWithoutPushingActionButtons() {
         val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
         val root = factory.newDocumentBuilder().parse(inputViewLayoutPath().toFile()).documentElement
@@ -52,7 +66,7 @@ class RemoteSttInputMethodServiceSourceTest {
         val panel = root.getElementsByTagName("LinearLayout").item(0) as org.w3c.dom.Element
         assertTrue(root.tagName == "FrameLayout")
         assertTrue(panel.parentNode === root)
-        assertTrue(panel.getAttributeNS(namespace, "layout_height") == "300dp")
+        assertTrue(panel.getAttributeNS(namespace, "layout_height") == "260dp")
         val views = root.getElementsByTagName("ScrollView")
         val scroll = views.item(0) as org.w3c.dom.Element
         assertTrue(scroll.getAttributeNS(namespace, "layout_height") == "0dp")
