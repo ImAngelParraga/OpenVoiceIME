@@ -30,7 +30,7 @@
     <string name="button_cursor_description">Move cursor left, right, up, or down</string>
     <string name="button_delete_description">Delete selected text or previous character</string>
     <string name="button_return_to_keyboard_description">Return to normal keyboard</string>
-    <string name="button_stop">Stop</string>
+    <string name="button_stop">Transcribe</string>
     <string name="button_retry">Retry</string>
     <string name="button_insert">Insert</string>
     <string name="button_discard">Discard</string>
@@ -154,4 +154,9 @@
     <string name="setup_server_help">Dictation also needs a working transcription endpoint and token. Configure and test them in Server below. Test text is not saved as a setting.</string>
     <string name="setup_configure_server">Configure transcription server</string>
     <string name="setup_action_failed">Could not open this action. Check that a browser or settings app is available, or open Android keyboard settings manually.</string>
+    <string name="button_pause">Pause</string>
+    <string name="button_resume">Resume</string>
+    <string name="button_open_settings">Open settings</string>
+    <string name="status_paused">Paused</string>
+    <string name="error_recording_pause">Could not pause or resume. Retry the saved recording or cancel to start again.</string>
 </resources>

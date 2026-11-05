@@ -35,6 +35,35 @@ class ImeLifecycleTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
+    fun testV51AttachedKeyboardRendersRecordingAndPause() = withIme { ime ->
+        main {
+            (ime.host.editor.parent as android.view.ViewGroup).removeView(ime.host.editor)
+            ime.host.editor.setText("Design review · Thursday\n\nMove the review to Tuesday.")
+            val content = android.widget.LinearLayout(ime.host).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                addView(ime.host.editor, android.widget.LinearLayout.LayoutParams(-1, 0, 1f))
+                addView(ime.view, android.widget.LinearLayout.LayoutParams(-1, -2))
+            }
+            ime.host.setContentView(content)
+            ime.show()
+        }; idle()
+        capturePreview("keyboard-recording.png", ime.view)
+        main { ime.pause() }; idle()
+        capturePreview("keyboard-paused.png", ime.view)
+    }
+
+    private fun capturePreview(name: String, view: View) {
+        if (InstrumentationRegistry.getArguments().getString("captureScreenshots") != "true") return
+        val rendered = java.util.concurrent.CountDownLatch(1)
+        main { view.postOnAnimation { view.postOnAnimation { rendered.countDown() } } }
+        check(rendered.await(2, java.util.concurrent.TimeUnit.SECONDS)) { "Preview did not draw" }
+        val screenshot = instrumentation.uiAutomation.takeScreenshot()
+        val output = File(instrumentation.targetContext.getExternalFilesDir(null), name)
+        try { output.outputStream().use { screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } }
+        finally { screenshot.recycle() }
+    }
+
+    @Test
     fun navigationInsetsKeepDeleteAboveSystemKeyboardSwitcher() = withIme { ime ->
         main {
             val density = ime.host.resources.displayMetrics.density
@@ -48,7 +77,7 @@ class ImeLifecycleTest {
                 ime.view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
                 ime.view.layout(0, 0, width, ime.view.measuredHeight)
                 assertEquals(bottom, ime.view.paddingBottom)
-                for (id in listOf(R.id.deleteButton, R.id.cursorButton, R.id.stopButton, R.id.cancelButton)) {
+                for (id in listOf(R.id.deleteButton, R.id.pauseButton, R.id.stopButton, R.id.cancelButton)) {
                     val action = ime.view.findViewById<View>(id)
                     val bounds = android.graphics.Rect()
                     action.getDrawingRect(bounds)
@@ -120,18 +149,18 @@ class ImeLifecycleTest {
     }
 
     @Test
-    fun testV43HideRestoresOwnedCursorPreview() = withIme { ime ->
+    fun testV43HideRestoresOwnedDeletePreview() = withIme { ime ->
         main { ime.show() }; idle()
         main {
             ime.host.editor.setText("abcdef")
-            ime.host.editor.setSelection(3)
-            val pad = ime.view.findViewById<View>(R.id.cursorButton)
+            ime.host.editor.setSelection(6)
+            val pad = ime.view.findViewById<View>(R.id.deleteButton)
             val distance = 54f * ime.host.resources.displayMetrics.density
             touch(pad, MotionEvent.ACTION_DOWN, 1f, 1f)
-            touch(pad, MotionEvent.ACTION_MOVE, 1f + distance, 1f)
-            assertEquals(6, ime.host.editor.selectionStart)
-            ime.service.onFinishInputView(false)
+            touch(pad, MotionEvent.ACTION_MOVE, 1f - distance, 1f)
             assertEquals(3, ime.host.editor.selectionStart)
+            ime.service.onFinishInputView(false)
+            assertEquals(6, ime.host.editor.selectionStart)
             assertEquals("abcdef", ime.host.editor.text.toString())
         }
     }
@@ -271,6 +300,173 @@ class ImeLifecycleTest {
         main { assertFreshPanel(ime) }
     }
 
+    @Test
+    fun testV52PauseResumeKeepsOneFileAndOnlyTranscribesOnRequest() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile
+        main { ime.pause() }
+        val pausedTime = ime.view.findViewById<TextView>(R.id.timerText).text.toString()
+        android.os.SystemClock.sleep(1_100L); idle()
+        main {
+            assertEquals(pausedTime, ime.view.findViewById<TextView>(R.id.timerText).text.toString())
+            assertEquals(ime.host.getString(R.string.status_paused), ime.view.findViewById<TextView>(R.id.statusText).text.toString())
+            assertTrue(ime.recorder.paused)
+            assertEquals(0, ime.provider.calls)
+            ime.pause()
+            assertFalse(ime.recorder.paused)
+            assertEquals(1, ime.recorder.starts)
+            assertSame(file, ime.recorder.lastFile)
+            ime.pause()
+            ime.primary()
+        }
+        val reply = ime.provider.next()
+        assertEquals(1, ime.provider.calls)
+        assertEquals(1, ime.recorder.stops)
+        assertEquals(2, ime.recorder.pauses)
+        assertEquals(1, ime.recorder.resumes)
+        assertSame(file, ime.provider.submittedFile)
+        reply.complete(TranscriptionResult.Success("one combined transcript")); idle()
+        main { assertEquals("one combined transcript", ime.view.findViewById<TextView>(R.id.statusText).text.toString()) }
+    }
+
+    @Test
+    fun testV52PausedViewRecreationRemainsResumable() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile
+        main {
+            ime.pause()
+            ime.service.onConfigurationChanged(Configuration(ime.service.resources.configuration))
+            ime.rebuild()
+        }; idle()
+        main {
+            assertTrue(ime.recorder.paused)
+            assertEquals(ime.host.getString(R.string.button_resume), ime.view.findViewById<Button>(R.id.pauseButton).text.toString())
+            assertEquals(1, ime.recorder.starts)
+            assertEquals(0, ime.recorder.stops)
+            assertSame(file, ime.recorder.lastFile)
+            ime.pause()
+            assertFalse(ime.recorder.paused)
+        }
+    }
+
+    @Test
+    fun testV52CancelPausedRecordingRestartsWithoutEditingText() = withIme { ime ->
+        main {
+            val store = SettingsStore(ime.host)
+            store.save(store.load().copy(hideAfterCancel = false))
+            ime.host.editor.setText("keep this text")
+            ime.show()
+        }; idle()
+        val oldFile = ime.recorder.lastFile!!
+        main { ime.pause(); ime.cancel() }; idle()
+        main {
+            assertFreshPanel(ime)
+            assertEquals("keep this text", ime.host.editor.text.toString())
+            assertEquals(0, ime.service.hideRequests)
+        }
+        assertFalse(oldFile.exists())
+        assertEquals(2, ime.recorder.starts)
+        assertNotSame(oldFile, ime.recorder.lastFile)
+    }
+
+    @Test
+    fun testV52HidingPausedRecordingDiscardsItAndReleasesRecorder() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main { ime.pause(); ime.service.onFinishInputView(false) }; idle()
+        assertFalse(ime.recorder.active)
+        assertFalse(file.exists())
+        main { ime.show(restarting = true) }; idle()
+        main { assertFreshPanel(ime) }
+    }
+
+    @Test
+    fun testV54DeleteDuringPauseEditsSelectionWithoutDiscardingAudio() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.pause()
+            ime.host.editor.setText("keep bad dictation")
+            ime.host.editor.setSelection(5, 18)
+            ime.view.findViewById<Button>(R.id.deleteButton).performClick()
+            assertEquals("keep ", ime.host.editor.text.toString())
+            assertTrue(ime.recorder.paused)
+            assertEquals(1, ime.recorder.starts)
+            assertEquals(0, ime.provider.calls)
+            assertTrue(file.exists())
+        }
+    }
+
+    @Test
+    fun testV54PauseFailureFinalizesRecoverableAudioWithoutUploading() = withIme { ime ->
+        main { ime.show() }; idle()
+        main {
+            ime.recorder.failPause = true
+            ime.pause()
+            assertFalse(ime.recorder.active)
+            assertTrue(ime.recorder.lastFile!!.exists())
+            assertFalse(ime.view.findViewById<View>(R.id.pauseButton).isEnabled)
+            assertTrue(ime.view.findViewById<View>(R.id.stopButton).isEnabled)
+            assertEquals(ime.host.getString(R.string.button_retry), ime.view.findViewById<Button>(R.id.stopButton).text.toString())
+            assertEquals(0, ime.provider.calls)
+        }
+    }
+
+    @Test
+    fun testV53StayOpenInsertionAutomaticallyRecordsAgainWithoutSwitching() = withIme { ime ->
+        main {
+            val store = SettingsStore(ime.host)
+            store.save(store.load().copy(confirmBeforeInsert = false, hideAfterSuccess = false, returnToKeyboardAfterInsert = false))
+            ime.show()
+        }; idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("stay here")); idle()
+        main {
+            assertEquals("stay here", ime.host.editor.text.toString())
+            assertFreshPanel(ime)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+            assertEquals(0, ime.service.hideRequests)
+            val stored = SettingsStore(ime.host).load()
+            assertFalse(stored.returnToKeyboardAfterInsert)
+            assertFalse(stored.hideAfterSuccess)
+        }
+        assertEquals(2, ime.recorder.starts)
+    }
+
+    @Test
+    fun testV53ExplicitKeyboardReturnAndHidePreferencesRemainEffective() {
+        for ((returnToKeyboard, hideAfterInsert) in listOf(true to false, false to true)) {
+            withIme { ime ->
+                main {
+                    val store = SettingsStore(ime.host)
+                    store.save(store.load().copy(confirmBeforeInsert = false, returnToKeyboardAfterInsert = returnToKeyboard, hideAfterSuccess = hideAfterInsert))
+                    ime.show()
+                }; idle()
+                main { ime.primary() }
+                ime.provider.next().complete(TranscriptionResult.Success("inserted")); idle()
+                main {
+                    assertEquals("inserted", ime.host.editor.text.toString())
+                    assertEquals(if (returnToKeyboard) 1 else 0, ime.service.nextKeyboardRequests)
+                    assertEquals(if (hideAfterInsert) 1 else 0, ime.service.hideRequests)
+                    assertFalse(ime.recorder.active)
+                }
+                assertEquals(1, ime.recorder.starts)
+            }
+        }
+    }
+
+    @Test
+    fun testV54ToolbarOpensSettingsAndSwitchesKeyboardDirectly() = withIme { ime ->
+        main { ime.show() }; idle()
+        main {
+            ime.view.findViewById<View>(R.id.settingsButton).performClick()
+            assertEquals(dev.rankis.openime.settings.SettingsActivity::class.java.name, ime.service.launchedActivity?.component?.className)
+            ime.view.findViewById<View>(R.id.keyboardButton).performClick()
+            assertEquals(1, ime.service.previousKeyboardRequests)
+            assertFalse(ime.recorder.active)
+        }
+    }
+
     private fun assertFreshPanel(ime: Harness) {
         assertEquals(View.GONE, ime.view.findViewById<View>(R.id.retryButton).visibility)
         assertEquals(View.GONE, ime.view.findViewById<View>(R.id.errorDetailsInput).visibility)
@@ -334,11 +530,22 @@ class ImeLifecycleTest {
         fun show(restarting: Boolean = false) { service.onStartInputView(info, restarting) }
         fun rebuild() { view = service.onCreateInputView(); show(restarting = true) }
         fun primary() { view.findViewById<Button>(R.id.stopButton).performClick() }
+        fun pause() { view.findViewById<Button>(R.id.pauseButton).performClick() }
+        fun cancel() { view.findViewById<Button>(R.id.cancelButton).performClick() }
         fun destroy() { if (!destroyed) { destroyed = true; service.onDestroy() } }
     }
 
     private class TestIme(context: Context, val fakeRecorder: VoiceRecorder, val fakeProvider: SttProvider) : RemoteSttInputMethodService() {
         var connection: InputConnection? = null
+        var hideRequests = 0
+        var nextKeyboardRequests = 0
+        var previousKeyboardRequests = 0
+        var nextKeyboardResult = true
+        var launchedActivity: android.content.Intent? = null
+        override fun requestHideSelf(flags: Int) { hideRequests += 1 }
+        override fun switchToNextKeyboard(): Boolean { nextKeyboardRequests += 1; return nextKeyboardResult }
+        override fun switchToPreviousOrFallbackKeyboard(): Boolean { previousKeyboardRequests += 1; return true }
+        override fun startActivity(intent: android.content.Intent) { launchedActivity = intent }
         init { attachBaseContext(context) }
         override fun getCurrentInputConnection() = connection
         override fun createRecorder() = fakeRecorder
@@ -353,14 +560,27 @@ class ImeLifecycleTest {
         var starts = 0
         var stops = 0
         var active = false
+        var paused = false
+        var pauses = 0
+        var resumes = 0
+        var failPause = false
         var lastFile: File? = null
-        override val maxAmplitude = 0
+        override val maxAmplitude = 12_000
         override fun start(): File {
             check(!active)
-            active = true; starts += 1
+            active = true; paused = false; starts += 1
             return File.createTempFile("integration-audio-", ".m4a", context.cacheDir).apply {
                 writeBytes(byteArrayOf(1, 2, 3)); lastFile = this
             }
+        }
+        override fun pause() {
+            check(active && !paused)
+            if (failPause) error("Pause failed")
+            paused = true; pauses += 1
+        }
+        override fun resume() {
+            check(active && paused)
+            paused = false; resumes += 1
         }
         override fun stop(): File? {
             if (!active) return null
@@ -372,7 +592,11 @@ class ImeLifecycleTest {
 
     private class PendingProvider : SttProvider {
         private val requests = Channel<CompletableDeferred<TranscriptionResult>>(Channel.UNLIMITED)
+        var calls = 0
+        var submittedFile: File? = null
         override suspend fun transcribe(audioFile: File, settings: AppSettings, timeoutMillis: Long): TranscriptionResult {
+            calls += 1
+            submittedFile = audioFile
             val reply = CompletableDeferred<TranscriptionResult>()
             requests.send(reply)
             return reply.await()

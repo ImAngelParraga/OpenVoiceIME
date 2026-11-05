@@ -21,6 +21,38 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EditorCompatibilityTest {
     @Test
+    fun testV51CenteredButtonsHaveEqualSizesAndDirectToolbarTargets() = withEditor { activity ->
+        for (widthDp in listOf(320, 360, 420)) {
+            for (scale in listOf(1f, 1.3f)) {
+                val config = Configuration(activity.resources.configuration).apply { fontScale = scale }
+                val context = ContextThemeWrapper(activity.createConfigurationContext(config), R.style.Theme_OpenVoiceIME)
+                val root = LayoutInflater.from(context).inflate(R.layout.ime_voice_input, null)
+                val density = context.resources.displayMetrics.density
+                val width = (widthDp * density).toInt()
+                root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+                root.layout(0, 0, width, root.measuredHeight)
+                val actions = listOf(R.id.cancelButton, R.id.pauseButton, R.id.deleteButton, R.id.stopButton)
+                    .map { root.findViewById<View>(it) }
+                assertEquals((52 * density).toInt(), actions.first().height)
+                actions.forEach { action ->
+                    assertEquals(actions.first().height, action.height)
+                    assertTrue(kotlin.math.abs(actions.first().width - action.width) <= 1)
+                    assertEquals(View.VISIBLE, action.visibility)
+                }
+                val panel = root.findViewById<View>(R.id.imePanel)
+                assertTrue(panel.width <= 360 * density)
+                assertTrue(kotlin.math.abs(panel.left + panel.width / 2 - root.width / 2) <= 1)
+                for (id in listOf(R.id.settingsButton, R.id.languageButton, R.id.keyboardButton)) {
+                    val action = root.findViewById<View>(id)
+                    assertTrue(action.width >= 48 * density)
+                    assertTrue(action.height >= 48 * density)
+                }
+            }
+        }
+    }
+
+    @Test
     fun testV50CompactRecordingPanelKeepsStatusNearTimer() = withEditor { activity ->
         val root = LayoutInflater.from(activity).inflate(R.layout.ime_voice_input, null)
         val density = activity.resources.displayMetrics.density
@@ -38,7 +70,7 @@ class EditorCompatibilityTest {
         assertTrue("Recording status too far from timer",
             bounds(timer).top - bounds(status).bottom <= 50 * density)
         val background = root.background as android.graphics.drawable.ColorDrawable
-        assertEquals(activity.getColor(R.color.openime_bg), background.color)
+        assertEquals(activity.getColor(R.color.ime_background), background.color)
     }
 
     @Test
@@ -56,7 +88,7 @@ class EditorCompatibilityTest {
             root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
             root.layout(0, 0, root.measuredWidth, root.measuredHeight)
             assertTrue(root.findViewById<View>(R.id.statusScroll).height > 0)
-            for (id in listOf(R.id.stopButton, R.id.cancelButton, R.id.retryButton, R.id.keyboardButton)) {
+            for (id in listOf(R.id.stopButton, R.id.cancelButton, R.id.pauseButton, R.id.deleteButton, R.id.retryButton, R.id.keyboardButton, R.id.settingsButton)) {
                 val action = root.findViewById<View>(id)
                 val rect = android.graphics.Rect()
                 action.getDrawingRect(rect)

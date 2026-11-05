@@ -2,8 +2,8 @@
 
 ## §G
 
-Cancel panel visibility configurable. User choose whether Cancel hides IME panel; disabled hide keeps panel open for immediate fresh dictation. Post-insert keyboard return configurable; disabled return keeps panel active for hands-free dictation. Transcription language remembered per editor application. Editor text editable from compact cursor/Delete controls. Compact keyboard button returns directly to last-used normal keyboard without opening Android picker.
-Compact edit controls let user slide a cursor pad in four directions to move caret and slide Delete left to select text before caret, then release to delete.
+Cancel panel visibility configurable. User choose whether Cancel hides IME panel; disabled hide keeps panel open for immediate fresh dictation. Post-insert keyboard return configurable; disabled return and hide keep panel active for hands-free dictation. Transcription language remembered per editor application. Delete edits selected or preceding editor text. Compact keyboard button returns directly to last-used normal keyboard without opening Android picker.
+Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings/language/keyboard toolbar. Pause/resume one recording without uploading or counting paused time. Existing post-insert and Cancel visibility preferences preserved. Cursor pad removed from current keyboard; Delete gestures retained.
 
 ## §C
 
@@ -13,7 +13,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - Disabled hide resets visible controls and starts existing fresh-recording flow while panel stays open.
 - Existing `hideAfterSuccess` behavior unchanged.
 - Preserve current post-insert keyboard return by default.
-- Disabled post-insert keyboard return skips keyboard switch and panel hide, then starts fresh recording.
+- Disabled post-insert keyboard return skips keyboard switch; disabled hide keeps panel open for fresh recording.
 - `hideAfterSuccess` takes precedence when post-insert keyboard return is disabled; enabled hide closes the panel after insertion.
 - App-specific language choice uses editor package identity, with global-language fallback.
 - Per-app language lookup uses local preferences only; no network or package enumeration on panel startup.
@@ -42,6 +42,8 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | `CursorTrackpadController` | Pure dominant-axis lock and bounded incremental horizontal/vertical step deltas. |
 | `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose compact cursor pad and Delete edit controls with localized accessible labels. |
 | `RemoteSttInputMethodService` / `ime_voice_input.xml` | Expose compact direct keyboard-return button with localized accessible label and safe IME switching fallback. |
+| `VoiceRecorder` / `AudioRecorder` | Pause/resume retain one AAC/M4A recording through native recorder methods. |
+| `RecordingDuration` | Accumulate active intervals only; fresh start resets accumulated time. |
 | `AsrModelCatalog` / `SettingsActivity` | Fetch authenticated `GET {baseUrl}/v1/audio/models`, show advertised transcription IDs in model spinner, refresh on settings resume or connection changes, and keep custom entry when discovery fails. |
 
 | `KeyboardSetupGuide` / `keyboard_setup_guide.xml` | Localized, persisted keyboard-route guide with explicit external/settings actions and a test field; no automatic system keyboard changes. |
@@ -75,7 +77,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V25: IME configuration changes leave at most one recorder active; rebuilt UI and logical state agree; Cancel/Stop remain usable without switching keyboards.
 - V26: Cursor pad locks once to dominant axis after touch slop; horizontal behavior stays unchanged, vertical movement emits only newly crossed bounded `KEYCODE_DPAD_UP`/`KEYCODE_DPAD_DOWN` steps including reversal, tap/cancel emits none, and accessible labels describe four directions.
 - V27: Keyboard-return button is always reachable in OpenVoiceIME panel, cancels recorder/audio focus/upload/scheduled work before switching, prefers `switchToPreviousInputMethod()` on Android 9+, falls back without opening picker when exactly one other enabled IME exists, and exposes localized English/Spanish/default label and content description.
-- V28: IME header places `OpenVoiceIME <version>` at upper left and one compact icon-only keyboard-return control at upper right; control keeps at least a 40dp square touch target, uses localized content description, and consumes no edit-controls-row width.
+- V28: [Historical T15; superseded by V51] Header app/version and compact keyboard-return icon.
 - V29: Model picker uses authenticated server-advertised transcription IDs when available, refreshes after settings resume or connection changes, ignores stale responses, and preserves the current editable model if discovery fails. Future model IDs require no client update.
 
 - V30: Every transcription attempt has total deadline `clamp(5s + audio duration, 10s, 15min)` covering upload, server wait, and response body; unavailable duration falls back to 64 kbit/s audio size. Cancel/timeout cancels HTTP call; timeout retains audio for retry; each attempt invalidates stale results and shows remaining wait. Diagnostics/model discovery also cancel their HTTP calls and have total deadlines.
@@ -84,7 +86,7 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V33: Only a JSON string `text` can become a transcript; null/numeric/boolean/object/array values fail parsing and cannot be inserted.
 - V34: Failed recorder finalization releases recorder, deletes incomplete audio, and returns failure instead of uploading corrupt bytes.
 
-- V35: An inner 300dp panel preserves height despite platform root-layout replacement; transcript/error content scrolls inside weighted status region; action buttons remain outside that region and readable transcript cannot be edited in the keyboard.
+- V35: An inner bounded panel preserves height despite platform root-layout replacement; transcript/error content scrolls inside weighted status region; action buttons remain outside that region and readable transcript cannot be edited in the keyboard.
 
 - V36: Model-discovery controls/status have English and Spanish translations; full debug lint reports zero errors.
 
@@ -104,7 +106,11 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 - V48: Guided keyboard setup offers persisted HeliBoard/current-keyboard routes, refreshes permission/IME readiness on resume, and never changes enabled/default keyboards. Gboard mic restriction and auxiliary-picker limits remain explicit in both locales.
 - V49: Setup buttons open official HeliBoard releases, installed HeliBoard settings, Android keyboard settings, or a user-invoked picker/test field. Missing apps/handlers give localized recovery; route changes preserve provider/token/model settings. Setup remains scrollable at narrow width and larger text.
 
-- V50: IME panel height 260dp, bottom padding 8dp; root/inset and navigation backgrounds use openime_bg with light navigation icons; scrollable recovery keeps actions reachable.
+- V50: IME panel height 260dp, bottom padding 8dp; root/inset and navigation backgrounds match current keyboard theme; navigation icons contrast with that background; scrollable recovery keeps actions reachable.
+- V51: Centered 2×2 Cancel/Pause/Delete/Transcribe buttons share 52dp height and equal widths; settings/language/keyboard toolbar has 48dp touch targets, no More menu or cursor pad. Controls fit 320dp width and enlarged fonts; keyboard follows system light/dark appearance.
+- V52: Pause retains same recorder/file/editor ownership, stops duration accumulation and amplitude updates, abandons audio focus, and sends no request. Resume requests focus and continues same file; Transcribe from either state finalizes once. Cancel/hide/destruction release paused recorder and invalidate late work. Paused view recreation preserves resumable state.
+- V53: Existing `hideAfterSuccess`, `returnToKeyboardAfterInsert`, `hideAfterCancel`, and confirmation preferences retain defaults and saved values. Both post-insert flags false keeps panel and automatically records again; true return switches, true hide closes as before.
+- V54: Settings toolbar opens app settings directly. Delete stays visible in recording/paused/upload/recovery states and edits only editor text; pause/cancel never delete editor text. Pause/resume failure releases recorder/focus and retains finalized audio for retry when possible.
 
 ## §T
 
@@ -132,6 +138,8 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | T18 | x | Review lifecycle/editor compatibility, shorten common dictation deadlines, preserve recovery across view changes, add isolated Android integration coverage, audit settings/storage/network/metrics/gestures, fix verified regressions, and publish signed release. | V21,V30,V32,V37,V38,V39,V40,V41,V42,V43,V44,V45,V46,V47 |
 
 | T19 | x | Add localized guided keyboard setup, route persistence, safe external/settings actions, isolated Android verification, and signed v0.3.16 publication. | V21,V36,V48,V49 |
+
+| T20 | x | Implement centered keyboard, direct toolbar, native pause/resume, accumulated active duration, theme resources, Android lifecycle/layout/preference tests, and signed release with matching project-site APK. | V21,V30,V31,V35,V50,V51,V52,V53,V54 |
 
 ## §B
 
@@ -171,3 +179,4 @@ Compact edit controls let user slide a cursor pad in four directions to move car
 | B32 | 2026-11-01 | built-in provider switch changed URL/model while retaining previous provider credential for subsequent requests | V47 |
 | B33 | 2026-11-01 | debug integration host assigned literal view ID, rejected by Android resource-type lint | V36 |
 | B34 | 2026-11-04 | 300dp weighted panel wasted recording space; transparent inset and unstyled navigation window exposed mismatched background | V50 |
+| B35 | 2026-11-05 | Android verification interrupted by ADB daemon disconnect; transport failure cannot establish app regression or successful verification | reconnect device and rerun complete suite; no product invariant change |

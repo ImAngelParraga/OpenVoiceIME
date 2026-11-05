@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.content.pm.PackageManager
 import android.graphics.Typeface
@@ -24,19 +25,20 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.PopupMenu
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import dev.rankis.openime.audio.AudioRecorder
+import dev.rankis.openime.audio.RecordingDuration
 import dev.rankis.openime.audio.RecordingAudioFocus
 import dev.rankis.openime.audio.VoiceRecorder
 import dev.rankis.openime.audio.RecordingFocus
 import dev.rankis.openime.audio.deleteAbandonedRecordings
 import dev.rankis.openime.metrics.TranscriptionMetricsStore
 import dev.rankis.openime.settings.AppSettings
+import dev.rankis.openime.settings.SettingsActivity
 import dev.rankis.openime.settings.SettingsStore
 import dev.rankis.openime.settings.SettingsValidation
 import dev.rankis.openime.settings.SettingsValidationError
@@ -74,26 +76,24 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private lateinit var recordingAudioFocus: RecordingFocus
     private lateinit var settingsStore: SettingsStore
     private lateinit var metricsStore: TranscriptionMetricsStore
-    private lateinit var versionText: TextView
     private lateinit var statusText: TextView
     private lateinit var errorDetailsInput: EditText
     private lateinit var timerText: TextView
-    private lateinit var levelBar: ProgressBar
+    private lateinit var levelBar: AudioLevelView
     private lateinit var languageButton: TextView
     private lateinit var stopButton: Button
     private lateinit var cancelButton: Button
-    private lateinit var cursorButton: Button
+    private lateinit var pauseButton: Button
+    private lateinit var settingsButton: ImageButton
     private lateinit var deleteButton: Button
     private lateinit var keyboardButton: ImageButton
     private lateinit var retryButton: Button
 
-    private lateinit var cursorGesture: EditorGestureController
     private lateinit var deleteGesture: EditorGestureController
-    private lateinit var cursorTrackpadGesture: CursorTrackpadController
     private lateinit var terminalDeleteGesture: TerminalGestureController
 
     private var state: ImeState = ImeState.Idle
-    private var startedAtMillis = 0L
+    private val recordingDuration = RecordingDuration { SystemClock.elapsedRealtime() }
     private var audioDurationMillis = 0L
     private var uploadDeadlineMillis = 0L
     private var editorSessionId = 0L
@@ -162,12 +162,13 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     @Suppress("DEPRECATION")
     private fun configureInputWindow() {
         val inputWindow = window?.window ?: return
-        val background = ContextCompat.getColor(this, R.color.openime_bg)
+        val background = ContextCompat.getColor(this, R.color.ime_background)
         inputWindow.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(background))
         inputWindow.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
         inputWindow.navigationBarColor = background
         androidx.core.view.WindowCompat.getInsetsController(inputWindow, inputWindow.decorView)
-            .isAppearanceLightNavigationBars = false
+            .isAppearanceLightNavigationBars =
+                resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK != Configuration.UI_MODE_NIGHT_YES
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             inputWindow.isNavigationBarContrastEnforced = false
         }
@@ -186,7 +187,6 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             override fun onViewAttachedToWindow(v: View) { ViewCompat.requestApplyInsets(v) }
             override fun onViewDetachedFromWindow(v: View) = Unit
         })
-        versionText = view.findViewById(R.id.versionText)
         statusText = view.findViewById(R.id.statusText)
         errorDetailsInput = view.findViewById(R.id.errorDetailsInput)
         errorDetailsInput.keyListener = null
@@ -195,34 +195,25 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         languageButton = view.findViewById(R.id.languageButton)
         stopButton = view.findViewById(R.id.stopButton)
         cancelButton = view.findViewById(R.id.cancelButton)
-        cursorButton = view.findViewById(R.id.cursorButton)
+        pauseButton = view.findViewById(R.id.pauseButton)
+        settingsButton = view.findViewById(R.id.settingsButton)
         deleteButton = view.findViewById(R.id.deleteButton)
         keyboardButton = view.findViewById(R.id.keyboardButton)
-        keyboardButton.imageTintList = ContextCompat.getColorStateList(this, R.color.openime_muted)
         retryButton = view.findViewById(R.id.retryButton)
 
         val density = resources.displayMetrics.density
         val touchSlop = ViewConfiguration.get(this).scaledTouchSlop.toFloat()
-        cursorGesture = EditorGestureController(
-            kind = EditorGestureKind.Cursor,
-            horizontalStepPixels = 18f * density,
-            touchSlopPixels = touchSlop,
-        )
         deleteGesture = EditorGestureController(
             kind = EditorGestureKind.Delete,
             horizontalStepPixels = 18f * density,
-            touchSlopPixels = touchSlop,
-        )
-        cursorTrackpadGesture = CursorTrackpadController(
-            horizontalStepPixels = 18f * density,
-            verticalStepPixels = 18f * density,
             touchSlopPixels = touchSlop,
         )
         terminalDeleteGesture = TerminalGestureController(18f * density)
 
         stopButton.setOnClickListener { onPrimaryAction() }
         cancelButton.setOnClickListener { cancelCurrentWork() }
-        cursorButton.setOnTouchListener { _, event -> handleCursorGesture(event) }
+        pauseButton.setOnClickListener { toggleRecordingPause() }
+        settingsButton.setOnClickListener { openSettings() }
         deleteButton.setOnClickListener { handleDeleteTap() }
         deleteButton.setOnTouchListener { _, event -> handleDeleteGesture(event) }
         keyboardButton.setOnClickListener { returnToKeyboard() }
@@ -236,7 +227,6 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             }
         }
 
-        versionText.text = appVersionLabel()
         setupLanguageControls()
         renderCurrentState()
         return view
@@ -309,8 +299,10 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         clearEditorGestures()
 
         if (::recorder.isInitialized) {
+            val retainPausedRecorder = preserveRecording && state == ImeState.Paused
             if (preserveRecording && state == ImeState.Recording) {
-                audioDurationMillis = (SystemClock.elapsedRealtime() - startedAtMillis).coerceAtLeast(1L)
+                recordingDuration.pause()
+                audioDurationMillis = recordingDuration.elapsedMillis.coerceAtLeast(1L)
                 audioFile = recorder.stop()
                 if (audioFile?.exists() == true && audioFile!!.length() > 0L) {
                     state = ImeState.ReadyToUpload
@@ -319,7 +311,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
                     lastErrorMessage = getString(R.string.error_recording_failed)
                 }
             }
-            recorder.cancel()
+            if (!retainPausedRecorder) recorder.cancel()
         }
         if (::recordingAudioFocus.isInitialized) recordingAudioFocus.abandon()
         if (!preserveUpload && state == ImeState.Uploading) {
@@ -331,14 +323,8 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     private fun clearEditorGestures() {
-        if (::cursorGesture.isInitialized) {
-            cursorGesture.cancel()
-        }
         if (::deleteGesture.isInitialized) {
             deleteGesture.cancel()
-        }
-        if (::cursorTrackpadGesture.isInitialized) {
-            cursorTrackpadGesture.cancel()
         }
         if (::terminalDeleteGesture.isInitialized) {
             terminalDeleteGesture.cancel()
@@ -362,6 +348,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         audioFile?.delete()
         audioFile = null
         audioDurationMillis = 0L
+        recordingDuration.pause()
         pendingText = null
         pendingInsertionMessage = null
         pendingHideAfterSuccess = true
@@ -400,7 +387,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             pendingInsertionMessage = null
             lastErrorMessage = null
             state = ImeState.Recording
-            startedAtMillis = SystemClock.elapsedRealtime()
+            recordingDuration.start()
             audioDurationMillis = 0L
             recordingEditorSessionId = editorSessionId
             applyDefaultStatusStyle()
@@ -409,6 +396,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             timerText.text = "00:00"
             levelBar.progress = 0
             showLanguageControls()
+            updatePauseControl()
             stopButton.setText(R.string.button_stop)
             stopButton.isEnabled = true
             cancelButton.setText(R.string.button_cancel)
@@ -426,7 +414,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
 
     private fun onPrimaryAction() {
         when (state) {
-            ImeState.Recording -> stopAndUpload()
+            ImeState.Recording, ImeState.Paused -> stopAndUpload()
             ImeState.ReadyToUpload -> retryUpload()
             ImeState.ReadyToInsert -> {
                 recordingEditorSessionId = editorSessionId
@@ -437,9 +425,65 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         }
     }
 
+    private fun toggleRecordingPause() {
+        if (state != ImeState.Recording && state != ImeState.Paused) return
+        runCatching {
+            if (state == ImeState.Recording) {
+                recorder.pause()
+                recordingDuration.pause()
+                recordingAudioFocus.abandon()
+                state = ImeState.Paused
+                handler.removeCallbacks(tick)
+            } else {
+                recordingAudioFocus.request()
+                recorder.resume()
+                recordingDuration.resume()
+                state = ImeState.Recording
+                handler.post(tick)
+            }
+            renderCaptureState()
+        }.onFailure {
+            handler.removeCallbacks(tick)
+            recordingDuration.pause()
+            audioDurationMillis = recordingDuration.elapsedMillis.coerceAtLeast(1L)
+            audioFile = recorder.stop()
+            recordingAudioFocus.abandon()
+            showError(getString(R.string.error_recording_pause))
+        }
+    }
+
+    private fun renderCaptureState() {
+        applyDefaultStatusStyle()
+        clearErrorDetails()
+        statusText.setText(if (state == ImeState.Paused) R.string.status_paused else R.string.status_recording)
+        val elapsed = recordingDuration.elapsedMillis / 1000
+        timerText.text = "%02d:%02d".format(elapsed / 60, elapsed % 60)
+        if (state == ImeState.Paused) levelBar.progress = 0
+        showLanguageControls()
+        stopButton.setText(R.string.button_stop)
+        stopButton.isEnabled = true
+        cancelButton.setText(R.string.button_cancel)
+        cancelButton.isEnabled = true
+        retryButton.visibility = View.GONE
+    }
+
+    private fun updatePauseControl() {
+        if (!::pauseButton.isInitialized) return
+        pauseButton.isEnabled = state == ImeState.Recording || state == ImeState.Paused
+        pauseButton.setText(if (state == ImeState.Paused) R.string.button_resume else R.string.button_pause)
+        pauseButton.setCompoundDrawablesRelativeWithIntrinsicBounds(
+            if (state == ImeState.Paused) R.drawable.ime_resume else R.drawable.ime_pause, 0, 0, 0,
+        )
+    }
+
+    private fun openSettings() {
+        startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
     private fun stopAndUpload() {
         handler.removeCallbacks(tick)
-        audioDurationMillis = (SystemClock.elapsedRealtime() - startedAtMillis).coerceAtLeast(1L)
+        recordingDuration.pause()
+        audioDurationMillis = recordingDuration.elapsedMillis.coerceAtLeast(1L)
         val file = recorder.stop()
         recordingAudioFocus.abandon()
         if (file == null || !file.exists() || file.length() <= 0L) {
@@ -544,7 +588,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             val error = withContext(Dispatchers.IO) {
                 connectionReadinessError(settingsStore.load())
             }
-            if (validationOperationId != operationId || state != ImeState.Recording || error == null) {
+            if (validationOperationId != operationId || state !in setOf(ImeState.Recording, ImeState.Paused) || error == null) {
                 return@launch
             }
             handler.removeCallbacks(tick)
@@ -596,6 +640,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         val insertionSessionId = editorSessionId
         val connection = currentInputConnection
         state = ImeState.VerifyingInsertion
+        updatePauseControl()
         stopButton.isEnabled = false
         retryButton.visibility = View.GONE
         scope.launch {
@@ -747,7 +792,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
                 resetControls()
                 showLanguageControls()
             }
-            ImeState.Recording -> Unit
+            ImeState.Recording, ImeState.Paused -> renderCaptureState()
             ImeState.Uploading -> {
                 applyDefaultStatusStyle()
                 clearErrorDetails()
@@ -856,7 +901,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     private fun updateRecordingFeedback() {
-        val elapsed = ((SystemClock.elapsedRealtime() - startedAtMillis) / 1000).coerceAtLeast(0)
+        val elapsed = recordingDuration.elapsedMillis / 1000
         timerText.text = "%02d:%02d".format(elapsed / 60, elapsed % 60)
         val amplitude = recorder.maxAmplitude.coerceIn(0, 32767)
         levelBar.progress = ((amplitude / 32767.0) * 100).roundToInt()
@@ -864,95 +909,6 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
 
     private fun shouldStartFreshRecording(): Boolean {
         return state == ImeState.Idle || state == ImeState.Inserted
-    }
-
-    private fun handleCursorGesture(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                activeGestureMode = if (usesTerminalFallback()) GestureMode.Terminal else GestureMode.Rich
-                cursorTrackpadGesture.begin(event.x, event.y)
-                if (activeGestureMode == GestureMode.Rich) {
-                    val snapshot = currentEditorSnapshot()
-                    if (snapshot == null) {
-                        activeEditorGesture = null
-                        cursorGesture.cancel()
-                    } else {
-                        activeEditorGesture = ActiveEditorGesture(
-                            expectedText = snapshot.text,
-                            expectedStartOffset = snapshot.startOffset,
-                            originalSelection = snapshot.selection,
-                            previewSelection = snapshot.selection,
-                        )
-                        cursorGesture.begin(snapshot, event.x, event.y)
-                    }
-                } else {
-                    activeEditorGesture = null
-                    cursorGesture.cancel()
-                }
-            }
-            MotionEvent.ACTION_MOVE -> applyCursorTrackpadMove(event)
-            MotionEvent.ACTION_UP -> {
-                applyCursorTrackpadMove(event)
-                if (activeGestureMode == GestureMode.Rich &&
-                    cursorTrackpadGesture.axis == CursorTrackpadAxis.Horizontal
-                ) {
-                    applyEditorCommand(cursorGesture.finishHorizontal(event.x))
-                } else {
-                    cursorGesture.cancel()
-                }
-                activeEditorGesture = null
-                activeGestureMode = null
-                cursorTrackpadGesture.cancel()
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                if (activeGestureMode == GestureMode.Rich &&
-                    cursorTrackpadGesture.axis == CursorTrackpadAxis.Horizontal
-                ) {
-                    restoreActiveGesture()
-                }
-                cursorGesture.cancel()
-                cursorTrackpadGesture.cancel()
-                activeEditorGesture = null
-                activeGestureMode = null
-            }
-        }
-        return true
-    }
-
-    private fun applyCursorTrackpadMove(event: MotionEvent) {
-        val update = cursorTrackpadGesture.move(event.x, event.y) ?: return
-        when (update.axis) {
-            CursorTrackpadAxis.Horizontal -> {
-                if (activeGestureMode == GestureMode.Rich) {
-                    applyGesturePreview(cursorGesture.moveHorizontal(event.x))
-                } else {
-                    sendCursorKeys(update)
-                }
-            }
-            CursorTrackpadAxis.Vertical -> {
-                if (activeGestureMode == GestureMode.Rich && activeEditorGesture != null) {
-                    cursorGesture.cancel()
-                    activeEditorGesture = null
-                }
-                sendCursorKeys(update)
-            }
-        }
-    }
-
-    private fun sendCursorKeys(update: CursorTrackpadUpdate) {
-        val key = when (update.axis) {
-            CursorTrackpadAxis.Horizontal -> if (update.stepDelta < 0) {
-                android.view.KeyEvent.KEYCODE_DPAD_LEFT
-            } else {
-                android.view.KeyEvent.KEYCODE_DPAD_RIGHT
-            }
-            CursorTrackpadAxis.Vertical -> if (update.stepDelta < 0) {
-                android.view.KeyEvent.KEYCODE_DPAD_UP
-            } else {
-                android.view.KeyEvent.KEYCODE_DPAD_DOWN
-            }
-        }
-        repeat(kotlin.math.abs(update.stepDelta)) { sendDownUpKeyEvents(key) }
     }
 
     private fun handleDeleteGesture(event: MotionEvent): Boolean {
@@ -1182,7 +1138,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
 
     private fun currentEditorSnapshot(): EditorTextSnapshot? = currentInputConnection.editorSnapshot()
 
-    private fun switchToNextKeyboard(): Boolean {
+    protected open fun switchToNextKeyboard(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             runCatching { switchToNextInputMethod(false) }.getOrDefault(false)
         } else {
@@ -1190,7 +1146,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         }
     }
 
-    private fun switchToPreviousOrFallbackKeyboard(): Boolean {
+    protected open fun switchToPreviousOrFallbackKeyboard(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             runCatching { switchToPreviousInputMethod() }.getOrDefault(false)
         ) {
@@ -1232,14 +1188,16 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     private fun applyDefaultStatusStyle() {
-        statusText.gravity = android.view.Gravity.CENTER
-        statusText.textSize = 20f
+        updatePauseControl()
+        statusText.gravity = android.view.Gravity.START
+        statusText.textSize = 16f
         statusText.typeface = Typeface.DEFAULT_BOLD
     }
 
     private fun applyErrorStatusStyle() {
+        updatePauseControl()
         statusText.gravity = android.view.Gravity.START
-        statusText.textSize = 18f
+        statusText.textSize = 16f
         statusText.typeface = Typeface.DEFAULT_BOLD
     }
 
@@ -1249,11 +1207,6 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         timerText.visibility = View.VISIBLE
         levelBar.visibility = View.VISIBLE
         retryButton.setText(R.string.button_retry)
-    }
-
-    private fun appVersionLabel(): String {
-        val info = packageManager.getPackageInfo(packageName, 0)
-        return getString(R.string.ime_version_format, info.versionName)
     }
 
     private fun localizedValidationMessage(validation: SettingsValidation): String {
@@ -1284,6 +1237,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private enum class ImeState {
         Idle,
         Recording,
+        Paused,
         ReadyToUpload,
         Uploading,
         ReadyToInsert,

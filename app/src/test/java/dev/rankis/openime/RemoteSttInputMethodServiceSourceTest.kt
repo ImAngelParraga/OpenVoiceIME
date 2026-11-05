@@ -48,14 +48,14 @@ class RemoteSttInputMethodServiceSourceTest {
     fun testV50PanelAndNavigationInsetsUseOwnBackground() {
         val layout = String(Files.readAllBytes(inputViewLayoutPath()))
         val root = layout.substringBefore("<!--")
-        assertTrue(root.contains("android:background=\"@color/openime_bg\""))
+        assertTrue(root.contains("android:background=\"@color/ime_background\""))
         assertTrue(layout.contains("android:paddingBottom=\"8dp\""))
         val source = String(Files.readAllBytes(serviceSourcePath()))
         assertTrue(functionBody(source, "onCreateInputView").contains("configureInputWindow()"))
         val window = functionBody(source, "configureInputWindow")
         assertTrue(window.contains("setBackgroundDrawable"))
         assertTrue(window.contains("navigationBarColor = background"))
-        assertTrue(window.contains("isAppearanceLightNavigationBars = false"))
+        assertTrue(window.contains("isAppearanceLightNavigationBars ="))
     }
 
     @Test
@@ -63,7 +63,7 @@ class RemoteSttInputMethodServiceSourceTest {
         val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
         val root = factory.newDocumentBuilder().parse(inputViewLayoutPath().toFile()).documentElement
         val namespace = "http://schemas.android.com/apk/res/android"
-        val panel = root.getElementsByTagName("LinearLayout").item(0) as org.w3c.dom.Element
+        val panel = root.getElementsByTagName("dev.rankis.openime.CenteredImePanel").item(0) as org.w3c.dom.Element
         assertTrue(root.tagName == "FrameLayout")
         assertTrue(panel.parentNode === root)
         assertTrue(panel.getAttributeNS(namespace, "layout_height") == "260dp")
@@ -190,7 +190,6 @@ class RemoteSttInputMethodServiceSourceTest {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val body = functionBody(source, "onCreateInputView")
 
-        assertTrue(body.contains("cursorButton.setOnTouchListener"))
         assertTrue(body.contains("deleteButton.setOnTouchListener"))
         assertTrue(source.contains("currentEditorSnapshot()"))
         assertTrue(source.contains("EditorGestureController.deleteTap"))
@@ -207,26 +206,8 @@ class RemoteSttInputMethodServiceSourceTest {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         assertTrue(source.contains("usesTerminalFallback"))
         assertTrue(source.contains("InputType.TYPE_NULL"))
-        assertTrue(source.contains("KEYCODE_DPAD_LEFT"))
-        assertTrue(source.contains("KEYCODE_DPAD_RIGHT"))
-        assertTrue(source.contains("KEYCODE_DPAD_UP"))
-        assertTrue(source.contains("KEYCODE_DPAD_DOWN"))
         assertTrue(source.contains("KEYCODE_DEL"))
         assertTrue(source.contains("sendDownUpKeyEvents"))
-    }
-
-    @Test
-    fun cursorTrackpadSupportsFourDirectionsWithAxisLock() {
-        val source = String(Files.readAllBytes(serviceSourcePath()))
-        val body = functionBody(source, "handleCursorGesture")
-
-        assertTrue(source.contains("CursorTrackpadController"))
-        assertTrue(body.contains("cursorTrackpadGesture.begin"))
-        assertTrue(body.contains("applyCursorTrackpadMove"))
-        assertTrue(source.contains("CursorTrackpadAxis.Horizontal"))
-        assertTrue(source.contains("CursorTrackpadAxis.Vertical"))
-        assertTrue(source.contains("cursorGesture.moveHorizontal"))
-        assertTrue(source.contains("cursorGesture.finishHorizontal"))
     }
 
     @Test
@@ -266,21 +247,15 @@ class RemoteSttInputMethodServiceSourceTest {
     }
 
     @Test
-    fun testV28KeyboardReturnUsesCompactHeaderIcon() {
+    fun testV51ToolbarKeepsDirectSettingsAndKeyboardControls() {
         val layout = String(Files.readAllBytes(inputViewLayoutPath()))
-        val headerStart = layout.indexOf("android:id=\"@+id/imeHeaderRow\"")
-        val editControlsStart = layout.indexOf("android:id=\"@+id/editControlsRow\"")
-        val keyboardButtonStart = layout.indexOf("android:id=\"@+id/keyboardButton\"")
-
-        assertTrue(headerStart >= 0)
-        assertTrue(keyboardButtonStart > headerStart)
-        assertTrue(keyboardButtonStart < editControlsStart)
-        assertTrue(layout.contains("<ImageButton"))
-        assertTrue(layout.contains("android:layout_width=\"40dp\""))
-        assertTrue(layout.contains("android:layout_height=\"40dp\""))
-        assertTrue(layout.contains("android:src=\"@drawable/ic_keyboard_return\""))
-        assertTrue(layout.contains("android:contentDescription=\"@string/button_return_to_keyboard_description\""))
-        assertTrue(layout.contains("android:gravity=\"start|center_vertical\""))
+        assertTrue(layout.contains("@+id/settingsButton"))
+        assertTrue(layout.contains("@+id/pauseButton"))
+        assertTrue(layout.contains("android:layout_height=\"48dp\""))
+        assertTrue(layout.contains("android:layout_width=\"48dp\""))
+        assertFalse(layout.contains("@+id/cursorButton"))
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        assertTrue(functionBody(source, "openSettings").contains("SettingsActivity::class.java"))
     }
 
     private fun serviceSourcePath(): Path {

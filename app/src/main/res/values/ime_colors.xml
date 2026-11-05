@@ -1,0 +1,10 @@
+<resources>
+    <color name="ime_background">#F6F8F2</color>
+    <color name="ime_button">#E8EDDF</color>
+    <color name="ime_text">#26311F</color>
+    <color name="ime_muted">#596550</color>
+    <color name="ime_accent">#47652C</color>
+    <color name="ime_on_accent">#FFFFFF</color>
+    <color name="ime_danger">#A13C35</color>
+    <color name="ime_ripple">#2047652C</color>
+</resources>

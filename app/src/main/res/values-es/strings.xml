@@ -30,7 +30,7 @@
     <string name="button_cursor_description">Mover el cursor a la izquierda, derecha, arriba o abajo</string>
     <string name="button_delete_description">Eliminar el texto seleccionado o el carácter anterior</string>
     <string name="button_return_to_keyboard_description">Volver al teclado normal</string>
-    <string name="button_stop">Detener</string>
+    <string name="button_stop">Transcribir</string>
     <string name="button_retry">Reintentar</string>
     <string name="button_insert">Insertar</string>
     <string name="button_discard">Descartar</string>
@@ -154,4 +154,9 @@
     <string name="setup_server_help">Para dictar también necesitas un servidor y un token válidos. Configúralos y prueba la conexión en Servidor, abajo. El texto de prueba no se guarda como ajuste.</string>
     <string name="setup_configure_server">Configurar servidor de transcripción</string>
     <string name="setup_action_failed">No se pudo abrir esta acción. Comprueba que hay un navegador o una aplicación de ajustes disponible, o abre manualmente los ajustes de teclado de Android.</string>
+    <string name="button_pause">Pausar</string>
+    <string name="button_resume">Reanudar</string>
+    <string name="button_open_settings">Abrir ajustes</string>
+    <string name="status_paused">En pausa</string>
+    <string name="error_recording_pause">No se pudo pausar o reanudar. Reintenta enviar el audio guardado o cancela para empezar de nuevo.</string>
 </resources>

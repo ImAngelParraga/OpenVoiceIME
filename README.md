@@ -20,7 +20,7 @@ Three projects for dictation across devices. Use them together for a self-hosted
 2. Open **OpenVoiceIME → Keyboard setup** and choose **Use HeliBoard** or **Keep my current keyboard**. The guide offers downloads, keyboard settings, microphone permission, and a test field.
 3. Select a provider, enter its token, and choose a transcription model and language. Use **Custom** for your own server.
 4. Test connectivity, enable OpenVoiceIME in Android keyboard settings, then select it from the keyboard picker.
-5. Start dictation and tap **Stop** to send the recording.
+5. Open voice input to record automatically. Use **Pause/Resume** to think between passages, then **Transcribe** to send the recording.
 
 OpenVoiceIME is a **voice-only keyboard** used alongside your normal typing keyboard. HeliBoard can open it from its microphone button; HeliBoard is optional and can be installed directly from its [official GitHub APK](https://github.com/HeliBorg/HeliBoard/releases/latest), without another app store. Gboard's microphone does not provide a supported way to select OpenVoiceIME. You can keep Gboard for typing and use Android's keyboard picker where your phone exposes voice keyboards. See [keyboard setup and HeliBoard instructions](docs/usage.md#choose-how-to-open-dictation).
 
@@ -28,9 +28,13 @@ For a self-hosted backend, follow the [Portable ASR setup guide](https://github.
 
 Release builds require HTTPS. Debug builds allow HTTP for local development. Transcription prompt context is an optional vocabulary hint; cleanup is configured on the server.
 
+To stay in the voice keyboard after inserting text, disable both **Return to keyboard after insert** and **Hide after insert** in Behavior. The next recording starts automatically. Existing saved preferences are preserved on upgrade.
+
+The centered keyboard keeps **Cancel**, **Pause/Resume**, **Delete**, and **Transcribe** visible, with direct settings, language, and keyboard-switch shortcuts. Cancel follows **Hide after cancel**: disable it to restart recording without closing the panel. Delete edits text independently of recording.
+
 ## Recover a dictation
 
-**Retry** resends retained audio after a timeout. **Insert** retries a retained transcript without uploading again; **Copy transcript** provides manual recovery. Changing fields prevents automatic insertion into the new field. Hiding the keyboard preserves pending work while the service remains alive; **Cancel/Discard** deletes it.
+**Retry** resends retained audio after a timeout. **Insert** retries a retained transcript without uploading again; **Copy transcript** provides manual recovery. Changing fields prevents automatic insertion into the new field. Closing the keyboard discards the current dictation. View recreation preserves pending work; **Cancel/Discard** explicitly deletes it.
 
 See [usage and compatibility](docs/usage.md) for timeout, lifecycle, editor, and API details.
 

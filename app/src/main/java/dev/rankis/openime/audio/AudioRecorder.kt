@@ -50,6 +50,14 @@ class AudioRecorder(private val context: Context) : VoiceRecorder {
         }
     }
 
+    override fun pause() {
+        checkNotNull(recorder) { "Recorder is not running" }.pause()
+    }
+
+    override fun resume() {
+        checkNotNull(recorder) { "Recorder is not running" }.resume()
+    }
+
     override fun stop(): File? {
         val file = currentFile
         val mediaRecorder = recorder

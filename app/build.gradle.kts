@@ -11,8 +11,8 @@ android {
         applicationId = "dev.rankis.openime"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "0.3.19"
+        versionCode = 32
+        versionName = "0.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
