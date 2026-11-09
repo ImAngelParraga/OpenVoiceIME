@@ -111,6 +111,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private var currentEditorPackageName: String? = null
     private var inputViewVisible = false
     private var rebuildingInputView = false
+    private var awaitingInputRestart = false
     private var currentEditorFieldId: Int? = null
     private var currentEditorInputType: Int? = null
     private var startRecordingScheduled = false
@@ -120,6 +121,10 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private var terminalDownX = 0f
     private var terminalDownY = 0f
     private var uploadJob: Job? = null
+
+    private val finishUnrestartedInput = Runnable {
+        if (awaitingInputRestart) discardCurrentWork()
+    }
 
     private val tick = object : Runnable {
         override fun run() {
@@ -244,12 +249,15 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
 
     override fun onStartInput(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInput(info, restarting)
-        if (!restarting || info?.packageName != currentEditorPackageName ||
-            info?.fieldId != currentEditorFieldId || info?.inputType != currentEditorInputType
-        ) {
+        val sameEditor = info != null && info.packageName == currentEditorPackageName &&
+            info.fieldId == currentEditorFieldId && info.inputType == currentEditorInputType
+        val finishingCapture = awaitingInputRestart
+        val continuingCapture = finishingCapture && isInputViewShown && sameEditor
+        cancelPendingInputFinish()
+        if (!restarting || !sameEditor || finishingCapture) {
             if (rebuildingInputView) {
                 detachInputView(preserveUpload = true, restoreGesture = false)
-            } else {
+            } else if (!continuingCapture) {
                 discardCurrentWork(restoreGesture = false)
             }
             editorSessionId += 1
@@ -274,12 +282,20 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        if (rebuildingInputView) detachInputView(preserveUpload = true) else discardCurrentWork()
+        if (rebuildingInputView) {
+            detachInputView(preserveUpload = true)
+        } else if (!finishingInput || !deferCaptureFinish()) {
+            discardCurrentWork()
+        }
         super.onFinishInputView(finishingInput)
     }
 
     override fun onFinishInput() {
-        if (rebuildingInputView) detachInputView(preserveUpload = true) else discardCurrentWork()
+        if (rebuildingInputView) {
+            detachInputView(preserveUpload = true)
+        } else if (!deferCaptureFinish()) {
+            discardCurrentWork()
+        }
         if (!rebuildingInputView) editorSessionId += 1
         super.onFinishInput()
     }
@@ -289,6 +305,27 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         recordingAudioFocus.abandon()
         scope.cancel()
         super.onDestroy()
+    }
+
+    private fun deferCaptureFinish(): Boolean {
+        if (awaitingInputRestart) return true
+        if (!inputViewVisible || !isInputViewShown ||
+            (state != ImeState.Recording && state != ImeState.Paused)
+        ) return false
+        // System panels can synchronously finish and restart the still-visible editor.
+        awaitingInputRestart = true
+        inputViewVisible = false
+        cancelScheduledStartRecording()
+        handler.removeCallbacks(tick)
+        runCatching { restoreActiveGesture() }
+        clearEditorGestures()
+        handler.post(finishUnrestartedInput)
+        return true
+    }
+
+    private fun cancelPendingInputFinish() {
+        awaitingInputRestart = false
+        handler.removeCallbacks(finishUnrestartedInput)
     }
 
     private fun detachInputView(preserveUpload: Boolean = false, restoreGesture: Boolean = true, preserveRecording: Boolean = true) {
@@ -335,6 +372,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     private fun discardCurrentWork(restoreGesture: Boolean = true) {
+        cancelPendingInputFinish()
         detachInputView(restoreGesture = restoreGesture, preserveRecording = false)
         operationId += 1
         uploadJob?.cancel()
@@ -414,7 +452,10 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
 
     private fun onPrimaryAction() {
         when (state) {
-            ImeState.Recording, ImeState.Paused -> stopAndUpload()
+            ImeState.Recording, ImeState.Paused -> {
+                recordingEditorSessionId = editorSessionId
+                stopAndUpload()
+            }
             ImeState.ReadyToUpload -> retryUpload()
             ImeState.ReadyToInsert -> {
                 recordingEditorSessionId = editorSessionId

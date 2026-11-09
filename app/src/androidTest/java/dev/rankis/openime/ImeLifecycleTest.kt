@@ -35,6 +35,94 @@ class ImeLifecycleTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
+    fun testV55ImmediateVisibleInputRestartRetainsRecordingAndExplicitTranscribe() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.service.inputWindowShown = true
+            ime.service.onFinishInputView(true)
+            ime.service.onFinishInput()
+            ime.service.onStartInput(ime.info, false)
+            ime.show()
+        }; idle()
+        main {
+            assertTrue(ime.recorder.active)
+            assertSame(file, ime.recorder.lastFile)
+            assertEquals(1, ime.recorder.starts)
+            assertEquals(0, ime.recorder.stops)
+            assertTrue(file.exists())
+            ime.primary()
+        }
+        ime.provider.next().complete(TranscriptionResult.Success("continuous dictation")); idle()
+        main { assertEquals("continuous dictation", ime.view.findViewById<TextView>(R.id.statusText).text.toString()) }
+    }
+
+    @Test
+    fun testV55FinishingInputWithoutImmediateRestartDiscardsRecording() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.service.inputWindowShown = true
+            ime.service.onFinishInputView(true)
+            ime.service.onFinishInput()
+        }; idle()
+        assertFalse(ime.recorder.active)
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun testV55HiddenInputRestartDiscardsRecording() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.service.inputWindowShown = true
+            ime.service.onFinishInputView(true)
+            ime.service.onFinishInput()
+            ime.service.inputWindowShown = false
+            ime.service.onStartInput(ime.info, true)
+        }; idle()
+        assertFalse(ime.recorder.active)
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun testV55ImmediateRestartInDifferentFieldDiscardsRecording() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.service.inputWindowShown = true
+            ime.service.onFinishInputView(true)
+            ime.service.onFinishInput()
+            ime.info = EditorInfo().apply { packageName = "editor.second"; fieldId = 200 }
+            ime.service.onStartInput(ime.info, false)
+        }; idle()
+        assertFalse(ime.recorder.active)
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun testV55ImmediateVisibleRestartKeepsPauseAndCancelStillDiscards() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            ime.pause()
+            ime.service.inputWindowShown = true
+            ime.service.onFinishInputView(true)
+            ime.service.onFinishInput()
+            ime.service.onStartInput(ime.info, false)
+            ime.show()
+        }; idle()
+        main {
+            assertTrue(ime.recorder.paused)
+            assertEquals(1, ime.recorder.starts)
+            assertSame(file, ime.recorder.lastFile)
+            ime.cancel()
+        }; idle()
+        assertFalse(ime.recorder.active)
+        assertFalse(file.exists())
+    }
+
+    @Test
     fun testV51AttachedKeyboardRendersRecordingAndPause() = withIme { ime ->
         main {
             (ime.host.editor.parent as android.view.ViewGroup).removeView(ime.host.editor)
@@ -537,6 +625,8 @@ class ImeLifecycleTest {
 
     private class TestIme(context: Context, val fakeRecorder: VoiceRecorder, val fakeProvider: SttProvider) : RemoteSttInputMethodService() {
         var connection: InputConnection? = null
+        var inputWindowShown = false
+        override fun isInputViewShown() = inputWindowShown
         var hideRequests = 0
         var nextKeyboardRequests = 0
         var previousKeyboardRequests = 0

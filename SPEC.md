@@ -111,6 +111,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V52: Pause retains same recorder/file/editor ownership, stops duration accumulation and amplitude updates, abandons audio focus, and sends no request. Resume requests focus and continues same file; Transcribe from either state finalizes once. Cancel/hide/destruction release paused recorder and invalidate late work. Paused view recreation preserves resumable state.
 - V53: Existing `hideAfterSuccess`, `returnToKeyboardAfterInsert`, `hideAfterCancel`, and confirmation preferences retain defaults and saved values. Both post-insert flags false keeps panel and automatically records again; true return switches, true hide closes as before.
 - V54: Settings toolbar opens app settings directly. Delete stays visible in recording/paused/upload/recovery states and edits only editor text; pause/cancel never delete editor text. Pause/resume failure releases recorder/focus and retains finalized audio for retry when possible.
+- V55: Notification/Quick Settings overlays retain active capture and elapsed duration. A synchronous finish/start for the same still-visible editor preserves the recording/file or paused state without starting another recorder. Actual dismissal, changed editor, destruction, or finish without immediate restart discards capture. Input sessions remain distinct; explicit Transcribe binds retained capture to the current session. Verify through real system IME binding and callback tests.
 
 ## §T
 
@@ -140,6 +141,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T19 | x | Add localized guided keyboard setup, route persistence, safe external/settings actions, isolated Android verification, and signed v0.3.16 publication. | V21,V36,V48,V49 |
 
 | T20 | x | Implement centered keyboard, direct toolbar, native pause/resume, accumulated active duration, theme resources, Android lifecycle/layout/preference tests, and signed release with matching project-site APK. | V21,V30,V31,V35,V50,V51,V52,V53,V54 |
+
+| T21 | x | Preserve active/paused capture across immediate visible input restart after system overlays; verify real Quick Settings binding, duration continuity, dismissal/editor cleanup, and signed v0.4.1 publication. | V21,V32,V52,V55 |
 
 ## §B
 
@@ -180,3 +183,4 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B33 | 2026-11-01 | debug integration host assigned literal view ID, rejected by Android resource-type lint | V36 |
 | B34 | 2026-11-04 | 300dp weighted panel wasted recording space; transparent inset and unstyled navigation window exposed mismatched background | V50 |
 | B35 | 2026-11-05 | Android verification interrupted by ADB daemon disconnect; transport failure cannot establish app regression or successful verification | reconnect device and rerun complete suite; no product invariant change |
+| B36 | 2026-11-09 | Quick Settings collapse synchronously finished/restarted the still-visible editor; unconditional finish cleanup deleted recording and started another | V55 |

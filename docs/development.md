@@ -115,7 +115,9 @@ Connect an Android device with USB debugging enabled, then run:
 ./gradlew testDebugUnitTest connectedDebugAndroidTest
 ```
 
-Debug builds use the separate application ID `dev.rankis.openime.testbed`. Tests do not replace the signed keyboard, alter its preferences, or select another system IME. They launch isolated editor/settings activities and exercise real Android InputConnections, lifecycle callbacks, layout measurement, encrypted settings, local HTTP probes, and concurrent metrics. Lifecycle tests use fake audio capture and controlled server completion, so they do not record microphone audio.
+Debug builds use the separate application ID `dev.rankis.openime.testbed`. Tests do not replace the signed keyboard or alter its preferences. They launch isolated editor/settings activities and exercise real Android InputConnections, lifecycle callbacks, layout measurement, encrypted settings, local HTTP probes, and concurrent metrics. Lifecycle tests use fake audio capture and controlled server completion, so they do not record microphone audio.
+
+`SystemShadeRecordingTest` temporarily selects a debug-only test IME, opens and closes Quick Settings twice, verifies that the same fake recorder/file survives, and checks that dismissal deletes it. Its `finally` block restores the previous default and enabled IMEs. Run device tests sequentially and avoid interacting with the device during this system test.
 
 Validated on Android 13 (API 33). Real system IME binding paths and third-party editor behavior still need device-specific checks.
 

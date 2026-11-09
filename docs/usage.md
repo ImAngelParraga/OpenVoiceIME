@@ -53,6 +53,8 @@ By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`.
 
 Closing the keyboard discards the current dictation and cancels requests. View recreation preserves pending uploads/transcripts; a paused recording remains resumable. Rebuilding an actively recording view finalizes usable audio for **Send audio**. Service destruction clears owned temporary work, and a later service start removes abandoned recording files left by process death.
 
+Opening the notification or Quick Settings panel keeps the current recording running. Closing that panel returns to the same recording; a paused recording stays paused. This covers temporary system panels while the keyboard remains open, rather than recording after leaving the app or dismissing the keyboard.
+
 ## Transcription compatibility
 
 OpenVoiceIME currently has one OpenAI-compatible transcription client. Providers with different upload flows, authentication schemes, or response formats need separate adapters.
