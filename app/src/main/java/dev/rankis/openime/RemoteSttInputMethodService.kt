@@ -590,7 +590,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             }
             handler.removeCallbacks(tick)
             when (result) {
-                is TranscriptionResult.Success -> handleTranscript(result.text, settings)
+                is TranscriptionResult.Success -> handleTranscript(result.text, settings, result.verbatim)
                 is TranscriptionResult.Failure -> showError(localizedTranscriptionError(result.error))
             }
             recordTranscriptionMetrics(
@@ -601,8 +601,8 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         }
     }
 
-    private suspend fun handleTranscript(text: String, settings: AppSettings) = withContext(Dispatchers.Main.immediate) {
-        val commitText = formatCommitText(text, settings.appendTrailingSpace)
+    private suspend fun handleTranscript(text: String, settings: AppSettings, verbatim: Boolean) = withContext(Dispatchers.Main.immediate) {
+        val commitText = formatCommitText(text, settings.appendTrailingSpace, verbatim)
         pendingHideAfterSuccess = settings.hideAfterSuccess
         pendingSelectInsertedText = settings.selectInsertedText
         pendingReturnToKeyboardAfterInsert = settings.returnToKeyboardAfterInsert

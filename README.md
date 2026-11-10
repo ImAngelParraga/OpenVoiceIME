@@ -56,3 +56,13 @@ On Windows, use `gradlew.bat`. The debug APK is `app/build/outputs/apk/debug/Ope
 
 
 Licensed under [Apache 2.0](LICENSE).
+
+### Dictating terminal commands
+
+With the Portable ASR backend, start a recording with `comando`: say `comando
+slash new` for `/new`, or `comando deletreo eme ka de i erre` for `mkdir`.
+Use `fin deletreo` before continuing after spelled letters, and `espacio` for an
+explicit space. Command mode applies only to that recording; it never sends Enter.
+The backend marks exact command responses with `verbatim: true`, so the keyboard
+omits its optional trailing space. See the [command dictation guide](https://github.com/ImAngelParraga/portable-asr/blob/main/docs/dictation.md#terminal-command-dictation)
+for symbols, spelling, case and more examples. Other backends retain normal dictation.

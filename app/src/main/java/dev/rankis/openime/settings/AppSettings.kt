@@ -236,6 +236,6 @@ fun connectionTestFingerprint(settings: AppSettings): String {
         .joinToString(separator = "") { byte -> "%02x".format(byte) }
 }
 
-fun formatCommitText(text: String, appendTrailingSpace: Boolean): String {
-    return if (appendTrailingSpace) "$text " else text
+fun formatCommitText(text: String, appendTrailingSpace: Boolean, verbatim: Boolean = false): String {
+    return if (appendTrailingSpace && !verbatim) "$text " else text
 }

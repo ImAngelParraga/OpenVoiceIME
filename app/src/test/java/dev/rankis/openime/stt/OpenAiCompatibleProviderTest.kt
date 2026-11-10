@@ -1,6 +1,7 @@
 package dev.rankis.openime.stt
 
 import dev.rankis.openime.settings.AppSettings
+import dev.rankis.openime.settings.formatCommitText
 import okhttp3.Request
 import okio.Buffer
 import org.junit.Assert.assertEquals
@@ -14,6 +15,24 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
 class OpenAiCompatibleProviderTest {
+    @Test
+    fun verbatimCommandSkipsTrailingSpace() {
+        val result = parseTranscriptionResponse("""{"text":"mkdir Projects","verbatim":true}""")
+            as TranscriptionResult.Success
+        assertTrue(result.verbatim)
+        assertEquals("mkdir Projects", formatCommitText(result.text, true, result.verbatim))
+    }
+
+    @Test
+    fun missingOrNonBooleanVerbatimKeepsOrdinaryDictationFormatting() {
+        listOf("", ",\"verbatim\":false", ",\"verbatim\":\"true\"", ",\"verbatim\":1", ",\"verbatim\":null").forEach { flag ->
+            val result = parseTranscriptionResponse("""{"text":"hello"$flag}""")
+                as TranscriptionResult.Success
+            assertFalse(result.verbatim)
+            assertEquals("hello ", formatCommitText(result.text, true, result.verbatim))
+        }
+    }
+
     @Test
     fun testV33RejectsNonStringTranscriptInsteadOfInsertingNullOrJson() {
         listOf("null", "42", "true", "{}", "[]").forEach { value ->

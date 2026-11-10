@@ -35,6 +35,39 @@ class ImeLifecycleTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
+    fun testV56VerbatimCommandSurvivesConfirmationAndViewRebuild() = withIme { ime ->
+        main {
+            val store = SettingsStore(ime.host)
+            store.save(store.load().copy(appendTrailingSpace = true))
+            ime.show()
+        }; idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("mkdir Projects", verbatim = true)); idle()
+        main {
+            assertEquals("", ime.host.editor.text.toString())
+            ime.service.onConfigurationChanged(Configuration(ime.service.resources.configuration))
+            ime.rebuild()
+        }; idle()
+        main {
+            assertEquals("mkdir Projects", ime.view.findViewById<TextView>(R.id.statusText).text.toString())
+            ime.primary()
+        }; idle()
+        main { assertEquals("mkdir Projects", ime.host.editor.text.toString()) }
+    }
+
+    @Test
+    fun testV56VerbatimCommandAutoInsertionHasNoTrailingSpaceOrEnter() = withIme { ime ->
+        main {
+            val store = SettingsStore(ime.host)
+            store.save(store.load().copy(appendTrailingSpace = true, confirmBeforeInsert = false))
+            ime.show()
+        }; idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("/new", verbatim = true)); idle()
+        main { assertEquals("/new", ime.host.editor.text.toString()) }
+    }
+
+    @Test
     fun testV55ImmediateVisibleInputRestartRetainsRecordingAndExplicitTranscribe() = withIme { ime ->
         main { ime.show() }; idle()
         val file = ime.recorder.lastFile!!

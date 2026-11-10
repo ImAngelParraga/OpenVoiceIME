@@ -8,7 +8,7 @@ interface SttProvider {
 }
 
 sealed class TranscriptionResult {
-    data class Success(val text: String) : TranscriptionResult()
+    data class Success(val text: String, val verbatim: Boolean = false) : TranscriptionResult()
     data class Failure(val error: TranscriptionError) : TranscriptionResult()
 }
 

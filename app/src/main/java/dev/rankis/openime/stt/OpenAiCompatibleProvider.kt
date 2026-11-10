@@ -80,7 +80,8 @@ fun parseTranscriptionResponse(json: String): TranscriptionResult {
     if (transcript.isBlank()) {
         return TranscriptionResult.Failure(TranscriptionError.EmptyTranscript)
     }
-    return TranscriptionResult.Success(transcript)
+    val verbatim = runCatching { JSONObject(json).opt("verbatim") == true }.getOrDefault(false)
+    return TranscriptionResult.Success(transcript, verbatim)
 }
 
 private fun defaultClient(): OkHttpClient {

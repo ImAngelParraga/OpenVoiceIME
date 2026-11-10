@@ -113,6 +113,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V54: Settings toolbar opens app settings directly. Delete stays visible in recording/paused/upload/recovery states and edits only editor text; pause/cancel never delete editor text. Pause/resume failure releases recorder/focus and retains finalized audio for retry when possible.
 - V55: Notification/Quick Settings overlays retain active capture and elapsed duration. A synchronous finish/start for the same still-visible editor preserves the recording/file or paused state without starting another recorder. Actual dismissal, changed editor, destruction, or finish without immediate restart discards capture. Input sessions remain distinct; explicit Transcribe binds retained capture to the current session. Verify through real system IME binding and callback tests.
 
+- V56: Boolean audio-response verbatim=true suppresses configured trailing space for that transcript; missing, false or nonboolean metadata preserves normal insertion. Exact prepared pending text survives existing confirmation/recovery, and no Enter is sent automatically.
+
 ## §T
 
 | id | status | goal | cites |
@@ -143,6 +145,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T20 | x | Implement centered keyboard, direct toolbar, native pause/resume, accumulated active duration, theme resources, Android lifecycle/layout/preference tests, and signed release with matching project-site APK. | V21,V30,V31,V35,V50,V51,V52,V53,V54 |
 
 | T21 | x | Preserve active/paused capture across immediate visible input restart after system overlays; verify real Quick Settings binding, duration continuity, dismissal/editor cleanup, and signed v0.4.1 publication. | V21,V32,V52,V55 |
+
+| T22 | x | Preserve service command text using strict boolean verbatim metadata, verify parser/insertion formatting and publish signed release. | V21,V31,V38,V56 |
 
 ## §B
 
