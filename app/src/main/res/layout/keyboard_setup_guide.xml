@@ -218,6 +218,33 @@
                 android:textSize="14sp" />
         </LinearLayout>
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/shortcut_title"
+            android:textColor="@color/openime_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/shortcut_instructions"
+            android:textColor="@color/openime_text"
+            android:textSize="14sp" />
+        <Button
+            android:id="@+id/setupShortcutButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/shortcut_setup" />
+        <TextView
+            android:id="@+id/setupShortcutStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/openime_text"
+            android:accessibilityLiveRegion="polite" />
+        <TextView
             android:id="@+id/setupTestTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

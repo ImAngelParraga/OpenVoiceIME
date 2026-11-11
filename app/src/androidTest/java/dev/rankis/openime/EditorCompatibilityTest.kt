@@ -17,6 +17,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.math.roundToInt
 
 @RunWith(AndroidJUnit4::class)
 class EditorCompatibilityTest {
@@ -34,7 +35,7 @@ class EditorCompatibilityTest {
                 root.layout(0, 0, width, root.measuredHeight)
                 val actions = listOf(R.id.cancelButton, R.id.pauseButton, R.id.deleteButton, R.id.stopButton)
                     .map { root.findViewById<View>(it) }
-                assertEquals((52 * density).toInt(), actions.first().height)
+                assertEquals((52 * density).roundToInt(), actions.first().height)
                 actions.forEach { action ->
                     assertEquals(actions.first().height, action.height)
                     assertTrue(kotlin.math.abs(actions.first().width - action.width) <= 1)
@@ -60,7 +61,7 @@ class EditorCompatibilityTest {
         root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         root.layout(0, 0, width, root.measuredHeight)
-        assertEquals((260 * density).toInt(), root.height)
+        assertEquals((260 * density).roundToInt(), root.height)
         val status = root.findViewById<View>(R.id.statusText)
         val timer = root.findViewById<View>(R.id.timerText)
         fun bounds(view: View) = android.graphics.Rect().also {

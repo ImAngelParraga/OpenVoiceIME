@@ -158,6 +158,18 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         recordingAudioFocus = createRecordingFocus()
         settingsStore = SettingsStore(this)
         metricsStore = TranscriptionMetricsStore(this)
+        HardwareDictation.attach(this)
+    }
+
+    override fun onEvaluateInputViewShown(): Boolean =
+        HardwareDictation.owns(this) || super.onEvaluateInputViewShown()
+
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean =
+        HardwareDictation.owns(this) || super.onShowInputRequested(flags, configChange)
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        if (!rebuildingInputView) HardwareDictation.hidden(this)
     }
 
     protected open fun createSttProvider(): SttProvider = OpenAiCompatibleProvider()
@@ -265,12 +277,14 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         updateCurrentEditorPackageName(info)
         currentEditorFieldId = info?.fieldId
         currentEditorInputType = info?.inputType
+        HardwareDictation.showPending(this)
     }
 
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         updateCurrentEditorPackageName(info)
         inputViewVisible = true
+        HardwareDictation.shown(this)
         renderCurrentState()
         if (shouldStartFreshRecording()) {
             scheduleStartRecordingOrShowSetupError()
@@ -301,6 +315,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     override fun onDestroy() {
+        HardwareDictation.detach(this)
         discardCurrentWork()
         recordingAudioFocus.abandon()
         scope.cancel()
@@ -1180,6 +1195,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private fun currentEditorSnapshot(): EditorTextSnapshot? = currentInputConnection.editorSnapshot()
 
     protected open fun switchToNextKeyboard(): Boolean {
+        if (HardwareDictation.finish(this)) return true
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             runCatching { switchToNextInputMethod(false) }.getOrDefault(false)
         } else {
@@ -1188,6 +1204,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     protected open fun switchToPreviousOrFallbackKeyboard(): Boolean {
+        if (HardwareDictation.finish(this)) return true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             runCatching { switchToPreviousInputMethod() }.getOrDefault(false)
         ) {

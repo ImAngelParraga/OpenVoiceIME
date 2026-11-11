@@ -2,6 +2,9 @@ package dev.rankis.openime
 
 import dev.rankis.openime.audio.RecordingFocus
 import dev.rankis.openime.audio.VoiceRecorder
+import dev.rankis.openime.settings.AppSettings
+import dev.rankis.openime.stt.SttProvider
+import dev.rankis.openime.stt.TranscriptionResult
 import java.io.File
 
 /** Isolated recorder for tests that exercise Android's actual IME binding. */
@@ -14,8 +17,16 @@ class SystemImeTestService : RemoteSttInputMethodService() {
     }
 
     override fun onDestroy() {
-        instance = null
+        if (instance === this) instance = null
         super.onDestroy()
+    }
+
+    override fun createSttProvider() = object : SttProvider {
+        override suspend fun transcribe(
+            audioFile: File,
+            settings: AppSettings,
+            timeoutMillis: Long,
+        ) = TranscriptionResult.Success("shortcut dictation")
     }
 
     override fun createRecorder(): VoiceRecorder = testRecorder

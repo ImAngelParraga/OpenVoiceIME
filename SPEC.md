@@ -48,6 +48,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 | `KeyboardSetupGuide` / `keyboard_setup_guide.xml` | Localized, persisted keyboard-route guide with explicit external/settings actions and a test field; no automatic system keyboard changes. |
 
+| `DictationShortcutService` / `HardwareDictation` | Optional exact hardware shortcut, bounded main-thread handoff to current voice IME, session-scoped visibility and prior-IME return; no screen retrieval or global keyboard-visibility changes. |
+
 ## §V
 
 - V1: Fresh `AppSettings` and legacy stored settings use `hideAfterCancel == true`.
@@ -115,6 +117,11 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 - V56: Boolean audio-response verbatim=true suppresses configured trailing space for that transcript; missing, false or nonboolean metadata preserves normal insertion. Exact prepared pending text survives existing confirmation/recovery, and no Enter is sent automatically.
 
+- V57: Optional Android 11+ Accessibility shortcut Ctrl+Shift+Space opens the enabled voice IME from another selected keyboard without changing system hardware-keyboard visibility preference. Exact modifiers only; consume matched Space down/repeats/up, pass unrelated events, never restart active work. No screen-content capability or typed-text storage.
+- V58: Shortcut handoff expires within three seconds without an editor; initial hidden callbacks cannot cancel an unshown handoff; closing/cancel/successful return restores the prior enabled IME, never overrides an unrelated manual keyboard change, and preserves existing recording/dismissal preferences and configuration-rebuild ownership. Localized setup exposes optional system approval and refreshed service status.
+
+- V59: Shortcut window requests run after input-start callback completion and only for the currently attached owning IME; callbacks from a destroyed prior instance cannot finish a newer session. Verify repeated Cancel/keyboard-return/transcription round trips through real system binding.
+
 ## §T
 
 | id | status | goal | cites |
@@ -147,6 +154,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T21 | x | Preserve active/paused capture across immediate visible input restart after system overlays; verify real Quick Settings binding, duration continuity, dismissal/editor cleanup, and signed v0.4.1 publication. | V21,V32,V52,V55 |
 
 | T22 | x | Preserve service command text using strict boolean verbatim metadata, verify parser/insertion formatting and publish signed release. | V21,V31,V38,V56 |
+
+| T23 | x | Add optional global hardware dictation shortcut, localized accessibility setup, bounded IME handoff and prior-keyboard return; verify key filtering/system binding and publish signed v0.4.3. | V21,V36,V52,V53,V57,V58,V59 |
 
 ## §B
 
@@ -188,3 +197,15 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B34 | 2026-11-04 | 300dp weighted panel wasted recording space; transparent inset and unstyled navigation window exposed mismatched background | V50 |
 | B35 | 2026-11-05 | Android verification interrupted by ADB daemon disconnect; transport failure cannot establish app regression or successful verification | reconnect device and rerun complete suite; no product invariant change |
 | B36 | 2026-11-09 | Quick Settings collapse synchronously finished/restarted the still-visible editor; unconditional finish cleanup deleted recording and started another | V55 |
+| B37 | 2026-11-11 | Shell-injected key combinations bypassed Accessibility key filtering in device test; exercise callback explicitly and verify real system IME binding, retain physical-keyboard verification limit. | test harness correction; V57 unchanged |
+| B38 | 2026-11-11 | Root-inset visibility changed before IME hide animation completed; delayed notifyImeHidden dismissed the next panel. Await WindowInsetsAnimation completion before every shortcut handoff. | test harness correction; V58 retains pending-handoff guard |
+| B39 | 2026-11-11 | Test attempted hidden UiAutomation syncInputTransactions API; use public waitForIdle and measured IME visibility instead. | test compile correction; no product invariant |
+| B40 | 2026-11-11 | isInputViewShown can remain true on destroyed IME after direct keyboard switch; await actual binding/instance teardown rather than stale source visibility. | test harness correction; V58 |
+| B41 | 2026-11-11 | Recorder startup callback preceded platform input-view visibility; assertion sampled before show completed. Await recorder and visible input view together. | test harness correction; V57 |
+| B42 | 2026-11-11 | Shortcut handoff issued a window request inside input-start and matched old callbacks by component only. Post the request after callback completion and require current service identity. | V59 |
+| B43 | 2026-11-11 | ADB daemon disappeared during complete device suite, producing EOF/connection-refused and ddmlib class-loading errors. Reconnect and rerun full suite in a fresh Gradle process. | transport failure; same verification rule as B35 |
+| B44 | 2026-11-11 | Lint could not infer Android 11 shortcut gating across the posted window request; add explicit runtime API guard at requestShowSelf. | V57; lintDebug |
+| B45 | 2026-11-11 | Layout tests truncated dp-to-pixel expectations at fractional density while Android rounds XML dimensions; use roundToInt for 52dp actions and 260dp panel. | V50,V51; test correction |
+| B46 | 2026-11-11 | Resumed-typing test injected keys after default IME changed but before typing keyboard finished binding. Await destination show/hide animation before injecting text. | V58; test correction |
+| B47 | 2026-11-11 | Existing system-overlay test requested IME during asynchronous binding before editor focus on Android 16. Select test IME before launch, await active focused editor, and explicitly show it. | V55; test correction |
+| B48 | 2026-11-11 | Android 16 emulator reported a visible qwerty hardware keyboard with virtual-keyboard visibility disabled, so the ordinary overlay-test IME correctly refused to show. Snapshot/enable that system option only for the overlay test, then restore it. | V55; test isolation |

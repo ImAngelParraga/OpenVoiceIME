@@ -159,4 +159,14 @@
     <string name="button_open_settings">Abrir ajustes</string>
     <string name="status_paused">En pausa</string>
     <string name="error_recording_pause">No se pudo pausar o reanudar. Reintenta enviar el audio guardado o cancela para empezar de nuevo.</string>
+    <string name="shortcut_service_name">Atajo de teclado de OpenVoiceIME</string>
+    <string name="shortcut_service_description">Abre el dictado con Ctrl+Mayús+Espacio mientras usas un teclado físico. Filtra eventos para este atajo; no lee la pantalla ni guarda lo escrito. Activa primero OpenVoiceIME en los ajustes de teclado. Requiere Android 11 o posterior.</string>
+    <string name="shortcut_title">Atajo de teclado físico</string>
+    <string name="shortcut_instructions">Mantén oculto el teclado virtual mientras escribes. Activa Atajo de teclado de OpenVoiceIME en los ajustes de Accesibilidad de Android. Con un campo de texto seleccionado, pulsa Ctrl+Mayús+Espacio para abrir la grabación. Al cerrar el panel vuelves al teclado anterior. Este servicio opcional filtra eventos de teclado sin leer la pantalla ni guardar lo escrito.</string>
+    <string name="shortcut_setup">Configurar atajo de teclado</string>
+    <string name="shortcut_enabled">Servicio de atajo activado: Ctrl+Mayús+Espacio</string>
+    <string name="shortcut_disabled">Servicio de atajo desactivado. Actívalo en los ajustes de Accesibilidad de Android.</string>
+    <string name="shortcut_unsupported">El atajo global requiere Android 11 o posterior.</string>
+    <string name="shortcut_enable_ime">Activa primero OpenVoiceIME en los ajustes de teclado de Android.</string>
+    <string name="shortcut_open_failed">No se pudo abrir el dictado. Selecciona un campo de texto y vuelve a pulsar Ctrl+Mayús+Espacio.</string>
 </resources>

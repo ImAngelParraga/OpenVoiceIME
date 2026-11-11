@@ -28,6 +28,17 @@ Gboard's microphone uses Google's own voice typing; there is no supported settin
 
 HeliBoard itself describes both [direct APK installation](https://github.com/HeliBorg/HeliBoard/wiki#installation) and [toolbar customization](https://github.com/HeliBorg/HeliBoard/wiki/5.-Toolbar). Its [voice shortcut implementation](https://github.com/HeliBorg/HeliBoard/blob/main/app/src/main/java/helium314/keyboard/latin/RichInputMethodManager.kt) selects from Android's voice-IME shortcuts; it does not configure OpenVoiceIME's server or models. Installing HeliBoard does not replace the endpoint/token setup in OpenVoiceIME.
 
+### Bluetooth or USB keyboard shortcut (Android 11+)
+
+1. Enable OpenVoiceIME as an Android keyboard and grant microphone access.
+2. Open **OpenVoiceIME → Keyboard setup → Set up keyboard shortcut**.
+3. In Android Accessibility settings, enable **OpenVoiceIME keyboard shortcut**. This is optional and requires explicit system approval.
+4. Leave **Use on-screen keyboard** off under Android’s physical-keyboard settings.
+5. Focus a text field and press **Ctrl+Shift+Space**. The recording panel opens while the physical keyboard stays connected.
+6. Tap **Transcribe** to finish dictation. The normal post-insert preferences still apply; when returning, the shortcut session selects the keyboard that was active before it opened. **Cancel** with hide enabled, Back, or the keyboard toolbar button also closes the session and restores that keyboard.
+
+HeliBoard can stay selected between recordings. Holding or repeating the shortcut does not restart an active recording; unrelated key combinations pass through normally. No screen-content access or typed-text storage is requested. On sideloaded installations, Android may require **Allow restricted settings** in the app’s system information menu before it lets you enable the service. Other accessibility services that filter keys or system-reserved shortcuts may prevent delivery. OnePlus Pad 3 / Android 16 and Logitech MX Keys Mini require device-specific verification.
+
 ## Recording controls
 
 Opening OpenVoiceIME starts recording automatically. **Pause** suspends capture without sending audio; **Resume** continues the same file. Paused time is excluded from the recording timer and submitted audio. **Transcribe** sends the combined recording from either state.

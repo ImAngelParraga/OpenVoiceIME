@@ -83,6 +83,9 @@ class KeyboardSetupTest {
                 assertEquals(KeyboardSetupGuide.HELIBOARD_DOWNLOAD, requested.single().dataString)
                 root.findViewById<Button>(R.id.enableImeButton).performClick()
                 assertEquals(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS, requested.last().action)
+                root.findViewById<Button>(R.id.setupShortcutButton).performClick()
+                assertEquals(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS, requested.last().action)
+                assertTrue(root.findViewById<TextView>(R.id.setupShortcutStatus).text.isNotBlank())
                 installed = true
                 guide.refresh(false, false)
                 assertTrue(openHeli.isEnabled)

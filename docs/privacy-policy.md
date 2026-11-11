@@ -5,7 +5,7 @@ permalink: /privacy-policy/
 
 # OpenVoiceIME Privacy Policy
 
-Effective date: 2026-11-01
+Effective date: 2026-11-11
 
 OpenVoiceIME is an Android input method that records speech, sends it to a user-configured speech-to-text provider, and inserts the returned transcript into the active text field.
 
@@ -25,6 +25,10 @@ Audio is recorded on your device only when you start a dictation session. The re
 The selected provider processes the audio and returns transcript text. OpenVoiceIME inserts that text into the currently focused app according to your settings.
 
 OpenVoiceIME does not operate its own backend service for transcription.
+
+## Optional Physical Keyboard Shortcut
+
+If you explicitly enable the keyboard shortcut Accessibility service, Android delivers key events so OpenVoiceIME can recognize Ctrl+Shift+Space and open dictation while another keyboard is selected. Other key combinations pass through. The service does not request screen-content access, read screen text, store typed text, or send key events to a server. You can disable it in Android Accessibility settings at any time.
 
 ## API Tokens And Provider Settings
 

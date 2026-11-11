@@ -5,14 +5,18 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.view.View
+import android.view.accessibility.AccessibilityManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.RadioGroup
 import android.widget.TextView
 import dev.rankis.openime.R
+import dev.rankis.openime.DictationShortcutService
 
 class KeyboardSetupGuide(
     private val context: Context,
@@ -64,6 +68,9 @@ class KeyboardSetupGuide(
         root.findViewById<Button>(R.id.enableImeButton).setOnClickListener {
             open(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
         }
+        root.findViewById<Button>(R.id.setupShortcutButton).setOnClickListener {
+            open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
         root.findViewById<Button>(R.id.setupDownloadHeliboard).setOnClickListener {
             open(Intent(Intent.ACTION_VIEW, Uri.parse(HELIBOARD_DOWNLOAD)))
         }
@@ -86,6 +93,20 @@ class KeyboardSetupGuide(
     }
 
     fun refresh(microphoneGranted: Boolean, imeEnabled: Boolean) {
+        val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        val accessibility = context.getSystemService(AccessibilityManager::class.java)
+        val shortcutEnabled = accessibility.getEnabledAccessibilityServiceList(
+            AccessibilityServiceInfo.FEEDBACK_ALL_MASK,
+        ).any {
+            val info = it.resolveInfo.serviceInfo
+            info.packageName == context.packageName && info.name == DictationShortcutService::class.java.name
+        }
+        root.findViewById<Button>(R.id.setupShortcutButton).isEnabled = supported
+        root.findViewById<TextView>(R.id.setupShortcutStatus).setText(when {
+            !supported -> R.string.shortcut_unsupported
+            shortcutEnabled -> R.string.shortcut_enabled
+            else -> R.string.shortcut_disabled
+        })
         if (!initialExpansionSet) {
             panel.visibility = if (!microphoneGranted || !imeEnabled || routes.checkedRadioButtonId == -1) {
                 View.VISIBLE
