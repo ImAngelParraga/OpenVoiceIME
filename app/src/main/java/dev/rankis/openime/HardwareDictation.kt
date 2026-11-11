@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 
 /** Main-thread handoff between the shortcut listener and the bound voice keyboard. */
 internal object HardwareDictation {
@@ -74,16 +75,24 @@ internal object HardwareDictation {
         if (owns(ime) && session?.shown == true) finish()
     }
 
-    fun finish(): Boolean {
+    fun transcribeAndHide(): Boolean {
+        if (session?.shown == false) return true
+        val ime = service ?: return session != null
+        val selected = Settings.Secure.getString(ime.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
+        val isSelected = ComponentName.unflattenFromString(selected.orEmpty()) == ComponentName(ime, ime.javaClass)
+        return (isSelected && ime.finishDictationFromKeyboard()) || session != null
+    }
+
+    fun finish(restorePrevious: Boolean = true): Boolean {
         val current = session ?: return false
         session = null
         handler.removeCallbacks(expire)
-        if (current.selected() != current.target) return false
+        if (!restorePrevious || current.selected() != current.target) return false
         return current.previous?.let { current.switch(it) } ?: false
     }
 
-    fun finish(ime: RemoteSttInputMethodService): Boolean {
+    fun finish(ime: RemoteSttInputMethodService, restorePrevious: Boolean = true): Boolean {
         if (!owns(ime)) return false
-        return finish()
+        return finish(restorePrevious)
     }
 }

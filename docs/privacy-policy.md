@@ -28,7 +28,7 @@ OpenVoiceIME does not operate its own backend service for transcription.
 
 ## Optional Physical Keyboard Shortcut
 
-If you explicitly enable the keyboard shortcut Accessibility service, Android delivers key events so OpenVoiceIME can recognize Ctrl+Shift+Space and open dictation while another keyboard is selected. Other key combinations pass through. The service does not request screen-content access, read screen text, store typed text, or send key events to a server. You can disable it in Android Accessibility settings at any time.
+If you explicitly enable the keyboard shortcut Accessibility service, Android delivers key events so OpenVoiceIME can recognize Ctrl+Shift+Space to open dictation while another keyboard is selected, and Ctrl+Shift+Enter to finish dictation and hide its panel. Other key combinations pass through. The service does not request screen-content access, read screen text, store typed text, or send key events to a server. You can disable it in Android Accessibility settings at any time.
 
 ## API Tokens And Provider Settings
 

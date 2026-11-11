@@ -48,7 +48,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 | `KeyboardSetupGuide` / `keyboard_setup_guide.xml` | Localized, persisted keyboard-route guide with explicit external/settings actions and a test field; no automatic system keyboard changes. |
 
-| `DictationShortcutService` / `HardwareDictation` | Optional exact hardware shortcut, bounded main-thread handoff to current voice IME, session-scoped visibility and prior-IME return; no screen retrieval or global keyboard-visibility changes. |
+| `DictationShortcutService` / `HardwareDictation` | Optional open/finish chords, bounded main-thread IME handoff, session visibility and normal prior-IME return; explicit finish hides while keeping the voice IME selected. No screen retrieval or global visibility changes. |
 
 ## §V
 
@@ -118,9 +118,12 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V56: Boolean audio-response verbatim=true suppresses configured trailing space for that transcript; missing, false or nonboolean metadata preserves normal insertion. Exact prepared pending text survives existing confirmation/recovery, and no Enter is sent automatically.
 
 - V57: Optional Android 11+ Accessibility shortcut Ctrl+Shift+Space opens the enabled voice IME from another selected keyboard without changing system hardware-keyboard visibility preference. Exact modifiers only; consume matched Space down/repeats/up, pass unrelated events, never restart active work. No screen-content capability or typed-text storage.
-- V58: Shortcut handoff expires within three seconds without an editor; initial hidden callbacks cannot cancel an unshown handoff; closing/cancel/successful return restores the prior enabled IME, never overrides an unrelated manual keyboard change, and preserves existing recording/dismissal preferences and configuration-rebuild ownership. Localized setup exposes optional system approval and refreshed service status.
+- V58: Shortcut handoff expires within three seconds without an editor; initial hidden callbacks cannot cancel an unshown handoff; normal closing/cancel/successful return restores the prior enabled IME (explicit insert-and-hide follows V60), never overrides an unrelated manual keyboard change, and preserves existing recording/dismissal preferences and configuration-rebuild ownership. Localized setup exposes optional system approval and refreshed service status.
 
 - V59: Shortcut window requests run after input-start callback completion and only for the currently attached owning IME; callbacks from a destroyed prior instance cannot finish a newer session. Verify repeated Cancel/keyboard-return/transcription round trips through real system binding.
+
+- V60: Ctrl+Shift+Enter (including numpad Enter) while the voice panel is active stops recording/paused capture once, transcribes, inserts without confirmation for this action, then hides without switching IMEs only after accepted insertion. Consume matching Enter down/repeats/up while opening or active; never forward Enter or editor-submit actions for that shortcut; busy/inactive recording states cannot duplicate work. Normal on-screen actions/preferences remain unchanged.
+- V61: Shortcut failures retain visible recovery and owned audio/text. Explicit shortcut retry uses retained work; confirmation/visibility overrides survive recreation/retry for that dictation only. Discard/dismissal/new editor clears intent; late completion cannot close another panel or insert into another field.
 
 ## §T
 
@@ -156,6 +159,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T22 | x | Preserve service command text using strict boolean verbatim metadata, verify parser/insertion formatting and publish signed release. | V21,V31,V38,V56 |
 
 | T23 | x | Add optional global hardware dictation shortcut, localized accessibility setup, bounded IME handoff and prior-keyboard return; verify key filtering/system binding and publish signed v0.4.3. | V21,V36,V52,V53,V57,V58,V59 |
+
+| T24 | x | Add Ctrl+Shift+Enter transcribe/insert/hide action, suppress previous-IME return for that successful hide, verify failure/retry/ownership/key delivery and publish signed v0.4.4. | V21,V31,V32,V52,V53,V60,V61 |
 
 ## §B
 
@@ -209,3 +214,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B46 | 2026-11-11 | Resumed-typing test injected keys after default IME changed but before typing keyboard finished binding. Await destination show/hide animation before injecting text. | V58; test correction |
 | B47 | 2026-11-11 | Existing system-overlay test requested IME during asynchronous binding before editor focus on Android 16. Select test IME before launch, await active focused editor, and explicitly show it. | V55; test correction |
 | B48 | 2026-11-11 | Android 16 emulator reported a visible qwerty hardware keyboard with virtual-keyboard visibility disabled, so the ordinary overlay-test IME correctly refused to show. Snapshot/enable that system option only for the overlay test, then restore it. | V55; test isolation |
+| B49 | 2026-11-11 | Bare this inside scope.launch referred to CoroutineScope rather than the IME when closing a shortcut session. Qualify the service receiver. | compiler coverage; no new invariant |
+| B50 | 2026-11-11 | Hardware test nested runOnMainSync by calling the key-dispatch helper inside a main-thread block. Dispatch the finish chord outside that block. | test harness correction; no new invariant |
+| B51 | 2026-11-11 | Hardware test requested the typing keyboard before the focused editor was served (PHASE_CLIENT_VIEW_SERVED). Await window focus and InputMethodManager.isActive before showing it. | test readiness; V60 unchanged |
+| B52 | 2026-11-11 | Accepted insertion could exit on hidden/changed editor before clearing one-dictation finish intent. Consume the intent on acceptance before any visibility/session early return. | V61 |

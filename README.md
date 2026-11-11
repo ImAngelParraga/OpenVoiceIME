@@ -32,9 +32,9 @@ To stay in the voice keyboard after inserting text, disable both **Return to key
 
 The centered keyboard keeps **Cancel**, **Pause/Resume**, **Delete**, and **Transcribe** visible, with direct settings, language, and keyboard-switch shortcuts. Cancel follows **Hide after cancel**: disable it to restart recording without closing the panel. Delete edits text independently of recording.
 
-## Bluetooth keyboard shortcut
+## Bluetooth keyboard shortcuts
 
-On Android 11 or newer, open **Keyboard setup → Set up keyboard shortcut** and enable **OpenVoiceIME keyboard shortcut** in Android Accessibility settings. Keep the system’s on-screen keyboard option off. Focus a text field and press **Ctrl+Shift+Space** to open recording; closing the panel returns to the previous keyboard. Works independently of the selected typing keyboard, including HeliBoard. The optional service filters the shortcut’s key events without reading screen content or saving typed text.
+On Android 11 or newer, open **Keyboard setup → Set up keyboard shortcut** and enable **OpenVoiceIME keyboard shortcut** in Android Accessibility settings. Keep the system’s on-screen keyboard option off. Focus a text field and press **Ctrl+Shift+Space** to open recording. Press **Ctrl+Shift+Enter** to transcribe, insert the text, and hide the panel while keeping OpenVoiceIME selected. This action skips confirmation for that dictation and never sends Enter to the app. Errors keep recovery open; press the finish shortcut again to retry. Normal on-screen controls keep their saved behavior. Works independently of the selected typing keyboard, including HeliBoard. The optional service filters the shortcut’s key events without reading screen content or saving typed text.
 
 ## Recover a dictation
 

@@ -119,9 +119,9 @@ Debug builds use the separate application ID `dev.rankis.openime.testbed`. Tests
 
 `SystemShadeRecordingTest` temporarily selects a debug-only test IME, opens and closes Quick Settings twice, verifies that the same fake recorder/file survives, and checks that dismissal deletes it. Its `finally` block restores the previous default and enabled IMEs. Run device tests sequentially and avoid interacting with the device during this system test.
 
-The hardware-shortcut test temporarily enables a debug-only Accessibility service, invokes its key callback, verifies real IME switching and fake-recorder capture, inserts a synthetic transcript, and restores system settings. It covers Cancel, keyboard return, post-insert return, unchanged physical-keyboard visibility preference, and resumed typing. Shell-injected keys bypassed Accessibility filtering on the test tablet, so physical Bluetooth delivery and OnePlus-specific compatibility still require device testing.
+The hardware-shortcut test temporarily enables a debug-only Accessibility service, invokes its key callback, verifies real IME switching and fake-recorder capture, inserts a synthetic transcript, and restores system settings. It covers Cancel, keyboard return, post-insert return, finish-and-hide while keeping the voice IME selected, consumed Enter events, unchanged physical-keyboard visibility preference, and resumed typing. Lifecycle tests also cover paused finish, failed/truncated insertion, audio/transcript retry, recreation, discard, and editor ownership. Shell-injected keys bypassed Accessibility filtering on the test tablet, so physical Bluetooth delivery and OnePlus-specific compatibility still require device testing.
 
-Validated on Android 13 (API 33) and an Android 16 emulator (API 36). The current Android 16 suite passes all 55 tests. Physical Bluetooth delivery, vendor keyboard behavior, and third-party editors still need device-specific checks.
+Validated on Android 13 (API 33) and an Android 16 emulator (API 36). The current Android 16 suite passes all 64 tests. Physical Bluetooth delivery, vendor keyboard behavior, and third-party editors still need device-specific checks.
 
 ## Contributing
 

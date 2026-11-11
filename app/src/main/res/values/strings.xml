@@ -159,11 +159,11 @@
     <string name="status_paused">Paused</string>
     <string name="error_recording_pause">Could not pause or resume. Retry the saved recording or cancel to start again.</string>
     <string name="shortcut_service_name">OpenVoiceIME keyboard shortcut</string>
-    <string name="shortcut_service_description">Opens dictation with Ctrl+Shift+Space while you use a physical keyboard. Filters key events for this shortcut; does not read screen content or save typed text. Enable OpenVoiceIME in keyboard settings first. Requires Android 11 or newer.</string>
+    <string name="shortcut_service_description">Ctrl+Shift+Space opens dictation. Ctrl+Shift+Enter transcribes, inserts, and hides the panel without switching keyboards. Filters these shortcuts; does not read screen content or save typed text. Enable OpenVoiceIME as a keyboard first. Requires Android 11 or newer.</string>
     <string name="shortcut_title">Physical keyboard shortcut</string>
-    <string name="shortcut_instructions">Keep your virtual keyboard hidden while typing. Enable OpenVoiceIME keyboard shortcut in Android Accessibility settings. With a text field focused, press Ctrl+Shift+Space to open recording. Closing the panel returns to your previous keyboard. This optional service filters keyboard events without reading screen content or saving typed text.</string>
+    <string name="shortcut_instructions">Enable OpenVoiceIME keyboard shortcut in Android Accessibility settings. Keep your virtual keyboard hidden and focus a text field. Ctrl+Shift+Space opens recording; Ctrl+Shift+Enter transcribes, inserts, and hides the panel without switching keyboards or sending Enter to the app. Errors keep the panel open; press the finish shortcut again to retry. Confirmation is skipped for this action only. The optional service does not read screen content or save typed text.</string>
     <string name="shortcut_setup">Set up keyboard shortcut</string>
-    <string name="shortcut_enabled">Shortcut service enabled: Ctrl+Shift+Space</string>
+    <string name="shortcut_enabled">Shortcut service enabled: Ctrl+Shift+Space to record; Ctrl+Shift+Enter to insert and hide.</string>
     <string name="shortcut_disabled">Shortcut service disabled. Enable it in Android Accessibility settings.</string>
     <string name="shortcut_unsupported">The global shortcut requires Android 11 or newer.</string>
     <string name="shortcut_enable_ime">Enable OpenVoiceIME in Android keyboard settings first.</string>

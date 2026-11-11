@@ -35,9 +35,12 @@ HeliBoard itself describes both [direct APK installation](https://github.com/Hel
 3. In Android Accessibility settings, enable **OpenVoiceIME keyboard shortcut**. This is optional and requires explicit system approval.
 4. Leave **Use on-screen keyboard** off under Android’s physical-keyboard settings.
 5. Focus a text field and press **Ctrl+Shift+Space**. The recording panel opens while the physical keyboard stays connected.
-6. Tap **Transcribe** to finish dictation. The normal post-insert preferences still apply; when returning, the shortcut session selects the keyboard that was active before it opened. **Cancel** with hide enabled, Back, or the keyboard toolbar button also closes the session and restores that keyboard.
+6. Press **Ctrl+Shift+Enter** to stop recording (including paused recording), transcribe, insert the result, and hide the panel. OpenVoiceIME stays selected; the shortcut never sends Enter or submits the destination app. It skips confirmation for this dictation without changing saved preferences.
+7. If transcription or insertion fails, the panel stays open with the available recovery actions. Press **Ctrl+Shift+Enter** again to retry retained audio or insert the retained transcript. Repeated presses while uploading or verifying insertion do not duplicate work.
 
-HeliBoard can stay selected between recordings. Holding or repeating the shortcut does not restart an active recording; unrelated key combinations pass through normally. No screen-content access or typed-text storage is requested. On sideloaded installations, Android may require **Allow restricted settings** in the app’s system information menu before it lets you enable the service. Other accessibility services that filter keys or system-reserved shortcuts may prevent delivery. OnePlus Pad 3 / Android 16 and Logitech MX Keys Mini require device-specific verification.
+The on-screen **Transcribe**, **Cancel**, and keyboard-return controls retain their normal preference behavior.
+
+HeliBoard can stay selected between recordings. Holding or repeating the open shortcut does not restart an active recording; unrelated key combinations pass through normally. No screen-content access or typed-text storage is requested. On sideloaded installations, Android may require **Allow restricted settings** in the app’s system information menu before it lets you enable the service. Other accessibility services that filter keys or system-reserved shortcuts may prevent delivery. OnePlus Pad 3 / Android 16 and Logitech MX Keys Mini require device-specific verification.
 
 ## Recording controls
 

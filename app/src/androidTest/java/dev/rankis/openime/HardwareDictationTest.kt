@@ -26,6 +26,27 @@ class HardwareDictationTest {
     private val automation get() = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
 
     @Test
+    fun testV60PendingHandoffConsumesEnterDownRepeatsAndUpWithoutForwarding() = main {
+        val listener = ShortcutTestAccessibilityService()
+        var selected: String? = "typing/ime"
+        try {
+            HardwareDictation.request("voice/ime", selected, { selected }, {}) { selected = it; true }
+            val modifiers = KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON
+            for (code in listOf(KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                assertFalse(listener.dispatch(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, code, 0)))
+                assertTrue(listener.dispatch(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, code, 0, modifiers)))
+                assertTrue(listener.dispatch(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, code, 1)))
+                assertTrue(listener.dispatch(KeyEvent(0, 0, KeyEvent.ACTION_UP, code, 0)))
+                assertFalse(listener.dispatch(KeyEvent(0, 0, KeyEvent.ACTION_UP, code, 0)))
+            }
+            HardwareDictation.finish()
+            assertFalse(listener.dispatch(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER, 0, modifiers)))
+        } finally {
+            HardwareDictation.finish()
+        }
+    }
+
+    @Test
     fun testV58MissingEditorExpiresAndRestoresPriorKeyboard() {
         var selected: String? = "typing/ime"
         var failures = 0
@@ -70,7 +91,7 @@ class HardwareDictationTest {
     }
 
     @Test
-    fun testV57V59ShortcutCallbackFromHiddenKeyboardRecordsAndReturnsWithoutChangingSystemPreference() {
+    fun testV57V59V60HardwareShortcutsRespectReturnAndHideActions() {
         val context = instrumentation.targetContext
         automation.grantRuntimePermission(context.packageName, Manifest.permission.RECORD_AUDIO)
         val settings = AppSettings(apiToken = "integration-test", selectInsertedText = false)
@@ -102,9 +123,14 @@ class HardwareDictationTest {
                     assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers or KeyEvent.META_ALT_ON)))
                     assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers or KeyEvent.META_META_ON)))
                     assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers, 1)))
+                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, KeyEvent.META_CTRL_ON)))
+                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers or KeyEvent.META_ALT_ON)))
+                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers or KeyEvent.META_META_ON)))
+                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers, 1)))
                 }
                 var previousService: SystemImeTestService? = null
-                repeat(3) { round ->
+                repeat(4) { round ->
+                    if (round == 3) scenario.onActivity { it.editor.setText("") }
                     focusHiddenEditor(scenario)
                     shortcut()
                     await("visible recording round $round") {
@@ -129,25 +155,32 @@ class HardwareDictationTest {
                         when (round) {
                             0 -> view.findViewById<Button>(R.id.cancelButton).performClick()
                             1 -> view.findViewById<android.widget.ImageButton>(R.id.keyboardButton).performClick()
-                            else -> view.findViewById<Button>(R.id.stopButton).performClick()
+                            2 -> view.findViewById<Button>(R.id.stopButton).performClick()
+                            else -> Unit
                         }
                     }
-                    await { !recorder.active && getSetting("default_input_method") == previous }
+                    if (round == 3) shortcut(repeatCount = 2, code = KeyEvent.KEYCODE_ENTER)
+                    val expectedIme = if (round == 3) ime else previous
+                    await { !recorder.active && getSetting("default_input_method") == expectedIme }
                     assertFalse(file.exists())
                     assertEquals("0", getSetting("show_ime_with_hard_keyboard"))
-                    await { SystemImeTestService.instance == null }
+                    if (round == 3) {
+                        await { !service.isInputViewShown }
+                        assertSame(service, SystemImeTestService.instance)
+                        main { assertFalse(HardwareDictation.owns(service)) }
+                    } else {
+                        await { SystemImeTestService.instance == null }
+                    }
                     previousService = service
                 }
                 scenario.onActivity {
                     assertEquals("shortcut dictation", it.editor.text.toString())
-                    it.editor.setText("")
                 }
-                focusHiddenEditor(scenario)
                 shell("input text hardware")
                 var actualText = ""
                 await("resumed typing", { "editor text: $actualText" }) {
                     scenario.onActivity { actualText = it.editor.text.toString() }
-                    actualText == "hardware"
+                    actualText == "shortcut dictationhardware"
                 }
             }
         } finally {
@@ -178,6 +211,16 @@ class HardwareDictationTest {
                     }
                 })
             host.editor.requestFocus()
+        }
+        await("focused editor served by the typing keyboard") {
+            var ready = false
+            scenario.onActivity { host ->
+                ready = host.editor.hasWindowFocus() &&
+                    host.getSystemService(InputMethodManager::class.java).isActive(host.editor)
+            }
+            ready
+        }
+        scenario.onActivity { host ->
             host.getSystemService(InputMethodManager::class.java)
                 .showSoftInput(host.editor, InputMethodManager.SHOW_IMPLICIT)
         }
@@ -196,16 +239,16 @@ class HardwareDictationTest {
         instrumentation.waitForIdleSync()
     }
 
-    private fun shortcut(repeatCount: Int = 0) = main {
+    private fun shortcut(repeatCount: Int = 0, code: Int = KeyEvent.KEYCODE_SPACE) = main {
         val listener = ShortcutTestAccessibilityService.instance!!
         val now = SystemClock.uptimeMillis()
         val modifiers = KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON
-        assertTrue(listener.dispatch(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE, 0, modifiers)))
+        assertTrue(listener.dispatch(KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0, modifiers)))
         repeat(repeatCount) { index ->
-            assertTrue(listener.dispatch(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SPACE, index + 1, modifiers)))
+            assertTrue(listener.dispatch(KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, index + 1, modifiers)))
         }
-        assertTrue(listener.dispatch(KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SPACE, 0)))
-        assertFalse(listener.dispatch(KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SPACE, 0)))
+        assertTrue(listener.dispatch(KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0)))
+        assertFalse(listener.dispatch(KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0)))
     }
 
     private fun getSetting(key: String) = shell("settings get secure $key").trim()

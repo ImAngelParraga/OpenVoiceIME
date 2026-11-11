@@ -11,27 +11,33 @@ import android.widget.Toast
 
 /** Receives the optional hardware shortcut while another keyboard is selected. */
 open class DictationShortcutService : AccessibilityService() {
-    private var consumedDevice: Int? = null
+    private val consumedKeys = mutableSetOf<Pair<Int, Int>>()
 
     protected open val dictationServiceClass: Class<out RemoteSttInputMethodService>
         get() = RemoteSttInputMethodService::class.java
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
-        if (event.keyCode != KeyEvent.KEYCODE_SPACE) return false
+        if (event.keyCode != KeyEvent.KEYCODE_SPACE && event.keyCode != KeyEvent.KEYCODE_ENTER &&
+            event.keyCode != KeyEvent.KEYCODE_NUMPAD_ENTER
+        ) return false
+        val key = event.deviceId to event.keyCode
         if (event.action == KeyEvent.ACTION_UP) {
-            if (consumedDevice != event.deviceId) return false
-            consumedDevice = null
-            return true
+            return consumedKeys.remove(key)
         }
         if (event.action != KeyEvent.ACTION_DOWN) return false
-        if (consumedDevice == event.deviceId) return true
+        if (key in consumedKeys) return true
         if (event.repeatCount != 0 || !event.isCtrlPressed || !event.isShiftPressed ||
             event.isAltPressed || event.isMetaPressed || event.isCanceled
         ) return false
-        consumedDevice = event.deviceId
-        openDictation()
-        return true
+        val handled = if (event.keyCode == KeyEvent.KEYCODE_SPACE) {
+            openDictation()
+            true
+        } else {
+            HardwareDictation.transcribeAndHide()
+        }
+        if (handled) consumedKeys += key
+        return handled
     }
 
     private fun openDictation() {
@@ -60,7 +66,7 @@ open class DictationShortcutService : AccessibilityService() {
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
         HardwareDictation.finish()
-        consumedDevice = null
+        consumedKeys.clear()
         return super.onUnbind(intent)
     }
 }

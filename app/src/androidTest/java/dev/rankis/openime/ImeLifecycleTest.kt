@@ -35,6 +35,189 @@ class ImeLifecycleTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
+    fun testV60ShortcutInsertsAndHidesWithoutSwitchingOrChangingPreferences() = withIme { ime ->
+        main {
+            val store = SettingsStore(ime.host)
+            store.save(store.load().copy(returnToKeyboardAfterInsert = true, confirmBeforeInsert = true))
+            ime.show()
+        }; idle()
+        main { assertTrue(ime.service.finishDictationFromKeyboard()) }
+        val request = ime.provider.next()
+        main { assertTrue(ime.service.finishDictationFromKeyboard()) }
+        assertEquals(1, ime.provider.calls)
+        request.complete(TranscriptionResult.Success("keyboard dictation")); idle()
+        main {
+            assertEquals("keyboard dictation", ime.host.editor.text.toString())
+            assertEquals(1, ime.service.hideRequests)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+            assertEquals(0, ime.service.previousKeyboardRequests)
+            assertEquals(1, ime.recorder.stops)
+            assertEquals(1, ime.recorder.starts)
+            val settings = SettingsStore(ime.host).load()
+            assertTrue(settings.confirmBeforeInsert)
+            assertTrue(settings.returnToKeyboardAfterInsert)
+            assertFalse(settings.hideAfterSuccess)
+        }
+    }
+
+    @Test
+    fun testV60ShortcutFinalizesPausedRecordingWithoutResuming() = withIme { ime ->
+        main { ime.show() }; idle()
+        main {
+            ime.pause()
+            assertTrue(ime.service.finishDictationFromKeyboard())
+        }
+        ime.provider.next().complete(TranscriptionResult.Success("paused dictation")); idle()
+        main {
+            assertEquals("paused dictation", ime.host.editor.text.toString())
+            assertEquals(1, ime.recorder.stops)
+            assertEquals(0, ime.recorder.resumes)
+            assertEquals(1, ime.service.hideRequests)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+        }
+    }
+
+    @Test
+    fun testV61ShortcutNetworkFailureKeepsPanelAndRetryUsesSameAudio() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main { assertTrue(ime.service.finishDictationFromKeyboard()) }
+        ime.provider.next().complete(TranscriptionResult.Failure(dev.rankis.openime.stt.TranscriptionError.Timeout)); idle()
+        main {
+            assertEquals(0, ime.service.hideRequests)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+            assertTrue(file.exists())
+            assertTrue(ime.service.finishDictationFromKeyboard())
+        }
+        ime.provider.next().complete(TranscriptionResult.Success("retried dictation")); idle()
+        main {
+            assertSame(file, ime.provider.submittedFile)
+            assertEquals("retried dictation", ime.host.editor.text.toString())
+            assertEquals(1, ime.service.hideRequests)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+            assertEquals(1, ime.recorder.stops)
+        }
+    }
+
+    @Test
+    fun testV61RejectedShortcutInsertionKeepsTranscriptAndNeverSendsEnter() = withIme { ime ->
+        var reject = true
+        var enterEvents = 0
+        var editorActions = 0
+        main {
+            ime.service.connection = object : InputConnectionWrapper(ime.service.connection, false) {
+                override fun commitText(text: CharSequence?, newCursorPosition: Int): Boolean =
+                    if (reject) false else super.commitText(text, newCursorPosition)
+                override fun sendKeyEvent(event: android.view.KeyEvent): Boolean {
+                    if (event.keyCode == android.view.KeyEvent.KEYCODE_ENTER ||
+                        event.keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
+                    ) enterEvents++
+                    return super.sendKeyEvent(event)
+                }
+                override fun performEditorAction(actionCode: Int): Boolean {
+                    editorActions++
+                    return super.performEditorAction(actionCode)
+                }
+            }
+            ime.show()
+        }; idle()
+        main { assertTrue(ime.service.finishDictationFromKeyboard()) }
+        ime.provider.next().complete(TranscriptionResult.Success("retained transcript")); idle()
+        main {
+            assertEquals("", ime.host.editor.text.toString())
+            assertEquals(0, ime.service.hideRequests)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+            assertTrue(ime.recorder.lastFile!!.exists())
+            reject = false
+            assertTrue(ime.service.finishDictationFromKeyboard())
+        }; idle()
+        main {
+            assertEquals("retained transcript", ime.host.editor.text.toString())
+            assertEquals(1, ime.provider.calls)
+            assertEquals(1, ime.service.hideRequests)
+            assertEquals(0, enterEvents)
+            assertEquals(0, editorActions)
+        }
+    }
+
+    @Test
+    fun testV61TruncatedShortcutInsertionStaysOpenWithFullTranscript() = withIme { ime ->
+        main {
+            ime.host.editor.filters = arrayOf(InputFilter.LengthFilter(5))
+            ime.show()
+        }; idle()
+        main { assertTrue(ime.service.finishDictationFromKeyboard()) }
+        ime.provider.next().complete(TranscriptionResult.Success("full transcript survives"))
+        android.os.SystemClock.sleep(700); idle()
+        main {
+            assertEquals("full ", ime.host.editor.text.toString())
+            assertEquals("full transcript survives", ime.view.findViewById<EditText>(R.id.errorDetailsInput).text.toString())
+            assertEquals(0, ime.service.hideRequests)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+            assertTrue(ime.recorder.lastFile!!.exists())
+        }
+    }
+
+    @Test
+    fun testV61ShortcutIntentSurvivesUploadViewRecreation() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { assertTrue(ime.service.finishDictationFromKeyboard()) }
+        val request = ime.provider.next()
+        main {
+            ime.service.onConfigurationChanged(Configuration(ime.service.resources.configuration))
+            ime.rebuild()
+        }
+        request.complete(TranscriptionResult.Success("survived recreation")); idle()
+        main {
+            assertEquals("survived recreation", ime.host.editor.text.toString())
+            assertEquals(1, ime.service.hideRequests)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+        }
+    }
+
+    @Test
+    fun testV61DiscardClearsShortcutIntentForNextDictation() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { assertTrue(ime.service.finishDictationFromKeyboard()) }
+        val cancelled = ime.provider.next()
+        main { ime.cancel(); ime.show() }; idle()
+        cancelled.complete(TranscriptionResult.Success("discarded")); idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("normal confirmation")); idle()
+        main {
+            assertEquals("", ime.host.editor.text.toString())
+            assertEquals(1, ime.service.hideRequests)
+            assertEquals("normal confirmation", ime.view.findViewById<TextView>(R.id.statusText).text.toString())
+        }
+    }
+
+    @Test
+    fun testV61EditorChangeDropsShortcutCompletionWithoutClosingNewPanel() = withIme { ime ->
+        main { ime.show() }; idle()
+        main { assertTrue(ime.service.finishDictationFromKeyboard()) }
+        val previousRequest = ime.provider.next()
+        lateinit var nextEditor: EditText
+        main {
+            nextEditor = EditText(ime.host)
+            nextEditor.setText("another field")
+            nextEditor.setSelection(nextEditor.length())
+            ime.service.connection = nextEditor.onCreateInputConnection(EditorInfo())
+            ime.info = EditorInfo().apply { packageName = "editor.second"; fieldId = 200 }
+            ime.service.onStartInput(ime.info, false)
+            ime.show()
+        }; idle()
+        previousRequest.complete(TranscriptionResult.Success("old dictation")); idle()
+        main { ime.primary() }
+        ime.provider.next().complete(TranscriptionResult.Success("new confirmation")); idle()
+        main {
+            assertEquals("another field", nextEditor.text.toString())
+            assertEquals("new confirmation", ime.view.findViewById<TextView>(R.id.statusText).text.toString())
+            assertEquals(0, ime.service.hideRequests)
+            assertEquals(0, ime.service.nextKeyboardRequests)
+        }
+    }
+
+    @Test
     fun testV56VerbatimCommandSurvivesConfirmationAndViewRebuild() = withIme { ime ->
         main {
             val store = SettingsStore(ime.host)

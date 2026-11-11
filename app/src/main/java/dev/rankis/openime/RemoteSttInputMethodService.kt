@@ -104,6 +104,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private var pendingHideAfterSuccess: Boolean = true
     private var pendingSelectInsertedText: Boolean = true
     private var pendingReturnToKeyboardAfterInsert: Boolean = true
+    private var finishAndHideRequested = false
     private var lastErrorMessage: String? = null
     private var operationId: Long = 0L
     private var selectedLanguageCode: String? = null
@@ -407,6 +408,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         pendingHideAfterSuccess = true
         pendingSelectInsertedText = true
         pendingReturnToKeyboardAfterInsert = true
+        finishAndHideRequested = false
         lastErrorMessage = null
         state = ImeState.Idle
     }
@@ -463,6 +465,22 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             audioFile = null
             showError(getString(R.string.error_start_recorder))
         }
+    }
+
+    internal fun finishDictationFromKeyboard(): Boolean {
+        if (!inputViewVisible) return false
+        when (state) {
+            ImeState.Recording, ImeState.Paused, ImeState.ReadyToUpload, ImeState.ReadyToInsert -> {
+                finishAndHideRequested = true
+                onPrimaryAction()
+            }
+            ImeState.Error -> if (audioFile?.exists() == true) {
+                finishAndHideRequested = true
+                retryUpload()
+            }
+            else -> Unit
+        }
+        return true
     }
 
     private fun onPrimaryAction() {
@@ -631,7 +649,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             showInsertionFailure(getString(R.string.transcription_editor_changed))
             return@withContext
         }
-        if (settings.confirmBeforeInsert) {
+        if (settings.confirmBeforeInsert && !finishAndHideRequested) {
             state = ImeState.ReadyToInsert
             renderCurrentState()
         } else {
@@ -711,6 +729,8 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
                 ))
                 return@launch
             }
+            val shouldFinishAndHide = finishAndHideRequested
+            finishAndHideRequested = false
             audioFile?.delete()
             audioFile = null
             pendingText = null
@@ -729,6 +749,11 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             statusText.setText(R.string.status_inserted)
             stopButton.isEnabled = false
             retryButton.visibility = View.GONE
+            if (shouldFinishAndHide) {
+                HardwareDictation.finish(this@RemoteSttInputMethodService, restorePrevious = false)
+                requestHideSelf(0)
+                return@launch
+            }
             if (pendingReturnToKeyboardAfterInsert) {
                 val switched = switchToNextKeyboard()
                 if (!switched && pendingHideAfterSuccess) {
