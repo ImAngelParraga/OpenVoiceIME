@@ -10,10 +10,21 @@ import java.io.File
 /** Isolated recorder for tests that exercise Android's actual IME binding. */
 class SystemImeTestService : RemoteSttInputMethodService() {
     val testRecorder = TestRecorder()
-    var blockInputView = false
+    var dropShowCallbacks = false
+    var blockWindow = false
+    var windowShowCalls = 0
+        private set
 
-    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean =
-        !blockInputView && super.onShowInputRequested(flags, configChange)
+    override fun showWindow(showInput: Boolean) {
+        if (showInput) windowShowCalls += 1
+        if (!blockWindow) super.showWindow(showInput)
+    }
+
+    override fun onCreateInputMethodInterface() = object : InputMethodImpl() {
+        override fun showSoftInput(flags: Int, resultReceiver: android.os.ResultReceiver?) {
+            if (!dropShowCallbacks) super.showSoftInput(flags, resultReceiver)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -44,6 +55,8 @@ class SystemImeTestService : RemoteSttInputMethodService() {
             private set
         var active = false
             private set
+        var stops = 0
+            private set
         var file: File? = null
             private set
         override val maxAmplitude = 12_000
@@ -58,7 +71,7 @@ class SystemImeTestService : RemoteSttInputMethodService() {
         }
         override fun pause() = Unit
         override fun resume() = Unit
-        override fun stop(): File? { active = false; return file }
+        override fun stop(): File? { if (active) stops += 1; active = false; return file }
         override fun cancel() {
             if (active) file?.delete()
             active = false

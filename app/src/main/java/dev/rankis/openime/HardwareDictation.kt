@@ -12,8 +12,7 @@ internal object HardwareDictation {
     private var service: RemoteSttInputMethodService? = null
     private var session: Session? = null
     private val expire = Runnable {
-        session?.failed?.invoke()
-        finish()
+        openingDeadline()
     }
 
     private data class Session(
@@ -26,7 +25,29 @@ internal object HardwareDictation {
         val releaseShow: () -> Unit,
         var shown: Boolean = false,
         var restorePrevious: Boolean = true,
+        var directWindowRequested: Boolean = false,
+        var showRequested: Boolean = false,
     )
+
+    private fun openingDeadline() {
+        val current = session ?: return
+        if (current.shown) return
+        val ime = service
+        if (Build.VERSION.SDK_INT >= 36 && !current.directWindowRequested &&
+            ime != null && owns(ime) && ime.currentInputStarted &&
+            ime.currentInputConnection != null && current.selected() == current.target
+        ) {
+            current.directWindowRequested = true
+            trace("show callback missing: direct-window fallback")
+            handler.postDelayed(expire, 1_000)
+            runCatching { ime.showWindow(true) }.onFailure {
+                trace("direct-window fallback rejected")
+            }
+            return
+        }
+        current.failed()
+        finish()
+    }
 
     private fun trace(event: String) { service?.let { ShortcutDiagnostics.record(it, event) } }
 
@@ -67,7 +88,13 @@ internal object HardwareDictation {
         ComponentName.unflattenFromString(it) == ComponentName(ime, ime.javaClass)
     } == true
 
-    fun showPending(ime: RemoteSttInputMethodService) {
+    fun showPending(ime: RemoteSttInputMethodService, restarting: Boolean = true, sameEditor: Boolean = true) {
+        val current = session
+        if (owns(ime) && current?.shown == false && current.showRequested && (!restarting || !sameEditor)) {
+            trace("opening editor replaced")
+            finish()
+            return
+        }
         trace("show-pending owned=${owns(ime)} shown=${session?.shown} editor=${ime.currentInputConnection != null}")
         if (!owns(ime) || session?.shown != false || ime.currentInputConnection == null) return
         // Let the current input-start callback finish before requesting the window.
@@ -85,6 +112,7 @@ internal object HardwareDictation {
                     finish()
                     return@post
                 }
+                current.showRequested = true
                 trace("requestShowSelf")
                 ime.requestShowSelf(0)
             }
@@ -108,7 +136,11 @@ internal object HardwareDictation {
         val ime = service ?: return session != null
         val selected = Settings.Secure.getString(ime.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
         val isSelected = ComponentName.unflattenFromString(selected.orEmpty()) == ComponentName(ime, ime.javaClass)
-        return (isSelected && ime.finishDictationFromKeyboard()) || session != null
+        if (isSelected) {
+            ime.finishDictationFromKeyboard()
+            return true
+        }
+        return session != null
     }
 
     fun prepareHideWithoutKeyboardReturn(ime: RemoteSttInputMethodService) {
@@ -118,11 +150,16 @@ internal object HardwareDictation {
     fun finish(restorePrevious: Boolean = true): Boolean {
         val current = session ?: return false
         trace("handoff finished restore-previous=${restorePrevious && current.restorePrevious}")
+        val owningIme = service?.takeIf { owns(it) }
         session = null
         handler.removeCallbacks(expire)
         current.releaseShow()
         if (!restorePrevious || !current.restorePrevious || current.selected() != current.target) return false
-        return current.previous?.let { current.switch(it) } ?: false
+        val previous = current.previous ?: return false
+        if (current.switch(previous)) return true
+        if (owningIme == null || current.selected() != current.target) return false
+        trace("keyboard-return via bound IME")
+        return runCatching { owningIme.switchInputMethod(previous); true }.getOrDefault(false)
     }
 
     fun finish(ime: RemoteSttInputMethodService, restorePrevious: Boolean = true): Boolean {

@@ -125,71 +125,99 @@ class HardwareDictationTest {
                 settingsActivity != null
             }
             main {
+                SystemImeTestService.instance?.let {
+                    assertFalse(HardwareDictation.owns(it))
+                    assertFalse(it.testRecorder.active)
+                }
                 store.markConnectionTestSucceeded(settings)
                 settingsActivity!!.finish()
             }
-            await("editor focus after settings") {
+            await("landscape editor after settings closes") {
                 var ready = false
                 scenario.onActivity { host ->
                     host.editor.requestFocus()
-                    ready = host.editor.hasWindowFocus() && host.getSystemService(InputMethodManager::class.java).isActive(host.editor)
+                    ready = settingsActivity!!.isDestroyed &&
+                        host.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE &&
+                        host.window.decorView.width > host.window.decorView.height && host.editor.hasWindowFocus()
                 }
                 ready
             }
+            val animations = focusHiddenEditor(scenario)
             shortcut()
             await("recording after connection check") {
-                SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true
+                SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true &&
+                    hostImeVisible(scenario, true) && animations.isEmpty()
             }
             val enabledServices = getSetting("enabled_accessibility_services")
             val listener = "${context.packageName}/dev.rankis.openime.ShortcutTestAccessibilityService"
             val others = enabledServices.split(":").filter { it != listener }.joinToString(":")
             shell(if (others.isEmpty()) "settings delete secure enabled_accessibility_services"
                 else "settings put secure enabled_accessibility_services $others")
-            await("shortcut service stopped") { ShortcutTestAccessibilityService.instance == null }
+            await("shortcut service stopped") {
+                ShortcutTestAccessibilityService.instance == null && SystemImeTestService.instance == null &&
+                    hostImeVisible(scenario, false) && animations.isEmpty()
+            }
             assertEquals("0", getSetting("show_ime_with_hard_keyboard"))
             shell("settings put secure enabled_accessibility_services $enabledServices")
             await("shortcut service reconnected") { ShortcutTestAccessibilityService.instance != null }
+            focusHiddenEditor(scenario)
             shortcut()
             await("recording after shortcut service restart") {
                 SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true
             }
+            main {
+                assertEquals(1, SystemImeTestService.instance!!.testRecorder.starts)
+                assertEquals(0, SystemImeTestService.instance!!.testRecorder.stops)
+            }
         }
 
     @Test
-    fun testV64AlreadySelectedVoiceKeyboardReopensAndRestoresHiddenPreference() =
+    fun testV64AlreadySelectedVoiceKeyboardReopensAndRestoresHiddenPreference() = exerciseRepeatedFinishAndHide()
+
+    @Test
+    fun testV65DroppedShowCallbackRecoversVisiblePanelAndCanFinishWithoutEnter() =
+        exerciseRepeatedFinishAndHide(dropRepeatedShow = true)
+
+    private fun exerciseRepeatedFinishAndHide(dropRepeatedShow: Boolean = false) =
         withShortcutKeyboard(normalEditor = true, landscape = true) { scenario, ime, _ ->
             focusHiddenEditor(scenario)
             org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 36)
             val animations = trackImeAnimations(scenario)
-            repeat(2) {
+            repeat(2) { round ->
+                if (round == 1 && dropRepeatedShow) main {
+                    SystemImeTestService.instance!!.dropShowCallbacks = true
+                }
                 shortcut()
-                await("visible recording with hardware visibility override", { ShortcutDiagnostics.report(instrumentation.targetContext) }) {
+                await("visible recording with hardware visibility override") {
                     SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true
                 }
                 await("settled recording panel") {
-                    var hostShown = false
-                    scenario.onActivity {
-                        hostShown = ViewCompat.getRootWindowInsets(it.editor)
-                            ?.isVisible(WindowInsetsCompat.Type.ime()) == true
-                    }
-                    hostShown && animations.isEmpty()
+                    hostImeVisible(scenario, true) && animations.isEmpty()
+                }
+                main {
+                    val service = SystemImeTestService.instance!!
+                    val panel = service.window!!.window!!.decorView.findViewById<android.view.View>(R.id.imePanel)
+                    assertFalse(service.isFullscreenMode)
+                    assertTrue(panel.isShown)
+                    assertEquals(Math.round(260 * service.resources.displayMetrics.density), panel.height)
+                    assertEquals(round + 1, service.testRecorder.starts)
                 }
                 assertEquals("1", getSetting("show_ime_with_hard_keyboard"))
                 shortcut(code = KeyEvent.KEYCODE_ENTER)
                 await("panel closed and hidden keyboard preference restored", {
-                    "animations=${animations.size} " + ShortcutDiagnostics.report(instrumentation.targetContext)
+                    "animations=${animations.size}"
                 }) {
-                    var hostHidden = false
-                    scenario.onActivity {
-                        hostHidden = ViewCompat.getRootWindowInsets(it.editor)
-                            ?.isVisible(WindowInsetsCompat.Type.ime()) == false
-                    }
                     SystemImeTestService.instance?.isInputViewShown == false &&
                         getSetting("show_ime_with_hard_keyboard") == "0" && animations.isEmpty() &&
-                        hostHidden
+                        hostImeVisible(scenario, false)
                 }
                 assertEquals(ime, getSetting("default_input_method"))
             }
+            if (dropRepeatedShow) {
+                assertTrue(ShortcutDiagnostics.report(instrumentation.targetContext).contains("direct-window fallback"))
+            }
+            shortcut(code = KeyEvent.KEYCODE_ENTER)
+            shortcut(code = KeyEvent.KEYCODE_NUMPAD_ENTER)
             scenario.onActivity { assertEquals("shortcut dictationshortcut dictation", it.editor.text.toString()) }
         }
 
@@ -200,11 +228,62 @@ class HardwareDictationTest {
             focusHiddenEditor(scenario)
             shell("ime set $ime")
             await("voice keyboard bound") { SystemImeTestService.instance != null }
-            main { SystemImeTestService.instance!!.blockInputView = true }
+            main {
+                SystemImeTestService.instance!!.apply {
+                    dropShowCallbacks = true
+                    blockWindow = true
+                }
+            }
             shortcut()
             await("temporary hardware visibility allowance") { getSetting("show_ime_with_hard_keyboard") == "1" }
             await("timeout restores hardware visibility preference") { getSetting("show_ime_with_hard_keyboard") == "0" }
-            main { assertFalse(HardwareDictation.owns(SystemImeTestService.instance!!)) }
+            main {
+                val service = SystemImeTestService.instance!!
+                assertFalse(HardwareDictation.owns(service))
+                assertFalse(service.testRecorder.active)
+                assertEquals(1, service.windowShowCalls)
+            }
+        }
+
+    @Test
+    fun testV65ManualKeyboardSwitchCancelsPendingWindowFallback() = exerciseCancelledFallback()
+
+    @Test
+    fun testV65NewEditorCancelsPendingWindowFallback() = exerciseCancelledFallback(replaceEditor = true)
+
+    private fun exerciseCancelledFallback(replaceEditor: Boolean = false) =
+        withShortcutKeyboard { scenario, ime, previous ->
+            org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 36)
+            focusHiddenEditor(scenario)
+            shell("ime set $ime")
+            await("voice editor bound") {
+                SystemImeTestService.instance?.let { it.currentInputStarted && it.currentInputConnection != null } == true
+            }
+            val service = SystemImeTestService.instance!!
+            main { service.dropShowCallbacks = true }
+            shortcut()
+            val afterDeadline = SystemClock.elapsedRealtime() + 3_500
+            await("pending show allowance") { getSetting("show_ime_with_hard_keyboard") == "1" }
+            if (replaceEditor) {
+                ActivityScenario.launch(IntegrationHostActivity::class.java).use {
+                    await("replacement editor cancels opening") {
+                        !HardwareDictation.owns(service) && getSetting("show_ime_with_hard_keyboard") == "0"
+                    }
+                    await("cancelled opening deadline passed") { SystemClock.elapsedRealtime() >= afterDeadline }
+                }
+            } else {
+                shell("ime set $previous")
+                await("manual keyboard restored") {
+                    SystemImeTestService.instance == null && getSetting("show_ime_with_hard_keyboard") == "0"
+                }
+                await("cancelled opening deadline passed") { SystemClock.elapsedRealtime() >= afterDeadline }
+            }
+            main {
+                assertEquals(0, service.windowShowCalls)
+                assertFalse(service.testRecorder.active)
+                assertFalse(HardwareDictation.owns(service))
+            }
+            assertEquals(if (replaceEditor) ime else previous, getSetting("default_input_method"))
         }
 
     @Test
@@ -247,10 +326,12 @@ class HardwareDictationTest {
             var previousService: SystemImeTestService? = null
             repeat(4) { round ->
                 if (round == 3) scenario.onActivity { it.editor.setText("") }
-                focusHiddenEditor(scenario)
+                val animations = focusHiddenEditor(scenario)
                 shortcut()
                 await("visible recording round $round") {
-                    SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true
+                    SystemImeTestService.instance?.let {
+                        it.testRecorder.active && it.isInputViewShown && HardwareDictation.owns(it)
+                    } == true && hostImeVisible(scenario, true) && animations.isEmpty()
                 }
                 val service = SystemImeTestService.instance!!
                 val recorder = service.testRecorder
@@ -260,7 +341,7 @@ class HardwareDictationTest {
                 main {
                     previousService?.let { HardwareDictation.hidden(it) }
                     assertFalse("Dictation must stay out of fullscreen", service.isFullscreenMode)
-                    assertTrue(HardwareDictation.owns(service))
+                    assertTrue(ShortcutDiagnostics.report(instrumentation.targetContext), HardwareDictation.owns(service))
                     assertTrue(service.isInputViewShown)
                     assertTrue(service.onEvaluateInputViewShown())
                     assertEquals(starts, recorder.starts)
@@ -367,7 +448,15 @@ class HardwareDictationTest {
         return animations
     }
 
-    private fun focusHiddenEditor(scenario: ActivityScenario<IntegrationHostActivity>) {
+    private fun hostImeVisible(scenario: ActivityScenario<IntegrationHostActivity>, visible: Boolean): Boolean {
+        var matches = false
+        scenario.onActivity {
+            matches = ViewCompat.getRootWindowInsets(it.editor)?.isVisible(WindowInsetsCompat.Type.ime()) == visible
+        }
+        return matches
+    }
+
+    private fun focusHiddenEditor(scenario: ActivityScenario<IntegrationHostActivity>): Set<WindowInsetsAnimationCompat> {
         val animations = trackImeAnimations(scenario)
         scenario.onActivity { it.editor.requestFocus() }
         await("focused editor served by the typing keyboard") {
@@ -395,6 +484,8 @@ class HardwareDictationTest {
             .hideSoftInputFromWindow(host.editor.windowToken, 0) }
         awaitVisibility(false)
         instrumentation.waitForIdleSync()
+        automation.waitForIdle(1_000, 5_000)
+        return animations
     }
 
     private fun shortcut(repeatCount: Int = 0, code: Int = KeyEvent.KEYCODE_SPACE) = main {
@@ -425,6 +516,6 @@ class HardwareDictationTest {
             if (satisfied) return
             SystemClock.sleep(50)
         }
-        fail("Hardware dictation did not reach $message ${diagnostic()}")
+        fail("Hardware dictation did not reach $message ${diagnostic()}\n${ShortcutDiagnostics.report(instrumentation.targetContext)}")
     }
 }

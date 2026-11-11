@@ -490,6 +490,31 @@ class ImeLifecycleTest {
     }
 
     @Test
+    fun testV67OwnedViewOnlyRebuildRetainsRecorderButConfigurationStopsCapture() = withIme { ime ->
+        main { ime.show() }; idle()
+        val file = ime.recorder.lastFile!!
+        main {
+            val target = android.content.ComponentName(ime.host, ime.service.javaClass).flattenToString()
+            HardwareDictation.request(target, "typing/ime", { target }, { fail("Unexpected opening timeout") }) { true }
+            HardwareDictation.shown(ime.service)
+            ime.rebuild()
+            assertTrue(ime.recorder.active)
+            assertEquals(1, ime.recorder.starts)
+            assertEquals(0, ime.recorder.stops)
+            assertSame(file, ime.recorder.lastFile)
+            assertTrue(file.exists())
+            ime.service.onConfigurationChanged(Configuration(ime.service.resources.configuration))
+            ime.rebuild()
+            assertFalse(ime.recorder.active)
+            assertEquals(1, ime.recorder.starts)
+            assertEquals(1, ime.recorder.stops)
+            assertSame(file, ime.recorder.lastFile)
+            assertTrue(file.exists())
+            HardwareDictation.finish(restorePrevious = false)
+        }
+    }
+
+    @Test
     fun testV37RebuildRetainsUploadAndTranscriptWithoutStartingNewRecorder() = withIme { ime ->
         main { ime.show() }; idle()
         main { ime.primary() }

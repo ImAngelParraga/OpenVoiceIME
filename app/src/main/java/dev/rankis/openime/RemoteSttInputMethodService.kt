@@ -291,7 +291,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         updateCurrentEditorPackageName(info)
         currentEditorFieldId = info?.fieldId
         currentEditorInputType = info?.inputType
-        HardwareDictation.showPending(this)
+        HardwareDictation.showPending(this, restarting, sameEditor)
     }
 
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
@@ -366,7 +366,10 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         if (restoreGesture) runCatching { restoreActiveGesture() }
         clearEditorGestures()
 
-        if (::recorder.isInitialized) {
+        // A shortcut visibility-setting update can recreate only the view while input continues.
+        val retainShortcutRecorder = preserveRecording && HardwareDictation.owns(this) &&
+            !rebuildingInputView && (state == ImeState.Recording || state == ImeState.Paused)
+        if (::recorder.isInitialized && !retainShortcutRecorder) {
             val retainPausedRecorder = preserveRecording && state == ImeState.Paused
             if (preserveRecording && state == ImeState.Recording) {
                 recordingDuration.pause()
@@ -381,7 +384,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             }
             if (!retainPausedRecorder) recorder.cancel()
         }
-        if (::recordingAudioFocus.isInitialized) recordingAudioFocus.abandon()
+        if (::recordingAudioFocus.isInitialized && !retainShortcutRecorder) recordingAudioFocus.abandon()
         if (!preserveUpload && state == ImeState.Uploading) {
             operationId += 1
             uploadJob?.cancel()
@@ -566,6 +569,12 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     private fun openSettings() {
+        discardCurrentWork()
+        if (HardwareDictation.owns(this)) {
+            // Finish the shortcut handoff before Settings can become its next editor.
+            requestHideSelf(0)
+            hideWindow()
+        }
         startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
