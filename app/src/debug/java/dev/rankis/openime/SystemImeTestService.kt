@@ -10,6 +10,10 @@ import java.io.File
 /** Isolated recorder for tests that exercise Android's actual IME binding. */
 class SystemImeTestService : RemoteSttInputMethodService() {
     val testRecorder = TestRecorder()
+    var blockInputView = false
+
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean =
+        !blockInputView && super.onShowInputRequested(flags, configChange)
 
     override fun onCreate() {
         super.onCreate()

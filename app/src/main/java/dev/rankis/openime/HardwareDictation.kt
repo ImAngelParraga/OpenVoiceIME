@@ -22,7 +22,10 @@ internal object HardwareDictation {
         val switch: (String) -> Boolean,
         val selected: () -> String?,
         val failed: () -> Unit,
+        val allowShow: () -> Boolean,
+        val releaseShow: () -> Unit,
         var shown: Boolean = false,
+        var restorePrevious: Boolean = true,
     )
 
     private fun trace(event: String) { service?.let { ShortcutDiagnostics.record(it, event) } }
@@ -44,11 +47,13 @@ internal object HardwareDictation {
         previous: String?,
         selected: () -> String?,
         failed: () -> Unit,
+        allowShow: () -> Boolean = { true },
+        releaseShow: () -> Unit = {},
         switch: (String) -> Boolean,
     ) {
         trace("open handoff existing=${session != null} shown=${session?.shown} own-ime-selected=${previous == target}")
         if (session != null) return
-        session = Session(target, previous?.takeUnless { it == target }, switch, selected, failed)
+        session = Session(target, previous?.takeUnless { it == target }, switch, selected, failed, allowShow, releaseShow)
         handler.postDelayed(expire, 3_000)
         if (previous != target && !switch(target)) {
             failed()
@@ -70,6 +75,16 @@ internal object HardwareDictation {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 owns(ime) && ime.currentInputConnection != null
             ) {
+                val current = session ?: return@post
+                if (current.selected() != current.target) {
+                    finish(restorePrevious = false)
+                    return@post
+                }
+                if (!current.allowShow()) {
+                    current.failed()
+                    finish()
+                    return@post
+                }
                 trace("requestShowSelf")
                 ime.requestShowSelf(0)
             }
@@ -96,12 +111,17 @@ internal object HardwareDictation {
         return (isSelected && ime.finishDictationFromKeyboard()) || session != null
     }
 
+    fun prepareHideWithoutKeyboardReturn(ime: RemoteSttInputMethodService) {
+        if (owns(ime)) session?.restorePrevious = false
+    }
+
     fun finish(restorePrevious: Boolean = true): Boolean {
         val current = session ?: return false
-        trace("handoff finished restore-previous=$restorePrevious")
+        trace("handoff finished restore-previous=${restorePrevious && current.restorePrevious}")
         session = null
         handler.removeCallbacks(expire)
-        if (!restorePrevious || current.selected() != current.target) return false
+        current.releaseShow()
+        if (!restorePrevious || !current.restorePrevious || current.selected() != current.target) return false
         return current.previous?.let { current.switch(it) } ?: false
     }
 

@@ -117,7 +117,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 - V56: Boolean audio-response verbatim=true suppresses configured trailing space for that transcript; missing, false or nonboolean metadata preserves normal insertion. Exact prepared pending text survives existing confirmation/recovery, and no Enter is sent automatically.
 
-- V57: Optional Android 11+ Accessibility shortcut Ctrl+Shift+Space opens the enabled voice IME from another selected keyboard without changing system hardware-keyboard visibility preference. Exact modifiers only; consume matched Space down/repeats/up, pass unrelated events, never restart active work. No screen-content capability or typed-text storage.
+- V57: Optional Android 11+ Accessibility shortcut Ctrl+Shift+Space opens the enabled voice IME from another selected keyboard with an Android 16+ session-scoped Accessibility hardware-keyboard visibility allowance, restoring the original system preference afterward. Exact modifiers only; consume matched Space down/repeats/up, pass unrelated events, never restart active work. No screen-content capability or typed-text storage.
 - V58: Shortcut handoff expires within three seconds without an editor; initial hidden callbacks cannot cancel an unshown handoff; normal closing/cancel/successful return restores the prior enabled IME (explicit insert-and-hide follows V60), never overrides an unrelated manual keyboard change, and preserves existing recording/dismissal preferences and configuration-rebuild ownership. Localized setup exposes optional system approval and refreshed service status.
 
 - V59: Shortcut window requests run after input-start callback completion and only for the currently attached owning IME; callbacks from a destroyed prior instance cannot finish a newer session. Verify repeated Cancel/keyboard-return/transcription round trips through real system binding.
@@ -128,6 +128,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V62: Voice dictation stays in a bounded non-fullscreen IME panel in portrait and landscape, including an ordinary editor with automatic soft-input behavior and a connected hardware keyboard.
 
 - V63: Bounded app-private shortcut/lifecycle diagnostics survive process restart and can be copied explicitly from Keyboard setup without USB. Reports contain fixed event labels/flags and device/app metadata only; no editor contents, audio, API tokens, server addresses or ordinary typing events; key diagnostics cover only open/finish candidates with command modifiers.
+- V64: On Android 16+, shortcut show requests acquire Android Accessibility IGNORE_HARD_KEYBOARD only after the target voice IME has an editor; release owned allowance on close, timeout, switch failure or service teardown. For insert-and-hide, release only after Android acknowledges the window hide, so its editor visibility state is cleared before restoring the hardware setting. Preserve pre-existing modes and later user changes. Reopening an already-selected voice IME works with the normal hidden hardware-keyboard preference.
 
 ## §T
 
@@ -168,7 +169,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 | T25 | x | Keep the voice panel non-fullscreen, verify landscape/normal-editor/settings-return behavior and add private copyable diagnostics for remaining device-specific dismissal; publish signed v0.4.5 without claiming untraced OEM behavior fixed. | V21,V57,V59,V62,V63 |
 
-| T26 | . | Diagnose remaining OnePlus panel flashing/no-show from the user-copied shortcut trace; apply and verify a fix supported by that device sequence. | V57,V58,V59,V62,V63 |
+| T26 | x | Diagnose remaining OnePlus panel flashing/no-show from the user-copied shortcut trace; apply and verify a fix supported by that device sequence; publish signed v0.4.6. | V57,V58,V59,V62,V63,V64 |
+| T27 | . | Verify v0.4.6 on OnePlus Pad 3 with physical Ctrl+Shift+Space and repeated finish/hide cycles; inspect copied allowance/show/hide diagnostics if opening still fails. | V57,V60,V63,V64 |
 
 ## §B
 
@@ -227,3 +229,9 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B51 | 2026-11-11 | Hardware test requested the typing keyboard before the focused editor was served (PHASE_CLIENT_VIEW_SERVED). Await window focus and InputMethodManager.isActive before showing it. | test readiness; V60 unchanged |
 | B52 | 2026-11-11 | Accepted insertion could exit on hidden/changed editor before clearing one-dictation finish intent. Consume the intent on acceptance before any visibility/session early return. | V61 |
 | B53 | 2026-11-11 | Voice IME inherited Android landscape fullscreen extraction mode, reproducing a full-screen panel in an ordinary editor. Explicitly disable fullscreen evaluation for the bounded recording UI. | V62 |
+
+| B54 | 2026-11-11 | OnePlus trace receives the open chord and has a selected IME/editor, but requestShowSelf produces no show callback with hardware visibility disabled. Add Android Accessibility session allowance before the explicit show request, restore it afterward, and retain device verification limit. | V64 |
+| B55 | 2026-11-11 | Reopen test did not await host hide-animation completion and used a shell-selected service before binding settled. Await host insets/animation end and establish already-selected state through a completed shortcut session. | test harness correction; V64 |
+| B56 | 2026-11-11 | Restoring the hardware setting before requestHideSelf hid the IME through configuration, leaving Android 16 editor insets requesting visibility and swallowing the next show. Keep the allowance through the hide request and release on the window-hidden callback; suppress prior-IME return separately. | V64 |
+| B57 | 2026-11-11 | Android 13 Samsung system-server SettingsObserver dereferenced a null IME client during test teardown; reproduced even with the new allowance disabled. Restrict the new workaround to the affected Android 16+ path; retain older IME behavior and report the firmware test limitation. | V64 |
+| B58 | 2026-11-11 | Existing shortcut tests sampled preference restoration when recording stopped, before successful insert/hide completed. Assert restoration after the window-hidden callback or IME teardown, matching the required cleanup order. | test readiness; V64 |

@@ -765,7 +765,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             stopButton.isEnabled = false
             retryButton.visibility = View.GONE
             if (shouldFinishAndHide) {
-                HardwareDictation.finish(this@RemoteSttInputMethodService, restorePrevious = false)
+                HardwareDictation.prepareHideWithoutKeyboardReturn(this@RemoteSttInputMethodService)
                 requestHideSelf(0)
                 return@launch
             }

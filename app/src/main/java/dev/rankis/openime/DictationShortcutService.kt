@@ -62,10 +62,24 @@ open class DictationShortcutService : AccessibilityService() {
         }
         val previous = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
         ShortcutDiagnostics.record(this, "open dispatch own-ime-selected=${previous == target.id}")
+        val visibility = ShortcutKeyboardVisibility(
+            getMode = { softKeyboardController.showMode },
+            setMode = { softKeyboardController.setShowMode(it) },
+        )
         HardwareDictation.request(
             target.id,
             previous,
             selected = { Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) },
+            allowShow = {
+                // Older platforms use the IME visibility override without changing system settings.
+                val accepted = Build.VERSION.SDK_INT < 36 || visibility.acquire()
+                ShortcutDiagnostics.record(this, "hardware-visibility allow=$accepted mode=${softKeyboardController.showMode}")
+                accepted
+            },
+            releaseShow = {
+                val restored = visibility.release()
+                ShortcutDiagnostics.record(this, "hardware-visibility released=$restored mode=${softKeyboardController.showMode}")
+            },
             failed = {
                 ShortcutDiagnostics.record(this, "open failed or timed out")
                 Toast.makeText(this, R.string.shortcut_open_failed, Toast.LENGTH_SHORT).show()

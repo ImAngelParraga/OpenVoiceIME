@@ -40,6 +40,8 @@ HeliBoard itself describes both [direct APK installation](https://github.com/Hel
 
 The on-screen **Transcribe**, **Cancel**, and keyboard-return controls retain their normal preference behavior.
 
+On Android 16 and newer, the shortcut temporarily asks Android Accessibility to allow the panel with a hardware keyboard connected. Android restores your previous on-screen-keyboard setting when the panel closes, opening times out, or the shortcut service stops. You do not need to leave **Use on-screen keyboard** enabled.
+
 HeliBoard can stay selected between recordings. Holding or repeating the open shortcut does not restart an active recording; unrelated key combinations pass through normally. No screen-content access or typed-text storage is requested. On sideloaded installations, Android may require **Allow restricted settings** in the app’s system information menu before it lets you enable the service. Other accessibility services that filter keys or system-reserved shortcuts may prevent delivery. OnePlus Pad 3 / Android 16 and Logitech MX Keys Mini require device-specific verification.
 
 ### A panel that flashes or fails to open
