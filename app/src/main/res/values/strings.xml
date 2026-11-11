@@ -168,4 +168,7 @@
     <string name="shortcut_unsupported">The global shortcut requires Android 11 or newer.</string>
     <string name="shortcut_enable_ime">Enable OpenVoiceIME in Android keyboard settings first.</string>
     <string name="shortcut_open_failed">Could not open dictation. Focus a text field and try Ctrl+Shift+Space again.</string>
+    <string name="shortcut_diagnostics_title">Copy shortcut diagnostics</string>
+    <string name="shortcut_diagnostics_help">If the panel does not appear or closes, try the shortcut and return here to copy diagnostics. Keeps up to 80 local shortcut/panel events; excludes typed text, audio, tokens and server addresses. Copied only when you tap this button.</string>
+    <string name="shortcut_diagnostics_copied">Shortcut diagnostics copied</string>
 </resources>

@@ -125,6 +125,10 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V60: Ctrl+Shift+Enter (including numpad Enter) while the voice panel is active stops recording/paused capture once, transcribes, inserts without confirmation for this action, then hides without switching IMEs only after accepted insertion. Consume matching Enter down/repeats/up while opening or active; never forward Enter or editor-submit actions for that shortcut; busy/inactive recording states cannot duplicate work. Normal on-screen actions/preferences remain unchanged.
 - V61: Shortcut failures retain visible recovery and owned audio/text. Explicit shortcut retry uses retained work; confirmation/visibility overrides survive recreation/retry for that dictation only. Discard/dismissal/new editor clears intent; late completion cannot close another panel or insert into another field.
 
+- V62: Voice dictation stays in a bounded non-fullscreen IME panel in portrait and landscape, including an ordinary editor with automatic soft-input behavior and a connected hardware keyboard.
+
+- V63: Bounded app-private shortcut/lifecycle diagnostics survive process restart and can be copied explicitly from Keyboard setup without USB. Reports contain fixed event labels/flags and device/app metadata only; no editor contents, audio, API tokens, server addresses or ordinary typing events; key diagnostics cover only open/finish candidates with command modifiers.
+
 ## §T
 
 | id | status | goal | cites |
@@ -161,6 +165,10 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T23 | x | Add optional global hardware dictation shortcut, localized accessibility setup, bounded IME handoff and prior-keyboard return; verify key filtering/system binding and publish signed v0.4.3. | V21,V36,V52,V53,V57,V58,V59 |
 
 | T24 | x | Add Ctrl+Shift+Enter transcribe/insert/hide action, suppress previous-IME return for that successful hide, verify failure/retry/ownership/key delivery and publish signed v0.4.4. | V21,V31,V32,V52,V53,V60,V61 |
+
+| T25 | x | Keep the voice panel non-fullscreen, verify landscape/normal-editor/settings-return behavior and add private copyable diagnostics for remaining device-specific dismissal; publish signed v0.4.5 without claiming untraced OEM behavior fixed. | V21,V57,V59,V62,V63 |
+
+| T26 | . | Diagnose remaining OnePlus panel flashing/no-show from the user-copied shortcut trace; apply and verify a fix supported by that device sequence. | V57,V58,V59,V62,V63 |
 
 ## §B
 
@@ -218,3 +226,4 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B50 | 2026-11-11 | Hardware test nested runOnMainSync by calling the key-dispatch helper inside a main-thread block. Dispatch the finish chord outside that block. | test harness correction; no new invariant |
 | B51 | 2026-11-11 | Hardware test requested the typing keyboard before the focused editor was served (PHASE_CLIENT_VIEW_SERVED). Await window focus and InputMethodManager.isActive before showing it. | test readiness; V60 unchanged |
 | B52 | 2026-11-11 | Accepted insertion could exit on hidden/changed editor before clearing one-dictation finish intent. Consume the intent on acceptance before any visibility/session early return. | V61 |
+| B53 | 2026-11-11 | Voice IME inherited Android landscape fullscreen extraction mode, reproducing a full-screen panel in an ordinary editor. Explicitly disable fullscreen evaluation for the bounded recording UI. | V62 |

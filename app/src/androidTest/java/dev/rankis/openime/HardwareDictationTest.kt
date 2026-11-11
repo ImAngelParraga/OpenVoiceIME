@@ -27,7 +27,7 @@ class HardwareDictationTest {
 
     @Test
     fun testV60PendingHandoffConsumesEnterDownRepeatsAndUpWithoutForwarding() = main {
-        val listener = ShortcutTestAccessibilityService()
+        val listener = ShortcutTestAccessibilityService().apply { attachForTest(instrumentation.targetContext) }
         var selected: String? = "typing/ime"
         try {
             HardwareDictation.request("voice/ime", selected, { selected }, {}) { selected = it; true }
@@ -91,7 +91,152 @@ class HardwareDictationTest {
     }
 
     @Test
-    fun testV57V59V60HardwareShortcutsRespectReturnAndHideActions() {
+    fun testV57V59V60HardwareShortcutsRespectReturnAndHideActions() = exerciseShortcuts()
+
+    @Test
+    fun testV62LandscapeNormalEditorKeepsDictationPanelBoundedAndVisible() =
+        exerciseShortcuts(normalEditor = true, landscape = true)
+
+    @Test
+    fun testSettingsReturnAndAccessibilityRestartCanOpenRecordingAgain() =
+        withShortcutKeyboard(normalEditor = true, landscape = true) { scenario, _, _ ->
+            val context = instrumentation.targetContext
+            val store = SettingsStore(context)
+            val settings = store.load().copy(baseUrl = "http://127.0.0.1:1")
+            store.save(settings)
+            focusHiddenEditor(scenario)
+            shortcut()
+            await("visible connection-test error") {
+                SystemImeTestService.instance?.let { service ->
+                    service.isInputViewShown && service.window!!.window!!.decorView
+                        .findViewById<android.widget.EditText>(R.id.errorDetailsInput).text.toString() ==
+                        context.getString(R.string.validation_connection_test_required)
+                } == true
+            }
+            main {
+                SystemImeTestService.instance!!.window!!.window!!.decorView
+                    .findViewById<android.widget.ImageButton>(R.id.settingsButton).performClick()
+            }
+            var settingsActivity: dev.rankis.openime.settings.SettingsActivity? = null
+            await("settings activity") {
+                settingsActivity = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)
+                    .filterIsInstance<dev.rankis.openime.settings.SettingsActivity>().firstOrNull()
+                settingsActivity != null
+            }
+            main {
+                store.markConnectionTestSucceeded(settings)
+                settingsActivity!!.finish()
+            }
+            await("editor focus after settings") {
+                var ready = false
+                scenario.onActivity { host ->
+                    host.editor.requestFocus()
+                    ready = host.editor.hasWindowFocus() && host.getSystemService(InputMethodManager::class.java).isActive(host.editor)
+                }
+                ready
+            }
+            shortcut()
+            await("recording after connection check") {
+                SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true
+            }
+            val enabledServices = getSetting("enabled_accessibility_services")
+            val listener = "${context.packageName}/dev.rankis.openime.ShortcutTestAccessibilityService"
+            val others = enabledServices.split(":").filter { it != listener }.joinToString(":")
+            shell(if (others.isEmpty()) "settings delete secure enabled_accessibility_services"
+                else "settings put secure enabled_accessibility_services $others")
+            await("shortcut service stopped") { ShortcutTestAccessibilityService.instance == null }
+            shell("settings put secure enabled_accessibility_services $enabledServices")
+            await("shortcut service reconnected") { ShortcutTestAccessibilityService.instance != null }
+            shortcut()
+            await("recording after shortcut service restart") {
+                SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true
+            }
+        }
+
+    private fun exerciseShortcuts(normalEditor: Boolean = false, landscape: Boolean = false) =
+        withShortcutKeyboard(normalEditor, landscape) { scenario, ime, previous ->
+            main {
+                val service = ShortcutTestAccessibilityService.instance!!
+                val info = service.serviceInfo
+                assertEquals(0, info.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_RETRIEVE_WINDOW_CONTENT)
+                assertTrue(info.flags and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS != 0)
+                fun key(code: Int, modifiers: Int, repeat: Int = 0) = KeyEvent(
+                    0, 0, KeyEvent.ACTION_DOWN, code, repeat, modifiers,
+                )
+                val modifiers = KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_A, modifiers)))
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, KeyEvent.META_CTRL_ON)))
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers or KeyEvent.META_ALT_ON)))
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers or KeyEvent.META_META_ON)))
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers, 1)))
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, KeyEvent.META_CTRL_ON)))
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers or KeyEvent.META_ALT_ON)))
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers or KeyEvent.META_META_ON)))
+                assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers, 1)))
+            }
+            var previousService: SystemImeTestService? = null
+            repeat(4) { round ->
+                if (round == 3) scenario.onActivity { it.editor.setText("") }
+                focusHiddenEditor(scenario)
+                shortcut()
+                await("visible recording round $round") {
+                    SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true
+                }
+                val service = SystemImeTestService.instance!!
+                val recorder = service.testRecorder
+                val starts = recorder.starts
+                val file = recorder.file!!
+                shortcut(repeatCount = 2)
+                main {
+                    previousService?.let { HardwareDictation.hidden(it) }
+                    assertFalse("Dictation must stay out of fullscreen", service.isFullscreenMode)
+                    assertTrue(HardwareDictation.owns(service))
+                    assertTrue(service.isInputViewShown)
+                    assertTrue(service.onEvaluateInputViewShown())
+                    assertEquals(starts, recorder.starts)
+                }
+                assertEquals("0", getSetting("show_ime_with_hard_keyboard"))
+                scenario.onActivity { assertEquals("", it.editor.text.toString()) }
+                main {
+                    val view = service.window!!.window!!.decorView
+                    when (round) {
+                        0 -> view.findViewById<Button>(R.id.cancelButton).performClick()
+                        1 -> view.findViewById<android.widget.ImageButton>(R.id.keyboardButton).performClick()
+                        2 -> view.findViewById<Button>(R.id.stopButton).performClick()
+                        else -> Unit
+                    }
+                }
+                if (round == 3) shortcut(repeatCount = 2, code = KeyEvent.KEYCODE_ENTER)
+                val expectedIme = if (round == 3) ime else previous
+                await { !recorder.active && getSetting("default_input_method") == expectedIme }
+                assertFalse(file.exists())
+                assertEquals("0", getSetting("show_ime_with_hard_keyboard"))
+                if (round == 3) {
+                    await { !service.isInputViewShown }
+                    assertSame(service, SystemImeTestService.instance)
+                    main { assertFalse(HardwareDictation.owns(service)) }
+                } else {
+                    await { SystemImeTestService.instance == null }
+                }
+                previousService = service
+            }
+            scenario.onActivity {
+                assertEquals("shortcut dictation", it.editor.text.toString())
+            }
+            shell("input text hardware")
+            var actualText = ""
+            await("resumed typing", { "editor text: $actualText" }) {
+                scenario.onActivity { actualText = it.editor.text.toString() }
+                actualText == "shortcut dictationhardware"
+            }
+        }
+
+    private fun withShortcutKeyboard(
+        normalEditor: Boolean = false,
+        landscape: Boolean = false,
+        block: (ActivityScenario<IntegrationHostActivity>, String, String) -> Unit,
+    ) {
         val context = instrumentation.targetContext
         automation.grantRuntimePermission(context.packageName, Manifest.permission.RECORD_AUDIO)
         val settings = AppSettings(apiToken = "integration-test", selectInsertedText = false)
@@ -108,80 +253,18 @@ class HardwareDictationTest {
             shell("settings put secure enabled_accessibility_services ${listOf(services, listener).filter { it.isNotBlank() }.joinToString(":")}")
             shell("settings put secure accessibility_enabled 1")
             await { ShortcutTestAccessibilityService.instance != null }
-            ActivityScenario.launch(IntegrationHostActivity::class.java).use { scenario ->
-                main {
-                    val service = ShortcutTestAccessibilityService.instance!!
-                    val info = service.serviceInfo
-                    assertEquals(0, info.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_RETRIEVE_WINDOW_CONTENT)
-                    assertTrue(info.flags and AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS != 0)
-                    fun key(code: Int, modifiers: Int, repeat: Int = 0) = KeyEvent(
-                        0, 0, KeyEvent.ACTION_DOWN, code, repeat, modifiers,
-                    )
-                    val modifiers = KeyEvent.META_CTRL_ON or KeyEvent.META_SHIFT_ON
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_A, modifiers)))
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, KeyEvent.META_CTRL_ON)))
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers or KeyEvent.META_ALT_ON)))
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers or KeyEvent.META_META_ON)))
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_SPACE, modifiers, 1)))
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, KeyEvent.META_CTRL_ON)))
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers or KeyEvent.META_ALT_ON)))
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers or KeyEvent.META_META_ON)))
-                    assertFalse(service.dispatch(key(KeyEvent.KEYCODE_ENTER, modifiers, 1)))
-                }
-                var previousService: SystemImeTestService? = null
-                repeat(4) { round ->
-                    if (round == 3) scenario.onActivity { it.editor.setText("") }
-                    focusHiddenEditor(scenario)
-                    shortcut()
-                    await("visible recording round $round") {
-                        SystemImeTestService.instance?.let { it.testRecorder.active && it.isInputViewShown } == true
+            val intent = android.content.Intent(context, IntegrationHostActivity::class.java)
+                .putExtra("normal_editor", normalEditor)
+            ActivityScenario.launch<IntegrationHostActivity>(intent).use { scenario ->
+                if (landscape) {
+                    scenario.onActivity { it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                    await("landscape editor") {
+                        var ready = false
+                        scenario.onActivity { ready = it.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
+                        ready
                     }
-                    val service = SystemImeTestService.instance!!
-                    val recorder = service.testRecorder
-                    val starts = recorder.starts
-                    val file = recorder.file!!
-                    shortcut(repeatCount = 2)
-                    main {
-                        previousService?.let { HardwareDictation.hidden(it) }
-                        assertTrue(HardwareDictation.owns(service))
-                        assertTrue(service.isInputViewShown)
-                        assertTrue(service.onEvaluateInputViewShown())
-                        assertEquals(starts, recorder.starts)
-                    }
-                    assertEquals("0", getSetting("show_ime_with_hard_keyboard"))
-                    scenario.onActivity { assertEquals("", it.editor.text.toString()) }
-                    main {
-                        val view = service.window!!.window!!.decorView
-                        when (round) {
-                            0 -> view.findViewById<Button>(R.id.cancelButton).performClick()
-                            1 -> view.findViewById<android.widget.ImageButton>(R.id.keyboardButton).performClick()
-                            2 -> view.findViewById<Button>(R.id.stopButton).performClick()
-                            else -> Unit
-                        }
-                    }
-                    if (round == 3) shortcut(repeatCount = 2, code = KeyEvent.KEYCODE_ENTER)
-                    val expectedIme = if (round == 3) ime else previous
-                    await { !recorder.active && getSetting("default_input_method") == expectedIme }
-                    assertFalse(file.exists())
-                    assertEquals("0", getSetting("show_ime_with_hard_keyboard"))
-                    if (round == 3) {
-                        await { !service.isInputViewShown }
-                        assertSame(service, SystemImeTestService.instance)
-                        main { assertFalse(HardwareDictation.owns(service)) }
-                    } else {
-                        await { SystemImeTestService.instance == null }
-                    }
-                    previousService = service
                 }
-                scenario.onActivity {
-                    assertEquals("shortcut dictation", it.editor.text.toString())
-                }
-                shell("input text hardware")
-                var actualText = ""
-                await("resumed typing", { "editor text: $actualText" }) {
-                    scenario.onActivity { actualText = it.editor.text.toString() }
-                    actualText == "shortcut dictationhardware"
-                }
+                block(scenario, ime, previous)
             }
         } finally {
             main { HardwareDictation.finish() }

@@ -169,4 +169,7 @@
     <string name="shortcut_unsupported">El atajo global requiere Android 11 o posterior.</string>
     <string name="shortcut_enable_ime">Activa primero OpenVoiceIME en los ajustes de teclado de Android.</string>
     <string name="shortcut_open_failed">No se pudo abrir el dictado. Selecciona un campo de texto y vuelve a pulsar Ctrl+Mayús+Espacio.</string>
+    <string name="shortcut_diagnostics_title">Copiar diagnóstico del atajo</string>
+    <string name="shortcut_diagnostics_help">Si el panel no aparece o se cierra, pulsa el atajo y vuelve aquí para copiar el diagnóstico. Guarda hasta 80 eventos locales del atajo y del panel; no incluye texto escrito, audio, tokens ni direcciones del servidor. Se copia solo al pulsar el botón.</string>
+    <string name="shortcut_diagnostics_copied">Diagnóstico del atajo copiado</string>
 </resources>

@@ -17,6 +17,8 @@ class ShortcutTestAccessibilityService : DictationShortcutService() {
 
     fun dispatch(event: KeyEvent): Boolean = onKeyEvent(event)
 
+    fun attachForTest(context: android.content.Context) { attachBaseContext(context) }
+
     companion object {
         var instance: ShortcutTestAccessibilityService? = null
             private set

@@ -121,7 +121,7 @@ Debug builds use the separate application ID `dev.rankis.openime.testbed`. Tests
 
 The hardware-shortcut test temporarily enables a debug-only Accessibility service, invokes its key callback, verifies real IME switching and fake-recorder capture, inserts a synthetic transcript, and restores system settings. It covers Cancel, keyboard return, post-insert return, finish-and-hide while keeping the voice IME selected, consumed Enter events, unchanged physical-keyboard visibility preference, and resumed typing. Lifecycle tests also cover paused finish, failed/truncated insertion, audio/transcript retry, recreation, discard, and editor ownership. Shell-injected keys bypassed Accessibility filtering on the test tablet, so physical Bluetooth delivery and OnePlus-specific compatibility still require device testing.
 
-Validated on Android 13 (API 33) and an Android 16 emulator (API 36). The current Android 16 suite passes all 64 tests. Physical Bluetooth delivery, vendor keyboard behavior, and third-party editors still need device-specific checks.
+Validated on Android 13 (API 33) and an Android 16 emulator (API 36). The current Android 16 suite passes all 67 tests. Portrait and landscape system-binding tests cover both the controlled host and normal automatic editor behavior, including connection-error/settings return and Accessibility-service restart. Shortcut diagnostics are bounded, copied explicitly, and tested to exclude editor text and credentials. Physical Bluetooth delivery, vendor keyboard behavior, and third-party editors still need device-specific checks.
 
 ## Contributing
 

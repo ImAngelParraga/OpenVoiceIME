@@ -36,6 +36,8 @@ The centered keyboard keeps **Cancel**, **Pause/Resume**, **Delete**, and **Tran
 
 On Android 11 or newer, open **Keyboard setup → Set up keyboard shortcut** and enable **OpenVoiceIME keyboard shortcut** in Android Accessibility settings. Keep the system’s on-screen keyboard option off. Focus a text field and press **Ctrl+Shift+Space** to open recording. Press **Ctrl+Shift+Enter** to transcribe, insert the text, and hide the panel while keeping OpenVoiceIME selected. This action skips confirmation for that dictation and never sends Enter to the app. Errors keep recovery open; press the finish shortcut again to retry. Normal on-screen controls keep their saved behavior. Works independently of the selected typing keyboard, including HeliBoard. The optional service filters the shortcut’s key events without reading screen content or saving typed text.
 
+If the panel flashes or fails to open, try the shortcut once, then open **Keyboard setup → Copy shortcut diagnostics**. The local report includes up to 80 shortcut/panel events and app/device metadata; it excludes typed text, audio, tokens, and server addresses. The recording panel stays bounded in portrait and landscape.
+
 ## Recover a dictation
 
 **Retry** resends retained audio after a timeout. **Insert** retries a retained transcript without uploading again; **Copy transcript** provides manual recovery. Changing fields prevents automatic insertion into the new field. Closing the keyboard discards the current dictation. View recreation preserves pending work; **Cancel/Discard** explicitly deletes it.

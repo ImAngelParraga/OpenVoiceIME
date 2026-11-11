@@ -42,6 +42,12 @@ The on-screen **Transcribe**, **Cancel**, and keyboard-return controls retain th
 
 HeliBoard can stay selected between recordings. Holding or repeating the open shortcut does not restart an active recording; unrelated key combinations pass through normally. No screen-content access or typed-text storage is requested. On sideloaded installations, Android may require **Allow restricted settings** in the app’s system information menu before it lets you enable the service. Other accessibility services that filter keys or system-reserved shortcuts may prevent delivery. OnePlus Pad 3 / Android 16 and Logitech MX Keys Mini require device-specific verification.
 
+### A panel that flashes or fails to open
+
+Try the shortcut once, then open **OpenVoiceIME → Keyboard setup → Copy shortcut diagnostics** and paste that report when requesting help. This works without USB or a computer. The local report contains up to 80 shortcut/panel events, app/Android versions, device model and keyboard configuration. It excludes typed text, audio, tokens and server addresses; nothing is copied until you tap the button.
+
+The voice panel stays non-fullscreen in both orientations. That fixes Android’s landscape extraction UI; a vendor-specific opening/dismissal problem still needs its own event trace before it can be diagnosed.
+
 ## Recording controls
 
 Opening OpenVoiceIME starts recording automatically. **Pause** suspends capture without sending audio; **Resume** continues the same file. Paused time is excluded from the recording timer and submitted audio. **Transcribe** sends the combined recording from either state.

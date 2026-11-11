@@ -12,9 +12,11 @@ class IntegrationHostActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+        val normalEditor = intent.getBooleanExtra("normal_editor", false)
+        window.setSoftInputMode(if (normalEditor) WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            else WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         editor = EditText(this).apply {
-            showSoftInputOnFocus = false
+            showSoftInputOnFocus = normalEditor
             id = View.generateViewId()
         }
         setContentView(editor)

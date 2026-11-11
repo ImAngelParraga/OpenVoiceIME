@@ -25,10 +25,16 @@ internal object HardwareDictation {
         var shown: Boolean = false,
     )
 
-    fun attach(ime: RemoteSttInputMethodService) { service = ime }
+    private fun trace(event: String) { service?.let { ShortcutDiagnostics.record(it, event) } }
+
+    fun attach(ime: RemoteSttInputMethodService) {
+        service = ime
+        trace("voice-service attached")
+    }
 
     fun detach(ime: RemoteSttInputMethodService) {
         if (service !== ime) return
+        trace("voice-service detached")
         finish()
         service = null
     }
@@ -40,6 +46,7 @@ internal object HardwareDictation {
         failed: () -> Unit,
         switch: (String) -> Boolean,
     ) {
+        trace("open handoff existing=${session != null} shown=${session?.shown} own-ime-selected=${previous == target}")
         if (session != null) return
         session = Session(target, previous?.takeUnless { it == target }, switch, selected, failed)
         handler.postDelayed(expire, 3_000)
@@ -56,22 +63,28 @@ internal object HardwareDictation {
     } == true
 
     fun showPending(ime: RemoteSttInputMethodService) {
+        trace("show-pending owned=${owns(ime)} shown=${session?.shown} editor=${ime.currentInputConnection != null}")
         if (!owns(ime) || session?.shown != false || ime.currentInputConnection == null) return
         // Let the current input-start callback finish before requesting the window.
         handler.post {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
                 owns(ime) && ime.currentInputConnection != null
-            ) ime.requestShowSelf(0)
+            ) {
+                trace("requestShowSelf")
+                ime.requestShowSelf(0)
+            }
         }
     }
 
     fun shown(ime: RemoteSttInputMethodService) {
         if (!owns(ime)) return
+        trace("shortcut input-view started")
         session?.shown = true
         handler.removeCallbacks(expire)
     }
 
     fun hidden(ime: RemoteSttInputMethodService) {
+        trace("shortcut window hidden owned=${owns(ime)} shown=${session?.shown}")
         if (owns(ime) && session?.shown == true) finish()
     }
 
@@ -85,6 +98,7 @@ internal object HardwareDictation {
 
     fun finish(restorePrevious: Boolean = true): Boolean {
         val current = session ?: return false
+        trace("handoff finished restore-previous=$restorePrevious")
         session = null
         handler.removeCallbacks(expire)
         if (!restorePrevious || current.selected() != current.target) return false

@@ -17,6 +17,7 @@ OpenVoiceIME may process:
 - Transcribed text returned by the selected speech-to-text provider.
 - Provider settings such as base URL, model, language, and API token.
 - Local response-time metrics used to help diagnose transcription latency.
+- Up to 80 local shortcut/panel events with lifecycle flags and app/device metadata for troubleshooting.
 
 ## How Audio And Transcripts Are Used
 
@@ -28,7 +29,7 @@ OpenVoiceIME does not operate its own backend service for transcription.
 
 ## Optional Physical Keyboard Shortcut
 
-If you explicitly enable the keyboard shortcut Accessibility service, Android delivers key events so OpenVoiceIME can recognize Ctrl+Shift+Space to open dictation while another keyboard is selected, and Ctrl+Shift+Enter to finish dictation and hide its panel. Other key combinations pass through. The service does not request screen-content access, read screen text, store typed text, or send key events to a server. You can disable it in Android Accessibility settings at any time.
+If you explicitly enable the keyboard shortcut Accessibility service, Android delivers key events so OpenVoiceIME can recognize Ctrl+Shift+Space to open dictation while another keyboard is selected, and Ctrl+Shift+Enter to finish dictation and hide its panel. Other key combinations pass through. The service does not request screen-content access, read screen text, store typed text, or send key events to a server. You can disable it in Android Accessibility settings at any time. A bounded local diagnostic history records only open/finish key candidates with command modifiers and keyboard-panel lifecycle flags, plus app/Android version, device model and keyboard configuration. It excludes editor contents, audio, tokens and server addresses. **Copy shortcut diagnostics** copies a report only on your explicit action; the app does not upload these reports.
 
 ## API Tokens And Provider Settings
 

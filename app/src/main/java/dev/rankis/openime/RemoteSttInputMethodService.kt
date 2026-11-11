@@ -165,10 +165,21 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     override fun onEvaluateInputViewShown(): Boolean =
         HardwareDictation.owns(this) || super.onEvaluateInputViewShown()
 
-    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean =
-        HardwareDictation.owns(this) || super.onShowInputRequested(flags, configChange)
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean {
+        val allowed = HardwareDictation.owns(this) || super.onShowInputRequested(flags, configChange)
+        ShortcutDiagnostics.record(this, "show-input flags=$flags config-change=$configChange allowed=$allowed")
+        return allowed
+    }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        ShortcutDiagnostics.record(this, "window-shown platform-view=$isInputViewShown fullscreen=$isFullscreenMode")
+    }
 
     override fun onWindowHidden() {
+        ShortcutDiagnostics.record(this, "window-hidden platform-view=$isInputViewShown rebuilding=$rebuildingInputView")
         super.onWindowHidden()
         if (!rebuildingInputView) HardwareDictation.hidden(this)
     }
@@ -251,6 +262,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
+        ShortcutDiagnostics.record(this, "configuration orientation=${newConfig.orientation} keyboard=${newConfig.keyboard} hard-hidden=${newConfig.hardKeyboardHidden}")
         rebuildingInputView = true
         detachInputView(preserveUpload = true)
         try {
@@ -264,6 +276,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         super.onStartInput(info, restarting)
         val sameEditor = info != null && info.packageName == currentEditorPackageName &&
             info.fieldId == currentEditorFieldId && info.inputType == currentEditorInputType
+        ShortcutDiagnostics.record(this, "input-start restart=$restarting same-editor=$sameEditor")
         val finishingCapture = awaitingInputRestart
         val continuingCapture = finishingCapture && isInputViewShown && sameEditor
         cancelPendingInputFinish()
@@ -297,6 +310,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        ShortcutDiagnostics.record(this, "input-view-finish finishing=$finishingInput platform-view=$isInputViewShown")
         if (rebuildingInputView) {
             detachInputView(preserveUpload = true)
         } else if (!finishingInput || !deferCaptureFinish()) {
@@ -306,6 +320,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     override fun onFinishInput() {
+        ShortcutDiagnostics.record(this, "input-finish rebuilding=$rebuildingInputView")
         if (rebuildingInputView) {
             detachInputView(preserveUpload = true)
         } else if (!deferCaptureFinish()) {

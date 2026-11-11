@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.net.Uri
 import android.os.Build
@@ -15,8 +17,10 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.RadioGroup
 import android.widget.TextView
+import android.widget.Toast
 import dev.rankis.openime.R
 import dev.rankis.openime.DictationShortcutService
+import dev.rankis.openime.ShortcutDiagnostics
 
 class KeyboardSetupGuide(
     private val context: Context,
@@ -70,6 +74,12 @@ class KeyboardSetupGuide(
         }
         root.findViewById<Button>(R.id.setupShortcutButton).setOnClickListener {
             open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+        root.findViewById<Button>(R.id.setupCopyShortcutDiagnostics).setOnClickListener {
+            context.getSystemService(ClipboardManager::class.java).setPrimaryClip(
+                ClipData.newPlainText(context.getString(R.string.shortcut_diagnostics_title), ShortcutDiagnostics.report(context)),
+            )
+            Toast.makeText(context, R.string.shortcut_diagnostics_copied, Toast.LENGTH_SHORT).show()
         }
         root.findViewById<Button>(R.id.setupDownloadHeliboard).setOnClickListener {
             open(Intent(Intent.ACTION_VIEW, Uri.parse(HELIBOARD_DOWNLOAD)))
