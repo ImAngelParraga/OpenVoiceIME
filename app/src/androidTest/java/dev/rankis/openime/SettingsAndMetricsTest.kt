@@ -3,14 +3,14 @@ package dev.rankis.openime
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
-import android.widget.Spinner
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.rankis.openime.metrics.TranscriptionMetricsStore
 import dev.rankis.openime.settings.AppSettings
-import dev.rankis.openime.settings.SettingsActivity
+import dev.rankis.openime.settings.ServerSettingsActivity
 import dev.rankis.openime.settings.SettingsStore
+import dev.rankis.openime.settings.builtInProviderOptions
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -47,9 +47,9 @@ class SettingsAndMetricsTest {
     @Test
     fun testV47BuiltinProviderSwitchDoesNotReuseAnotherProvidersToken() = withServer { server, _ ->
         SettingsStore(context).save(AppSettings(baseUrl = server.url("/").toString(), apiToken = "not-a-real-credential"))
-        ActivityScenario.launch(SettingsActivity::class.java).use { scenario ->
+        ActivityScenario.launch(ServerSettingsActivity::class.java).use { scenario ->
             instrumentation.waitForIdleSync()
-            scenario.onActivity { activity -> activity.findViewById<Spinner>(R.id.providerPresetSpinner).setSelection(1) }
+            scenario.onActivity { activity -> activity.applyPreset(builtInProviderOptions()[1]) }
             instrumentation.waitForIdleSync()
             scenario.onActivity { activity -> assertEquals("", activity.findViewById<EditText>(R.id.tokenInput).text.toString()) }
         }
@@ -60,7 +60,7 @@ class SettingsAndMetricsTest {
         val saved = AppSettings(baseUrl = server.url("/").toString().trimEnd('/'), apiToken = "local-test-token", model = "my-custom-model")
         val store = SettingsStore(context)
         store.save(saved)
-        ActivityScenario.launch(SettingsActivity::class.java).use {
+        ActivityScenario.launch(ServerSettingsActivity::class.java).use {
             instrumentation.waitForIdleSync()
             val loaded = store.load()
             assertEquals(saved.baseUrl, loaded.baseUrl)
@@ -73,7 +73,7 @@ class SettingsAndMetricsTest {
     fun testV40ConnectionChangesIgnoreAnOlderSuccessfulProbe() = withServer { server, received ->
         val store = SettingsStore(context)
         store.save(AppSettings(baseUrl = server.url("/").toString(), apiToken = "before"))
-        ActivityScenario.launch(SettingsActivity::class.java).use { scenario ->
+        ActivityScenario.launch(ServerSettingsActivity::class.java).use { scenario ->
             instrumentation.waitForIdleSync()
             scenario.onActivity { activity ->
                 activity.findViewById<EditText>(R.id.baseUrlInput).setText(server.url("/").toString())
@@ -87,7 +87,8 @@ class SettingsAndMetricsTest {
             instrumentation.waitForIdleSync()
             assertFalse(store.hasCurrentConnectionTest(store.load()))
             scenario.onActivity { activity ->
-                assertEquals(activity.getString(R.string.status_not_tested), activity.findViewById<TextView>(R.id.serverStatusText).text.toString())
+                val status = activity.findViewById<android.view.View>(R.id.connectionStatusRow).findViewById<TextView>(R.id.rowTitle)
+                assertEquals(activity.getString(R.string.status_not_tested), status.text.toString())
             }
         }
     }

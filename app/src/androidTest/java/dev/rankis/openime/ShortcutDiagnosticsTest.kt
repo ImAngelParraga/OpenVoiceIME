@@ -31,11 +31,11 @@ class ShortcutDiagnosticsTest {
                     clipboard.setPrimaryClip(ClipData.newPlainText("test", "unchanged clipboard"))
                     ShortcutDiagnostics.record(host, "oldest-diagnostic-marker")
                     repeat(100) { ShortcutDiagnostics.record(host, "diagnostic-test-$it") }
-                    val root = host.layoutInflater.inflate(R.layout.keyboard_setup_guide, null)
+                    val root = host.layoutInflater.inflate(R.layout.activity_setup_guide, null)
                     host.setContentView(root)
                     val guide = KeyboardSetupGuide(host, root,
                         host.getSharedPreferences("diagnostic_guide_test", Context.MODE_PRIVATE), {}, {}, {})
-                    guide.refresh(true, true)
+                    guide.refresh()
                     assertEquals("unchanged clipboard", clipboard.primaryClip!!.getItemAt(0).text.toString())
                     root.findViewById<Button>(R.id.setupCopyShortcutDiagnostics).performClick()
                     val report = clipboard.primaryClip!!.getItemAt(0).text.toString()

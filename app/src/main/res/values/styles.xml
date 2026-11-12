@@ -1,8 +1,115 @@
 <resources>
     <style name="Theme.OpenVoiceIME" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="colorAccent">@color/openime_accent</item>
+        <item name="android:windowBackground">@color/ime_background</item>
+        <item name="android:textColorPrimary">@color/ime_text</item>
+        <item name="android:textColorSecondary">@color/ime_muted</item>
+        <item name="android:textColorHint">@color/ime_muted</item>
+        <item name="colorAccent">@color/ime_accent</item>
+        <item name="colorControlActivated">@color/ime_accent</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+    </style>
+
+    <style name="TextAppearance.OpenVoiceIME.ScreenTitle" parent="">
+        <item name="android:textSize">22sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/ime_text</item>
+    </style>
+    <style name="TextAppearance.OpenVoiceIME.SectionHeader" parent="">
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/ime_accent</item>
+    </style>
+    <style name="TextAppearance.OpenVoiceIME.RowTitle" parent="">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/ime_text</item>
+    </style>
+    <style name="TextAppearance.OpenVoiceIME.RowSummary" parent="">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/ime_muted</item>
+    </style>
+    <style name="TextAppearance.OpenVoiceIME.Body" parent="">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/ime_text</item>
+        <item name="android:lineSpacingExtra">2dp</item>
+    </style>
+
+    <style name="Widget.OpenVoiceIME.Settings.SectionHeader" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">24dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:textAppearance">@style/TextAppearance.OpenVoiceIME.SectionHeader</item>
+    </style>
+    <style name="Widget.OpenVoiceIME.Settings.Card" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:background">@drawable/settings_card_background</item>
+        <item name="android:padding">16dp</item>
+    </style>
+    <style name="Widget.OpenVoiceIME.Settings.Label" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">12dp</item>
+        <item name="android:layout_marginBottom">6dp</item>
+        <item name="android:textAppearance">@style/TextAppearance.OpenVoiceIME.RowSummary</item>
+    </style>
+    <style name="Widget.OpenVoiceIME.Settings.Help" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">6dp</item>
+        <item name="android:textAppearance">@style/TextAppearance.OpenVoiceIME.RowSummary</item>
+    </style>
+    <style name="Widget.OpenVoiceIME.Settings.Field" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:background">@drawable/settings_field_background</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/ime_text</item>
+        <item name="android:textColorHint">@color/ime_muted</item>
+        <item name="android:importantForAutofill">no</item>
+    </style>
+    <style name="Widget.OpenVoiceIME.Settings.PrimaryButton" parent="Widget.OpenVoiceIME.Action">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:background">@drawable/ime_primary_background</item>
+        <item name="android:textColor">@color/ime_on_accent</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+    <style name="Widget.OpenVoiceIME.Settings.SecondaryButton" parent="Widget.OpenVoiceIME.Action">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+    <style name="Widget.OpenVoiceIME.Settings.TextButton" parent="Widget.OpenVoiceIME.Action">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:background">@drawable/settings_row_background</item>
+        <item name="android:textColor">@color/ime_accent</item>
+    </style>
+    <style name="Widget.OpenVoiceIME.Settings.Row" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">64dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:background">@drawable/settings_row_background</item>
     </style>
     <style name="Theme.OpenVoiceIME.Transcript" parent="Theme.AppCompat.DayNight.Dialog">
         <item name="windowNoTitle">true</item>

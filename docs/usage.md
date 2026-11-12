@@ -30,7 +30,7 @@ The automated flow and result screen are verified using a synthetic chat fixture
 
 ## Choose how to open dictation
 
-In OpenVoiceIME, open **Keyboard setup** at the top of Settings. Choose **Use HeliBoard** or **Keep my current keyboard**. The guide remembers your choice, opens official downloads and available keyboard settings, and provides a field for trying dictation. It never changes Android's enabled or default keyboards automatically.
+Settings opens on a status card for microphone, keyboard and server; tap any unfinished item to fix it. Open **Setup guide** from Settings. Choose **Use HeliBoard** or **Keep my current keyboard**. The guide remembers your choice, opens official downloads and available keyboard settings, and provides a field for trying dictation. It never changes Android's enabled or default keyboards automatically.
 
 OpenVoiceIME is a separate voice input method, not a full typing keyboard and not a plug-in for Gboard's microphone. Enable it in Android's **On-screen keyboard / Manage keyboards** settings after configuring your transcription endpoint and granting microphone access. Keep a normal typing keyboard enabled.
 
@@ -59,7 +59,7 @@ HeliBoard itself describes both [direct APK installation](https://github.com/Hel
 ### Bluetooth or USB keyboard shortcut (Android 11+)
 
 1. Enable OpenVoiceIME as an Android keyboard and grant microphone access.
-2. Open **OpenVoiceIME → Keyboard setup → Set up keyboard shortcut**.
+2. Open **OpenVoiceIME → Setup guide → Set up keyboard shortcut**.
 3. In Android Accessibility settings, enable **OpenVoiceIME keyboard shortcut**. This is optional and requires explicit system approval.
 4. Leave **Use on-screen keyboard** off under Android’s physical-keyboard settings.
 5. Focus a text field and press **Ctrl+Shift+Space**. The recording panel opens while the physical keyboard stays connected.
@@ -74,7 +74,7 @@ HeliBoard can stay selected between recordings. Holding or repeating the open sh
 
 ### A panel that flashes or fails to open
 
-Try the shortcut once, then open **OpenVoiceIME → Keyboard setup → Copy shortcut diagnostics** and paste that report when requesting help. This works without USB or a computer. The local report contains up to 80 shortcut/panel events, app/Android versions, device model and keyboard configuration. It excludes typed text, audio, tokens and server addresses; nothing is copied until you tap the button.
+Try the shortcut once, then open **OpenVoiceIME → Setup guide → Copy shortcut diagnostics** and paste that report when requesting help. This works without USB or a computer. The local report contains up to 80 shortcut/panel events, app/Android versions, device model and keyboard configuration. It excludes typed text, audio, tokens and server addresses; nothing is copied until you tap the button.
 
 The voice panel stays non-fullscreen in both orientations. That fixes Android’s landscape extraction UI; a vendor-specific opening/dismissal problem still needs its own event trace before it can be diagnosed.
 
@@ -99,7 +99,7 @@ Each transcription has a total timeout of 5 seconds plus the recording duration,
 
 If insertion fails, OpenVoiceIME keeps the transcript and recording, offers **Insert** to retry insertion without another server request, and provides **Copy transcript**. It does not start another recording. When readable editor text stays unchanged after an accepted request, check the field before retrying to avoid duplicates. Editors without readable text can only be checked through their InputConnection acceptance signal. Changing input fields blocks automatic insertion and leaves the transcript available to copy or explicitly **Insert here**. Existing composing text is finished before dictation; truncated or filtered insertion keeps the full transcript for recovery.
 
-By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`. Groq and custom OpenAI-compatible servers can be selected in settings.
+By default, OpenVoiceIME uses `https://api.openai.com` with `gpt-4o-transcribe`. Groq and custom OpenAI-compatible servers can be selected in **Settings → Server & model**.
 
 Closing the keyboard discards the current dictation and cancels requests. View recreation preserves pending uploads/transcripts; a paused recording remains resumable. Rebuilding an actively recording view finalizes usable audio for **Send audio**. Service destruction clears owned temporary work, and a later service start removes abandoned recording files left by process death.
 

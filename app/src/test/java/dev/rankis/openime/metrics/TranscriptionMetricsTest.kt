@@ -14,6 +14,21 @@ class TranscriptionMetricsTest {
     }
 
     @Test
+    fun successRateRoundsDownAndHandlesEmptySnapshot() {
+        val snapshot = TranscriptionMetricsSnapshot(
+            totalCount = 3L,
+            successCount = 2L,
+            failureCount = 1L,
+            totalBytes = 0L,
+            totalDurationMillis = 0L,
+            buckets = emptyList(),
+        )
+
+        assertEquals(66, successRatePercent(snapshot))
+        assertEquals(0, successRatePercent(snapshot.copy(totalCount = 0L, successCount = 0L)))
+    }
+
+    @Test
     fun formatsEmptySnapshot() {
         val text = formatTranscriptionMetrics(
             TranscriptionMetricsSnapshot(

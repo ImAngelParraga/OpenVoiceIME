@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="4dp"
+    android:paddingEnd="16dp">
+
+    <ImageButton
+        android:id="@+id/topBarBack"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="@drawable/settings_row_background"
+        android:contentDescription="@string/settings_back"
+        android:src="@drawable/ic_arrow_back" />
+
+    <TextView
+        android:id="@+id/topBarTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:accessibilityHeading="true"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:textAppearance="@style/TextAppearance.OpenVoiceIME.ScreenTitle" />
+</LinearLayout>

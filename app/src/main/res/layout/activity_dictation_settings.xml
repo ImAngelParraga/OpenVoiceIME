@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/settings_top_bar" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:focusableInTouchMode="true"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
+
+            <TextView
+                style="@style/Widget.OpenVoiceIME.Settings.SectionHeader"
+                android:layout_marginTop="8dp"
+                android:accessibilityHeading="true"
+                android:text="@string/dictation_quick_languages" />
+
+            <LinearLayout style="@style/Widget.OpenVoiceIME.Settings.Card">
+
+                <TextView
+                    android:id="@+id/quickLanguagesHelp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.OpenVoiceIME.RowSummary" />
+
+                <LinearLayout
+                    android:id="@+id/quickLanguagesList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginStart="-12dp"
+                    android:layout_marginEnd="-12dp"
+                    android:divider="@drawable/settings_divider"
+                    android:orientation="vertical"
+                    android:showDividers="middle" />
+
+                <EditText
+                    android:id="@+id/languageSearchInput"
+                    style="@style/Widget.OpenVoiceIME.Settings.Field"
+                    android:layout_marginTop="12dp"
+                    android:hint="@string/hint_search_language"
+                    android:imeOptions="actionDone"
+                    android:inputType="text"
+                    android:singleLine="true" />
+
+                <LinearLayout
+                    android:id="@+id/languageSearchResults"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="-12dp"
+                    android:layout_marginEnd="-12dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/Widget.OpenVoiceIME.Settings.SectionHeader"
+                android:accessibilityHeading="true"
+                android:text="@string/settings_transcription_prompt" />
+
+            <LinearLayout style="@style/Widget.OpenVoiceIME.Settings.Card">
+
+                <EditText
+                    android:id="@+id/transcriptionPromptInput"
+                    style="@style/Widget.OpenVoiceIME.Settings.Field"
+                    android:gravity="top|start"
+                    android:hint="@string/hint_transcription_prompt"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:maxLines="6"
+                    android:minLines="3" />
+
+                <TextView
+                    style="@style/Widget.OpenVoiceIME.Settings.Help"
+                    android:text="@string/settings_transcription_prompt_help" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

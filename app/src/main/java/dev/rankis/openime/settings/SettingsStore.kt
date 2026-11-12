@@ -118,6 +118,10 @@ class SettingsStore(context: Context) {
         }
     }
 
+    fun update(transform: (AppSettings) -> AppSettings) {
+        save(transform(load()))
+    }
+
     fun hasCurrentConnectionTest(settings: AppSettings): Boolean {
         return prefs.getString(KEY_TESTED_CONNECTION_FINGERPRINT, null) == connectionTestFingerprint(settings)
     }

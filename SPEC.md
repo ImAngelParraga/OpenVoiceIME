@@ -152,6 +152,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 - V77: Message transcription requests no screenshot capability and captures no chat image. Explicit Transcribe shows the themed opaque full-screen progress/cancel cover before menu automation; protected windows use the same cover without screenshot requirements.
 - V78: A pending cover-draw callback acts only while that cover is still owned. Cancel, timeout, configuration change, interruption and teardown remove its ownership, preventing stale continuation. The cover blocks underlying chat taps while accessibility operates the bounded Share sequence.
+- V79: Settings opens on a readiness card (microphone, keyboard, tested server) whose unfinished rows lead to their fix, then rows for Server & model, Languages & prompt, Panel behavior, Voice messages, Response times, Setup guide and app language. Each sub-screen autosaves only its own fields. Post-insert hide/return flags are edited as one choice (return to typing keyboard, hide, keep dictating); unchanged stored combinations are preserved until the user picks. Screens follow the panel's day/night palette and system-bar insets in English and Spanish.
 
 ## §T
 
@@ -203,6 +204,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T31 | x | Replace progress scene with transient chat snapshot/nearby indicator, verify memory cleanup/secure-window rejection/stale callbacks/real chooser; research direct audio retrieval and publish signed release. | V21,V70,V74,V75,V76,V77,V78 |
 
 | T32 | x | Restore opaque full-screen share progress, remove screenshot capture/capability and stale strings/code, verify secure-window/cancellation/chooser regressions; publish signed v0.5.3 and update the connected phone. | V21,V70,V74,V75,V76,V77,V78 |
+| T33 | x | Split Settings into a readiness home and focused sub-screens, verify unit/instrumented settings, setup and diagnostics tests plus phone screenshots in both themes and Spanish; publish signed v0.6.0. | V40,V42,V47,V48,V49,V63,V79 |
 
 ## §B
 

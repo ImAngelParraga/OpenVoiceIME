@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/settings_top_bar" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="24dp">
+
+            <LinearLayout
+                style="@style/Widget.OpenVoiceIME.Settings.Card"
+                android:layout_marginTop="8dp">
+
+                <include
+                    android:id="@+id/messageStatusRow"
+                    layout="@layout/settings_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/message_setup_summary"
+                    android:textAppearance="@style/TextAppearance.OpenVoiceIME.Body" />
+
+                <Button
+                    android:id="@+id/messageSetupButton"
+                    style="@style/Widget.OpenVoiceIME.Settings.PrimaryButton"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/message_setup_enable" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/Widget.OpenVoiceIME.Settings.SectionHeader"
+                android:accessibilityHeading="true"
+                android:text="@string/message_setup_details_title" />
+
+            <LinearLayout style="@style/Widget.OpenVoiceIME.Settings.Card">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/message_setup_permission"
+                    android:textAppearance="@style/TextAppearance.OpenVoiceIME.Body" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/message_setup_fallback"
+                    android:textAppearance="@style/TextAppearance.OpenVoiceIME.Body" />
+
+                <TextView
+                    style="@style/Widget.OpenVoiceIME.Settings.Help"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/message_setup_languages" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

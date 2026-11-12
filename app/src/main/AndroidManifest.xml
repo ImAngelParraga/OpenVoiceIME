@@ -25,6 +25,36 @@
         </activity>
 
         <activity
+            android:name=".settings.ServerSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".settings.SettingsActivity" />
+
+        <activity
+            android:name=".settings.DictationSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".settings.SettingsActivity" />
+
+        <activity
+            android:name=".settings.BehaviorSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".settings.SettingsActivity" />
+
+        <activity
+            android:name=".settings.MessageSettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".settings.SettingsActivity" />
+
+        <activity
+            android:name=".settings.MetricsActivity"
+            android:exported="false"
+            android:parentActivityName=".settings.SettingsActivity" />
+
+        <activity
+            android:name=".settings.SetupGuideActivity"
+            android:exported="false"
+            android:parentActivityName=".settings.SettingsActivity" />
+
+        <activity
             android:name=".sharing.SharedTranscriptionActivity"
             android:exported="true"
             android:label="@string/share_target"

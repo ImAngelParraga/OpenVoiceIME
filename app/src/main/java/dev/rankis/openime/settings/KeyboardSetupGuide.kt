@@ -7,12 +7,10 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.accessibilityservice.AccessibilityServiceInfo
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.view.View
-import android.view.accessibility.AccessibilityManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.RadioGroup
@@ -46,10 +44,7 @@ class KeyboardSetupGuide(
         }
     }
 
-    private val panel = root.findViewById<View>(R.id.setupGuidePanel)
     private val routes = root.findViewById<RadioGroup>(R.id.setupRouteGroup)
-    private val actionStatus = root.findViewById<TextView>(R.id.setupActionStatus)
-    private var initialExpansionSet = false
 
     init {
         when (preferences.getString(ROUTE, null)) {
@@ -65,9 +60,6 @@ class KeyboardSetupGuide(
             }
             preferences.edit().putString(ROUTE, route).apply()
             renderRoute()
-        }
-        root.findViewById<Button>(R.id.setupGuideToggle).setOnClickListener {
-            panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
         root.findViewById<Button>(R.id.enableImeButton).setOnClickListener {
             open(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
@@ -90,39 +82,23 @@ class KeyboardSetupGuide(
         }
         root.findViewById<Button>(R.id.setupChooseKeyboard).setOnClickListener {
             try {
-                actionStatus.visibility = View.GONE
                 showPicker()
             } catch (_: SecurityException) {
                 showError(R.string.setup_action_failed)
             }
         }
-        root.findViewById<Button>(R.id.setupConfigureServer).setOnClickListener {
-            panel.visibility = View.GONE
-            configureServer()
-        }
+        root.findViewById<Button>(R.id.setupConfigureServer).setOnClickListener { configureServer() }
     }
 
-    fun refresh(microphoneGranted: Boolean, imeEnabled: Boolean) {
+    fun refresh() {
         val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-        val accessibility = context.getSystemService(AccessibilityManager::class.java)
-        val shortcutEnabled = accessibility.getEnabledAccessibilityServiceList(
-            AccessibilityServiceInfo.FEEDBACK_ALL_MASK,
-        ).any {
-            val info = it.resolveInfo.serviceInfo
-            info.packageName == context.packageName && info.name == DictationShortcutService::class.java.name
-        }
+        val shortcutEnabled = SetupStatus.accessibilityServiceEnabled(context, DictationShortcutService::class.java)
         root.findViewById<Button>(R.id.setupShortcutButton).isEnabled = supported
         root.findViewById<TextView>(R.id.setupShortcutStatus).setText(when {
             !supported -> R.string.shortcut_unsupported
             shortcutEnabled -> R.string.shortcut_enabled
             else -> R.string.shortcut_disabled
         })
-        if (!initialExpansionSet) {
-            panel.visibility = if (!microphoneGranted || !imeEnabled || routes.checkedRadioButtonId == -1) {
-                View.VISIBLE
-            } else View.GONE
-            initialExpansionSet = true
-        }
         val available = heliSettings() != null
         root.findViewById<Button>(R.id.setupOpenHeliboard).isEnabled = available
         root.findViewById<TextView>(R.id.setupHeliboardStatus).setText(
@@ -139,7 +115,6 @@ class KeyboardSetupGuide(
 
     private fun open(intent: Intent) {
         try {
-            actionStatus.visibility = View.GONE
             launch(intent)
         } catch (_: ActivityNotFoundException) {
             showError(R.string.setup_action_failed)
@@ -149,7 +124,6 @@ class KeyboardSetupGuide(
     }
 
     private fun showError(message: Int) {
-        actionStatus.setText(message)
-        actionStatus.visibility = View.VISIBLE
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
     }
 }

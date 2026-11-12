@@ -17,7 +17,7 @@ Three projects for dictation across devices. Use them together for a self-hosted
 ## Install and configure
 
 1. Download `OpenVoiceIME-release.apk` from [GitHub Releases](https://github.com/ImAngelParraga/OpenVoiceIME/releases/latest) and install it.
-2. Open **OpenVoiceIME → Keyboard setup** and choose **Use HeliBoard** or **Keep my current keyboard**. The guide offers downloads, keyboard settings, microphone permission, and a test field.
+2. Open **OpenVoiceIME → Setup guide** and choose **Use HeliBoard** or **Keep my current keyboard**. The guide offers downloads, keyboard settings, microphone permission, and a test field.
 3. Select a provider, enter its token, and choose a transcription model and language. Use **Custom** for your own server.
 4. Test connectivity, enable OpenVoiceIME in Android keyboard settings, then select it from the keyboard picker.
 5. Open voice input to record automatically. Use **Pause/Resume** to think between passages, then **Transcribe** to send the recording.
@@ -28,7 +28,7 @@ For a self-hosted backend, follow the [Portable ASR setup guide](https://github.
 
 Release builds require HTTPS. Debug builds allow HTTP for local development. Transcription prompt context is an optional vocabulary hint; cleanup is configured on the server.
 
-To stay in the voice keyboard after inserting text, disable both **Return to keyboard after insert** and **Hide after insert** in Behavior. The next recording starts automatically. Existing saved preferences are preserved on upgrade.
+To stay in the voice keyboard after inserting text, choose **Keep dictating** under **Panel behavior → After inserting text**. The next recording starts automatically. Existing saved preferences are preserved on upgrade.
 
 The centered keyboard keeps **Cancel**, **Pause/Resume**, **Delete**, and **Transcribe** visible, with direct settings, language, and keyboard-switch shortcuts. Cancel follows **Hide after cancel**: disable it to restart recording without closing the panel. Delete edits text independently of recording.
 
@@ -40,9 +40,9 @@ The shortcut uses an opaque progress cover and does not capture the chat. Automa
 
 ## Bluetooth keyboard shortcuts
 
-On Android 11 or newer, open **Keyboard setup → Set up keyboard shortcut** and enable **OpenVoiceIME keyboard shortcut** in Android Accessibility settings. Keep the system’s on-screen keyboard option off. Focus a text field and press **Ctrl+Shift+Space** to open recording. Press **Ctrl+Shift+Enter** to transcribe, insert the text, and hide the panel while keeping OpenVoiceIME selected. This action skips confirmation for that dictation and never sends Enter to the app. Errors keep recovery open; press the finish shortcut again to retry. Normal on-screen controls keep their saved behavior. Works independently of the selected typing keyboard, including HeliBoard. The optional service filters the shortcut’s key events without reading screen content or saving typed text.
+On Android 11 or newer, open **Setup guide → Set up keyboard shortcut** and enable **OpenVoiceIME keyboard shortcut** in Android Accessibility settings. Keep the system’s on-screen keyboard option off. Focus a text field and press **Ctrl+Shift+Space** to open recording. Press **Ctrl+Shift+Enter** to transcribe, insert the text, and hide the panel while keeping OpenVoiceIME selected. This action skips confirmation for that dictation and never sends Enter to the app. Errors keep recovery open; press the finish shortcut again to retry. Normal on-screen controls keep their saved behavior. Works independently of the selected typing keyboard, including HeliBoard. The optional service filters the shortcut’s key events without reading screen content or saving typed text.
 
-If the panel flashes or fails to open, try the shortcut once, then open **Keyboard setup → Copy shortcut diagnostics**. The local report includes up to 80 shortcut/panel events and app/device metadata; it excludes typed text, audio, tokens, and server addresses. The recording panel stays bounded in portrait and landscape.
+If the panel flashes or fails to open, try the shortcut once, then open **Setup guide → Copy shortcut diagnostics**. The local report includes up to 80 shortcut/panel events and app/device metadata; it excludes typed text, audio, tokens, and server addresses. The recording panel stays bounded in portrait and landscape.
 
 ## Recover a dictation
 

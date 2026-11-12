@@ -69,6 +69,11 @@ fun formatTranscriptionMetrics(snapshot: TranscriptionMetricsSnapshot): String {
     return lines.joinToString("\n")
 }
 
+fun successRatePercent(snapshot: TranscriptionMetricsSnapshot): Int {
+    if (snapshot.totalCount == 0L) return 0
+    return ((snapshot.successCount * 100L) / snapshot.totalCount).toInt()
+}
+
 fun formatMillis(millis: Long): String {
     return if (millis < 1_000L) {
         "${millis} ms"

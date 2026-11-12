@@ -1,0 +1,5 @@
+<resources>
+    <color name="settings_surface">#FFFFFF</color>
+    <color name="settings_outline">#D3DAC8</color>
+    <color name="settings_warning">#8A5A00</color>
+</resources>

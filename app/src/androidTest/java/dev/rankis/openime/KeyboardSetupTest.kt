@@ -8,7 +8,6 @@ import android.content.res.Configuration
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
-import android.widget.EditText
 import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
@@ -17,7 +16,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.rankis.openime.settings.AppSettings
 import dev.rankis.openime.settings.KeyboardSetupGuide
-import dev.rankis.openime.settings.SettingsActivity
+import dev.rankis.openime.settings.SetupGuideActivity
 import dev.rankis.openime.settings.SettingsStore
 import org.junit.Assert.*
 import org.junit.Test
@@ -34,25 +33,22 @@ class KeyboardSetupTest {
         preferences.edit().clear().commit()
         ActivityScenario.launch(IntegrationHostActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
-                val root = activity.layoutInflater.inflate(R.layout.keyboard_setup_guide, null)
+                val root = activity.layoutInflater.inflate(R.layout.activity_setup_guide, null)
                 activity.setContentView(root)
                 fun create() = KeyboardSetupGuide(activity, root, preferences, {}, {}, {}, { null })
                 val guide = create()
-                guide.refresh(false, false)
-                assertEquals(View.VISIBLE, root.findViewById<View>(R.id.setupGuidePanel).visibility)
+                guide.refresh()
                 val routes = root.findViewById<RadioGroup>(R.id.setupRouteGroup)
                 routes.check(R.id.setupUseHeliboard)
                 assertEquals(View.VISIBLE, root.findViewById<View>(R.id.setupHeliboardPanel).visibility)
                 assertEquals(View.GONE, root.findViewById<View>(R.id.setupCurrentKeyboardPanel).visibility)
-                create().refresh(true, true)
+                create().refresh()
                 assertEquals(R.id.setupUseHeliboard, routes.checkedRadioButtonId)
-                assertEquals(View.GONE, root.findViewById<View>(R.id.setupGuidePanel).visibility)
                 routes.check(R.id.setupKeepKeyboard)
-                create().refresh(false, true)
+                create().refresh()
                 assertEquals(R.id.setupKeepKeyboard, routes.checkedRadioButtonId)
                 assertEquals(View.VISIBLE, root.findViewById<View>(R.id.setupCurrentKeyboardPanel).visibility)
                 assertEquals(View.GONE, root.findViewById<View>(R.id.setupHeliboardPanel).visibility)
-                assertEquals(View.VISIBLE, root.findViewById<View>(R.id.setupGuidePanel).visibility)
             }
         }
     }
@@ -62,7 +58,7 @@ class KeyboardSetupTest {
         preferences.edit().clear().commit()
         ActivityScenario.launch(IntegrationHostActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
-                val root = activity.layoutInflater.inflate(R.layout.keyboard_setup_guide, null)
+                val root = activity.layoutInflater.inflate(R.layout.activity_setup_guide, null)
                 activity.setContentView(root)
                 val requested = mutableListOf<Intent>()
                 var pickerRequests = 0
@@ -74,7 +70,7 @@ class KeyboardSetupTest {
                     if (failLaunch) throw ActivityNotFoundException()
                     requested += it
                 }, { pickerRequests++ }, { serverRequests++ }, { if (installed) heli else null })
-                guide.refresh(false, false)
+                guide.refresh()
                 root.findViewById<RadioGroup>(R.id.setupRouteGroup).check(R.id.setupUseHeliboard)
                 val openHeli = root.findViewById<Button>(R.id.setupOpenHeliboard)
                 assertFalse(openHeli.isEnabled)
@@ -87,19 +83,18 @@ class KeyboardSetupTest {
                 assertEquals(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS, requested.last().action)
                 assertTrue(root.findViewById<TextView>(R.id.setupShortcutStatus).text.isNotBlank())
                 installed = true
-                guide.refresh(false, false)
+                guide.refresh()
                 assertTrue(openHeli.isEnabled)
                 openHeli.performClick()
                 assertEquals(heli.component, requested.last().component)
                 root.findViewById<Button>(R.id.setupChooseKeyboard).performClick()
                 assertEquals(1, pickerRequests)
                 failLaunch = true
+                val requestsBeforeFailure = requested.size
                 root.findViewById<Button>(R.id.setupDownloadHeliboard).performClick()
-                assertEquals(View.VISIBLE, root.findViewById<View>(R.id.setupActionStatus).visibility)
-                assertEquals(activity.getString(R.string.setup_action_failed), root.findViewById<TextView>(R.id.setupActionStatus).text)
+                assertEquals(requestsBeforeFailure, requested.size)
                 root.findViewById<Button>(R.id.setupConfigureServer).performClick()
                 assertEquals(1, serverRequests)
-                assertEquals(View.GONE, root.findViewById<View>(R.id.setupGuidePanel).visibility)
             }
         }
     }
@@ -113,7 +108,7 @@ class KeyboardSetupTest {
         val fixture = AppSettings(baseUrl = "http://127.0.0.1:1", model = "fixture-model", apiToken = "fixture-token")
         store.save(fixture)
         try {
-            ActivityScenario.launch(SettingsActivity::class.java).use { scenario ->
+            ActivityScenario.launch(SetupGuideActivity::class.java).use { scenario ->
                 scenario.onActivity { activity ->
                     activity.findViewById<RadioGroup>(R.id.setupRouteGroup).check(R.id.setupKeepKeyboard)
                 }
@@ -121,7 +116,7 @@ class KeyboardSetupTest {
                 scenario.onActivity { activity ->
                     assertEquals(R.id.setupKeepKeyboard, activity.findViewById<RadioGroup>(R.id.setupRouteGroup).checkedRadioButtonId)
                     assertTrue(activity.findViewById<TextView>(R.id.setupGboardWarning).text.contains("Gboard"))
-                    assertEquals(fixture.baseUrl, activity.findViewById<EditText>(R.id.baseUrlInput).text.toString())
+                    assertEquals(fixture.baseUrl, store.load().baseUrl)
                     assertEquals(fixture.model, store.load().model)
                     assertEquals(fixture.apiToken, store.load().apiToken)
                 }
@@ -142,12 +137,12 @@ class KeyboardSetupTest {
                         fontScale = 1.3f
                     }
                     val localized = activity.createConfigurationContext(config)
-                    val root = LayoutInflater.from(localized).inflate(R.layout.keyboard_setup_guide, null)
+                    val root = LayoutInflater.from(localized).inflate(R.layout.activity_setup_guide, null)
                     val width = (320 * localized.resources.displayMetrics.density).toInt()
                     val scroll = ScrollView(activity).apply { addView(root) }
                     activity.setContentView(scroll)
                     preferences.edit().clear().commit()
-                    KeyboardSetupGuide(localized, root, preferences, {}, {}, {}, { null }).refresh(false, false)
+                    KeyboardSetupGuide(localized, root, preferences, {}, {}, {}, { null }).refresh()
                     root.findViewById<RadioGroup>(R.id.setupRouteGroup).check(R.id.setupUseHeliboard)
                     root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
                     root.layout(0, 0, width, root.measuredHeight)
