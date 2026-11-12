@@ -5,7 +5,7 @@ permalink: /privacy-policy/
 
 # OpenVoiceIME Privacy Policy
 
-Effective date: 2026-11-11
+Effective date: 2026-11-12
 
 OpenVoiceIME is an Android input method that records speech, sends it to a user-configured speech-to-text provider, and inserts the returned transcript into the active text field.
 
@@ -14,6 +14,7 @@ OpenVoiceIME is an Android input method that records speech, sends it to a user-
 OpenVoiceIME may process:
 
 - Microphone audio recorded when you start dictation.
+- Audio files you explicitly share for transcription from another app.
 - Transcribed text returned by the selected speech-to-text provider.
 - Provider settings such as base URL, model, language, and API token.
 - Local response-time metrics used to help diagnose transcription latency.
@@ -26,6 +27,14 @@ Audio is recorded on your device only when you start a dictation session. The re
 The selected provider processes the audio and returns transcript text. OpenVoiceIME inserts that text into the currently focused app according to your settings.
 
 OpenVoiceIME does not operate its own backend service for transcription.
+
+## Shared Voice Messages And Optional Floating Shortcut
+
+When you share an audio message to **Transcribe audio · OpenVoiceIME**, the app temporarily copies and validates that audio in its private cache, sends it to your configured provider, and displays the returned transcript. It does not automatically insert or send text to the conversation. Copying or sharing the transcript requires your explicit action. This feature does not record the microphone.
+
+The separate **OpenVoiceIME message transcription** Accessibility service is optional. If you enable it, it inspects the active interface to recognize message-selection and sharing controls in supported messengers and the Android share chooser. Only pressing its floating **Transcribe** button starts menu automation. It does not store or log chat screen contents, and it does not upload screen contents to a server. The selected audio is sent through the same explicit sharing mechanism. Disable this service in Android Accessibility settings at any time.
+
+Shared audio remains private while the result screen is open, including cancellation/retry. Closing the screen deletes its owned audio; after process death, the next import deletes abandoned files older than 24 hours. Pending shared transcripts remain in memory and are not saved as a transcript history.
 
 ## Optional Physical Keyboard Shortcut
 

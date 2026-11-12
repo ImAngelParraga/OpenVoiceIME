@@ -24,6 +24,31 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".sharing.SharedTranscriptionActivity"
+            android:exported="true"
+            android:label="@string/share_target"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.OpenVoiceIME.Transcript">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="audio/*" />
+                <data android:mimeType="application/ogg" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".sharing.MessageTranscriptionService"
+            android:exported="true"
+            android:label="@string/message_service_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/message_transcription" />
+        </service>
+
         <service
             android:name=".DictationShortcutService"
             android:exported="true"

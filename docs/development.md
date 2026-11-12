@@ -125,6 +125,18 @@ Current verification covers 116 JVM tests and all 74 tests on an Android 16 emul
 
 The OnePlus Pad 3 (OPD2415, Android 16) also passed all 74 automated checks with a Bluetooth MX Keys Mini connected. One live release-app dictation inserted text and closed the panel; two further manual rounds remain unverified. See [device results and repeatable physical-keyboard check](oneplus-pad3-validation.md). The opt-in `PhysicalKeyboardTest` is skipped in unattended runs, so the suite reports 75 cases with 74 passing and one assumption skip. OxygenOS may require granting the isolated test app Microphone through its normal UI before running instrumentation; setup reuses an existing grant.
 
+## Shared-message transcription checks
+
+The shared-message feature adds six isolated Android checks: importing real OGG/Opus and WAV, rejecting invalid/oversized/non-content inputs, upload MIME/auth mapping, recreation without duplicate upload, cancelled-upload retry with stale-action protection, invalid input without upload, a bounded Spanish dialog with enlarged text, and the complete floating-button → More → Share → real system chooser → result flow. The UI fixture contains synthetic messages and never opens personal chats. Tests restore the prior accessibility service list and test-app provider settings. Run on an unlocked device:
+
+```bash
+adb shell am instrument -w -r \
+  -e class dev.rankis.openime.SharedTranscriptionTest \
+  dev.rankis.openime.testbed.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Install the freshly built debug APK and `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk` first. The six feature tests pass on a Samsung SM-P610 running Android 13 and an Android 16 emulator. The full Android 16 suite reports 81 cases: 80 pass and the opt-in physical-keyboard check is skipped. All 123 JVM tests pass; debug lint has zero errors. JVM tests also cover audio-header/MIME handling and bounded menu automation, including chooser scrolling, one-time confirmation, timeout, unrelated navigation and repeated controls. Actual WhatsApp/Telegram message selection remains a separate device compatibility check; fixture results do not establish compatibility with every messenger version.
+
 ## Contributing
 
 Useful first areas:

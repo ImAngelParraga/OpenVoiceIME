@@ -2,6 +2,8 @@
 
 ## §G
 
+Received voice messages: explicit selection plus floating Transcribe automates sharing to existing provider; show selectable result without inserting into chat.
+
 Cancel panel visibility configurable. User choose whether Cancel hides IME panel; disabled hide keeps panel open for immediate fresh dictation. Post-insert keyboard return configurable; disabled return and hide keep panel active for hands-free dictation. Transcription language remembered per editor application. Delete edits selected or preceding editor text. Compact keyboard button returns directly to last-used normal keyboard without opening Android picker.
 Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings/language/keyboard toolbar. Pause/resume one recording without uploading or counting paused time. Existing post-insert and Cancel visibility preferences preserved. Cursor pad removed from current keyboard; Delete gestures retained.
 
@@ -49,6 +51,9 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | `KeyboardSetupGuide` / `keyboard_setup_guide.xml` | Localized, persisted keyboard-route guide with explicit external/settings actions and a test field; no automatic system keyboard changes. |
 
 | `DictationShortcutService` / `HardwareDictation` | Optional open/finish chords, bounded main-thread IME handoff, session visibility and normal prior-IME return; explicit finish hides while keeping the voice IME selected. No screen retrieval or global visibility changes. |
+
+| `MessageTranscriptionService` / `ShareAutomation` | Optional explicit selection shortcut; bounded menu automation and separate screen-content permission. |
+| `SharedTranscriptionActivity` / `SharedTranscriptionModel` / `SharedAudioImporter` | Single content URI import, existing provider settings, retained cancellable request and private temporary audio, selectable result dialog. |
 
 ## §V
 
@@ -134,6 +139,13 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V67: A view-only recreation caused by the shortcut visibility-setting update preserves an owned recording/paused recorder, file, duration and focus; it cannot turn a newly started recording into ReadyToUpload. Explicit configuration changes retain the existing capture policy, and discard/editor replacement/destruction still cancel owned work.
 - V68: If the shortcut Accessibility controller is disconnected during prior-IME restoration, the still-selected owning IME may request the same prior keyboard through its own valid IME token. Never override manual selection or explicit insert-and-hide; verify real restoration and fresh recording after service disable/enable.
 
+- V69: Shared-audio receiver accepts one content URI, bounds import to 25 MiB, detects supported audio headers, uploads with matching MIME type through existing settings, and never inserts into a chat. Invalid/empty/oversized input cannot upload.
+- V70: Shared transcription survives view recreation without duplicate upload; cancel stops HTTP, retry retains owned audio, closing deletes temporary audio, late results cannot replace cancelled work. Text copies/shares only on explicit action.
+- V71: Separate optional message Accessibility service leaves hardware shortcut screen-access contract unchanged. User selects message and explicitly taps floating Transcribe; automation clicks only known Share/More/own-target controls in the originating messenger and system resolver (up to four forward scrolls and one Just once confirmation), expires within eight seconds, and stops on unrelated navigation, failure, disconnect or receiver launch. No automatic uploads from selection alone or screen-content logging.
+- V72: Localized setup explains message-selection shortcut, screen access, fallback sharing and compatibility limits; bounded transcript dialog scrolls at narrow width and enlarged fonts. Fixture integration proves menu automation and receiver lifecycle without reading personal chats; third-party compatibility remains explicit until device-tested.
+
+- V73: Shared-transcription Retry is accepted only from failed/cancelled state; repeated or stale Retry actions during work or after success cannot upload again or replace a successful result.
+
 ## §T
 
 | id | status | goal | cites |
@@ -176,6 +188,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T26 | x | Diagnose remaining OnePlus panel flashing/no-show from the user-copied shortcut trace; apply and verify a fix supported by that device sequence; publish signed v0.4.6. | V57,V58,V59,V62,V63,V64 |
 | T27 | x | Use v0.4.6 OnePlus trace to add one guarded direct-window fallback for dropped show delivery, verify fault injection/cancellation/Enter consumption and publish signed v0.4.7. | V57,V60,V63,V64,V65,V66,V67,V68 |
 | T28 | x | Confirm v0.4.7 on the OnePlus Pad 3 with actual open/finish chords; inspect copied direct-window fallback and window lifecycle events if opening still fails. | V60,V63,V65 |
+
+| T29 | x | Implement optional floating message transcription, bounded shared-audio import/result dialog, deterministic menu automation, English/Spanish setup, JVM and Android fixture tests; publish signed release. | V21,V30,V36,V69,V70,V71,V72 |
 
 ## §B
 
@@ -251,3 +265,10 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B67 | 2026-11-12 | OnePlus disconnected the debug Accessibility service before destroying its cached instance; the test reported a stop failure although keyboard and visibility were restored. Clear the test instance on unbind, guard stale destruction by identity, and retain explicit stop-state diagnostics. | test lifecycle correction; no product invariant change |
 | B68 | 2026-11-12 | Live Bluetooth check sampled restored keyboard preference when host IME insets first became hidden, before the production IME close callback finished. The first transcript was inserted and the preference later restored; await the callback-dependent setting before asserting and retain per-round timing on failure. | physical test readiness; V64 |
 | B69 | 2026-11-12 | Diagnostic-copy instrumentation mutated the personal device clipboard without cleanup. Snapshot the existing ClipData and restore it in finally, alongside test settings, without printing or persisting clipboard contents. | test isolation correction; V63 unchanged |
+
+| B70 | 2026-11-12 | Referenced nonexistent AppCompat DayNight.Dialog.NoActionBar parent; use DayNight.Dialog with windowNoTitle. | resource-link verification; V72 unchanged |
+| B71 | 2026-11-12 | Accessibility detail action is not a public SDK 35 constant; use its action string with public Accessibility settings fallback. | compiler verification; V72 unchanged |
+| B72 | 2026-11-12 | Fixture chained addFlags after void Intent.setClipData; assign clipData inside apply before continuing intent construction. | test compile verification; V71 unchanged |
+| B73 | 2026-11-12 | Locked physical test tablet leaves NotificationShade focused; floating UI test cannot observe the synthetic selection. Require unlocked device before counting UI verification. | device readiness; V72 unchanged |
+| B74 | 2026-11-12 | Repeated programmatic Retry after fast success started a third upload and replaced the result with timeout. Gate Retry by failed/cancelled state as well as active job. | V73; shared cancellation/recreation tests |
+| B75 | 2026-11-12 | Android 16 chooser handoff did not reach receiver; target handling lacked offscreen-target scrolling and Just once confirmation. Bound both operations and verify handoff on Android 13 and 16. | V71; chooser state-machine and device tests |

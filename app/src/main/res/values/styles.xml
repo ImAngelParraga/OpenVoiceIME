@@ -4,4 +4,9 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="colorAccent">@color/openime_accent</item>
     </style>
+    <style name="Theme.OpenVoiceIME.Transcript" parent="Theme.AppCompat.DayNight.Dialog">
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowCloseOnTouchOutside">false</item>
+        <item name="android:windowSoftInputMode">stateAlwaysHidden</item>
+    </style>
 </resources>

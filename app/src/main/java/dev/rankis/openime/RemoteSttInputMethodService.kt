@@ -49,6 +49,7 @@ import dev.rankis.openime.settings.withAppLocale
 import dev.rankis.openime.stt.OpenAiCompatibleProvider
 import dev.rankis.openime.stt.SttProvider
 import dev.rankis.openime.stt.TranscriptionError
+import dev.rankis.openime.stt.localizedMessage
 import dev.rankis.openime.stt.TranscriptionResult
 import dev.rankis.openime.stt.transcriptionTimeoutMillis
 import kotlinx.coroutines.CancellationException
@@ -648,7 +649,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             handler.removeCallbacks(tick)
             when (result) {
                 is TranscriptionResult.Success -> handleTranscript(result.text, settings, result.verbatim)
-                is TranscriptionResult.Failure -> showError(localizedTranscriptionError(result.error))
+                is TranscriptionResult.Failure -> showError(result.error.localizedMessage(this@RemoteSttInputMethodService))
             }
             recordTranscriptionMetrics(
                 audioBytes = audioBytes,
@@ -1325,21 +1326,6 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         }
     }
 
-    private fun localizedTranscriptionError(error: TranscriptionError): String {
-        return when (error) {
-            TranscriptionError.Timeout -> getString(R.string.transcription_timeout_retry)
-            TranscriptionError.Unauthorized -> getString(R.string.transcription_unauthorized)
-            TranscriptionError.ServerBusy -> getString(R.string.transcription_server_busy)
-            TranscriptionError.EmptyTranscript -> getString(R.string.transcription_empty)
-            is TranscriptionError.UnknownHost -> getString(R.string.transcription_unknown_host)
-            is TranscriptionError.ConnectionRefused -> getString(R.string.transcription_connection_refused)
-            is TranscriptionError.Http -> error.detail?.let {
-                getString(R.string.transcription_http_detail_format, error.code, it)
-            } ?: getString(R.string.transcription_http_format, error.code)
-            is TranscriptionError.Network -> getString(R.string.transcription_network_format, error.detail)
-            is TranscriptionError.Parse -> getString(R.string.transcription_parse)
-        }
-    }
 
     private enum class ImeState {
         Idle,

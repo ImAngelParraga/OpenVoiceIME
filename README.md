@@ -32,6 +32,12 @@ To stay in the voice keyboard after inserting text, disable both **Return to key
 
 The centered keyboard keeps **Cancel**, **Pause/Resume**, **Delete**, and **Transcribe** visible, with direct settings, language, and keyboard-switch shortcuts. Cancel follows **Hide after cancel**: disable it to restart recording without closing the panel. Delete edits text independently of recording.
 
+## Transcribe voice messages
+
+Configure your provider, then open **Transcribe voice messages → Set up message transcription** and enable **OpenVoiceIME message transcription** in Android Accessibility settings. In WhatsApp or Telegram, hold one voice message and tap the floating **Transcribe** button. The optional service operates the Share menus and opens a selectable transcript with **Copy**, **Share text**, **Retry**, and **Close**. This feature does not require microphone permission or enabling the voice keyboard.
+
+Automation recognizes English/Spanish menu controls and depends on the messenger and system share chooser exposing them. If the button is missing or automation stops, use **message menu → Share → Transcribe audio · OpenVoiceIME**. Real Android chooser handoff is tested with an isolated chat fixture; WhatsApp/Telegram versions still require a device check. See [setup, supported audio and compatibility](docs/usage.md#transcribe-received-voice-messages).
+
 ## Bluetooth keyboard shortcuts
 
 On Android 11 or newer, open **Keyboard setup → Set up keyboard shortcut** and enable **OpenVoiceIME keyboard shortcut** in Android Accessibility settings. Keep the system’s on-screen keyboard option off. Focus a text field and press **Ctrl+Shift+Space** to open recording. Press **Ctrl+Shift+Enter** to transcribe, insert the text, and hide the panel while keeping OpenVoiceIME selected. This action skips confirmation for that dictation and never sends Enter to the app. Errors keep recovery open; press the finish shortcut again to retry. Normal on-screen controls keep their saved behavior. Works independently of the selected typing keyboard, including HeliBoard. The optional service filters the shortcut’s key events without reading screen content or saving typed text.

@@ -1,5 +1,27 @@
 # Usage and compatibility
 
+## Transcribe received voice messages
+
+This uses your existing provider URL, token, model and transcription language. It runs independently of microphone permission and keyboard activation.
+
+1. In app Settings, select **Transcribe voice messages → Set up message transcription**.
+2. Enable **OpenVoiceIME message transcription** in Android Accessibility settings. This separate, optional service needs screen-content access to recognize menu controls. The physical-keyboard shortcut service keeps its existing permissions.
+3. In WhatsApp or Telegram, hold **one voice message** to select it. When the message-selection toolbar exposes its Forward/Delete or Share/Delete actions, a floating **Transcribe** button appears near the lower-right corner.
+4. Tap **Transcribe**. The service clicks the available Share action, or More → Share, then selects **Transcribe audio · OpenVoiceIME** in Android’s share chooser. Transcription starts automatically with your configured provider.
+5. Read/select the result in the dialog. **Copy** and **Share text** act only when pressed; nothing is automatically inserted or sent to the conversation. **Close** or Android Back returns to the previous screen.
+
+The result dialog wraps short messages and scrolls long ones. Rotation retains the current audio/request/result. **Cancel** stops the current attempt while keeping imported audio for **Retry**. Closing the dialog deletes its owned temporary audio. After process death, share the message again; abandoned imports are removed after 24 hours on the next import.
+
+The receiver accepts a single shared content URI, validates the audio container and duration, and limits imports to 25 MiB. Supported containers include OGG/Opus, M4A/MP4, WAV, MP3, FLAC, WebM, AAC and AMR. The configured server must also support the format; audio is uploaded with its detected extension/MIME type, without transcoding. Long messages use the existing bounded transcription deadline, up to 15 minutes.
+
+### Compatibility and fallback
+
+Automation recognizes English and Spanish menu labels in WhatsApp (including Business) and official Telegram Android packages. It depends on exposed accessibility controls, is bounded to eight seconds, and stops on unexpected navigation or missing controls. Other interface languages, protected messages, app changes, and vendor share choosers can prevent automation. The floating button may also appear for other selected message types; only valid shared audio can be transcribed. Multiple selection and video messages are not supported.
+
+If the button is missing or the automated flow fails, use the message’s normal **Share → Transcribe audio · OpenVoiceIME** action. There is no need to save the audio to a folder. Disable **OpenVoiceIME message transcription** in Android Accessibility settings to remove the floating shortcut; standard sharing continues to work.
+
+The automated flow and result screen are verified using a synthetic chat fixture and the actual Android share chooser, without reading personal conversations. Compatibility with a particular WhatsApp/Telegram version needs a real-message check on that device.
+
 ## Choose how to open dictation
 
 In OpenVoiceIME, open **Keyboard setup** at the top of Settings. Choose **Use HeliBoard** or **Keep my current keyboard**. The guide remembers your choice, opens official downloads and available keyboard settings, and provides a field for trying dictation. It never changes Android's enabled or default keyboards automatically.

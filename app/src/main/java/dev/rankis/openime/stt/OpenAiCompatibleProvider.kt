@@ -1,6 +1,7 @@
 package dev.rankis.openime.stt
 
 import dev.rankis.openime.settings.AppSettings
+import dev.rankis.openime.audio.AudioFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
@@ -23,7 +24,7 @@ class OpenAiCompatibleProvider(
             return@withContext TranscriptionResult.Failure(TranscriptionError.Network("recording file is empty"))
         }
 
-        val mediaType = "audio/mp4".toMediaType()
+        val mediaType = AudioFormat.mimeTypeFor(audioFile.name).toMediaType()
         val request = buildOpenAiTranscriptionRequest(audioFile, mediaType.toString(), settings)
 
         try {

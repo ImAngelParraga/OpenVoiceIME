@@ -51,6 +51,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var store: SettingsStore
     private lateinit var keyboardSetupGuide: KeyboardSetupGuide
+    private lateinit var messageTranscriptionSetup: MessageTranscriptionSetup
     private lateinit var metricsStore: TranscriptionMetricsStore
     private lateinit var providerPresetSpinner: Spinner
     private lateinit var baseUrlInput: EditText
@@ -145,6 +146,7 @@ class SettingsActivity : AppCompatActivity() {
         refreshMetrics()
         setupButtons()
         setupAutosave()
+        messageTranscriptionSetup = MessageTranscriptionSetup(this)
     }
 
     override fun onDestroy() {
@@ -155,6 +157,7 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (::metricsOutput.isInitialized) {
+            messageTranscriptionSetup.refresh()
             refreshMetrics()
             refreshSetupStatus()
             refreshModelCatalog()

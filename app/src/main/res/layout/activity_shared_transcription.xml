@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dev.rankis.openime.sharing.TranscriptPanelLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="16dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/share_title" android:textSize="22sp" android:textStyle="bold" />
+    <ScrollView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_weight="1" android:layout_marginTop="12dp" android:fillViewport="true">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView android:id="@+id/shareStatus" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:accessibilityLiveRegion="polite" />
+            <ProgressBar android:id="@+id/shareProgress" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:indeterminate="true" android:layout_marginTop="12dp" />
+            <TextView android:id="@+id/shareTranscript" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="12dp"
+                android:textSize="18sp" android:textIsSelectable="true" />
+        </LinearLayout>
+    </ScrollView>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+        <Button android:id="@+id/shareCancel" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/share_cancel" />
+        <Button android:id="@+id/shareRetry" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/share_retry" android:visibility="gone" />
+        <Button android:id="@+id/shareSettings" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/share_settings" android:visibility="gone" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+        <Button android:id="@+id/shareCopy" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/share_copy" android:visibility="gone" />
+        <Button android:id="@+id/shareText" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/share_text" android:visibility="gone" />
+        <Button android:id="@+id/shareClose" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/share_close" />
+    </LinearLayout>
+</dev.rankis.openime.sharing.TranscriptPanelLayout>
