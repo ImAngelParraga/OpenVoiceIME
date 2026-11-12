@@ -108,6 +108,16 @@ The final notification-code check found the standard `MessagingStyle.Message.set
 
 **Outcome:** waveform matching is useful for ranking candidates in this small experiment, but no reliable automatic replacement for Share was established. The next useful work would be a substantially larger independent corpus and a better waveform-generation model, or an exact identifier supplied by an explicitly authorized client integration. Neither a lower threshold nor a folder grant alone resolves message identity.
 
+## Notification-URI experiment: preparation and current blocker
+
+The next supplied voice note was left unplayed, but its chat had already been opened. At inspection time, `cmd notification list` reported **zero active WhatsApp notifications**. This is not evidence that the note's original notification lacked an attachment URI: entering the chat can remove the notification independently of audio playback. WhatsApp was put in the background and a fresh, untouched test notification was requested.
+
+A typed shell call to `INotificationManager.getActiveNotifications` was rejected with `ACCESS_NOTIFICATIONS`; no attempt was made to grant that signature permission. A separate temporary diagnostic APK was prepared instead, using `NotificationListenerService`, filtering by WhatsApp package and test-start time, and retaining attachment MIME/URI presence and structural keys rather than message text or sender names. It has no Internet permission. It distinguishes `Notification.sound` (the alert sound) from `MessagingStyle.Message` attachment data and `EXTRA_AUDIO_CONTENTS_URI`.
+
+The extractor passed a **synthetic metadata round-trip control on the Android 13 tablet**: an unposted notification carrying `audio/ogg` and a dummy attachment URI was rebuilt with the public `Notification.Builder.recoverBuilder(...).getStyle()` API and yielded the expected fields. This verifies extraction logic, not a real provider read or WhatsApp behavior. Notification access was never enabled on that tablet, and its temporary APK was removed.
+
+On the Android 16 phone, installing the diagnostic APK was rejected with `INSTALL_FAILED_USER_RESTRICTED`. The owner was asked to enable/approve USB installation, or choose limited shell inspection. No notification listener has been enabled on the phone. The real-notification result remains **pending**, not negative, until a fresh background notification and an approved inspection path are available. No transcription request was made and the supplied note was not played.
+
 ## Why folder access is not yet an exact-message shortcut
 
 Accessibility supplies interface nodes, labels and coordinates; it has no documented general contract for obtaining a messenger's selected-message media URI. A folder grant supplies files, not the messenger's message-to-file index. Matching duration, visible time, filename date or modification order can produce collisions or select a different download. A filename or URI learned through a previous explicit Share can identify that prior file, but does not solve a new unshared message.
