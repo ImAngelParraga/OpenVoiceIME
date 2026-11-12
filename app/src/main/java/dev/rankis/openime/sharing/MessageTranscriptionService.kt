@@ -29,11 +29,9 @@ open class MessageTranscriptionService : AccessibilityService() {
     private var anchorPackage: String? = null
     private var receiverOpened = false
     private var coverDrawn = false
-    private var captureGeneration = 0L
     private val receiverReady: () -> Unit = {
         if (::overlay.isInitialized && overlay.isCovering) {
             receiverOpened = true
-            captureGeneration++
             automation.stop()
             handler.removeCallbacks(timeout)
             overlay.hideCover()
@@ -180,67 +178,18 @@ open class MessageTranscriptionService : AccessibilityService() {
 
     private fun beginSharing() {
         val origin = selectedPackage ?: return
-        val source = rootInActiveWindow ?: return
-        val windowId: Int
-        val frame = Rect()
-        try {
-            if (source.packageName?.toString() != origin) return
-            windowId = source.windowId
-            val window = source.window
-            if (window != null) {
-                try { window.getBoundsInScreen(frame) }
-                finally { @Suppress("DEPRECATION") window.recycle() }
-            } else source.getBoundsInScreen(frame)
-        } finally { @Suppress("DEPRECATION") source.recycle() }
         hideButton()
         receiverOpened = false
         coverDrawn = false
-        val generation = ++captureGeneration
         automation.start(origin, SystemClock.uptimeMillis())
         handler.postDelayed(timeout, 8_000L)
-        // Remove the action from legacy full-display capture before taking the snapshot.
-        handler.postDelayed({
-            if (generation != captureGeneration) return@postDelayed
-            if (!sameSource(origin, windowId)) { cancelSharing(); return@postDelayed }
-            captureChat(windowId, frame, success = { snapshot ->
-                if (generation != captureGeneration || !sameSource(origin, windowId)) {
-                    snapshot.close()
-                    if (generation == captureGeneration) cancelSharing()
-                    return@captureChat
-                }
-                if (!overlay.showSnapshot(snapshot, onCancel = { cancelSharing() }, onDrawn = {
-                    if (generation == captureGeneration) {
-                        coverDrawn = true
-                        inspectWindow()
-                    }
-                })) fail()
-            }, failure = { reason ->
-                if (generation == captureGeneration) {
-                    cancelSharing()
-                    val message = when (reason) {
-                        ChatSnapshotCapture.Failure.UNSUPPORTED -> R.string.share_snapshot_unsupported
-                        ChatSnapshotCapture.Failure.PROTECTED -> R.string.share_snapshot_protected
-                        ChatSnapshotCapture.Failure.UNAVAILABLE -> R.string.share_snapshot_unavailable
-                    }
-                    Toast.makeText(withAppLocale(), message, Toast.LENGTH_LONG).show()
-                }
-            })
-        }, 80L)
-    }
-
-    protected open fun captureChat(windowId: Int, frame: Rect, success: (ChatSnapshot) -> Unit,
-                                   failure: (ChatSnapshotCapture.Failure) -> Unit) {
-        ChatSnapshotCapture(this).capture(windowId, frame, success, failure)
-    }
-
-    private fun sameSource(packageName: String, windowId: Int): Boolean {
-        val root = rootInActiveWindow ?: return false
-        return try { root.packageName?.toString() == packageName && root.windowId == windowId }
-            finally { @Suppress("DEPRECATION") root.recycle() }
+        if (!overlay.showCover(onCancel = { cancelSharing() }, onDrawn = {
+            coverDrawn = true
+            inspectWindow()
+        })) fail()
     }
 
     private fun cancelSharing() {
-        captureGeneration++
         automation.stop()
         handler.removeCallbacks(update)
         handler.removeCallbacks(timeout)
@@ -254,7 +203,6 @@ open class MessageTranscriptionService : AccessibilityService() {
     }
 
     private fun fail() {
-        captureGeneration++
         automation.stop()
         handler.removeCallbacks(timeout)
         hideButton()
@@ -327,7 +275,6 @@ open class MessageTranscriptionService : AccessibilityService() {
     override fun onUnbind(intent: android.content.Intent?): Boolean { clear(disconnected = true); return super.onUnbind(intent) }
     override fun onDestroy() { clear(disconnected = true); super.onDestroy() }
     private fun clear(disconnected: Boolean = false) {
-        captureGeneration++
         handler.removeCallbacksAndMessages(null)
         updateScheduled = false
         automation.stop()

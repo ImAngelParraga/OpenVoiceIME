@@ -192,16 +192,14 @@
     <string name="message_transcribe">Transcribir</string>
     <string name="message_transcribe_description">Transcribir el mensaje de audio seleccionado con OpenVoiceIME</string>
     <string name="message_service_name">OpenVoiceIME: transcripción de mensajes</string>
-    <string name="message_service_description">Atajo opcional para WhatsApp y Telegram: selecciona un mensaje de voz y toca el botón flotante Transcribir. Este servicio lee los controles visibles para pulsar Más, Compartir y el destino OpenVoiceIME. Tras pulsar Transcribir, conserva una captura temporal en memoria para mantener el chat visible. La captura no se guarda ni se envía. Solo el audio que compartes explícitamente se envía a tu proveedor configurado. Desactiva este servicio para quitar el atajo.</string>
+    <string name="message_service_description">Atajo opcional para WhatsApp y Telegram: selecciona un mensaje de voz y toca el botón flotante Transcribir. Este servicio lee los controles visibles para pulsar Más, Compartir y el destino OpenVoiceIME. No almacena el contenido de la pantalla del chat. Solo el audio que compartes explícitamente se envía a tu proveedor configurado. Desactiva este servicio para quitar el atajo.</string>
     <string name="message_setup_title">Transcribir mensajes de voz</string>
-    <string name="message_setup_description">WhatsApp / Telegram: mantén pulsado un mensaje de voz y toca el botón flotante Transcribir. Activa abajo el servicio opcional de accesibilidad para transcripción de mensajes. Necesita acceso a los controles visibles y a capturas temporales en memoria para ocultar los menús Compartir. Las capturas no se guardan ni se envían. El audio se envía al mismo proveedor configurado aquí; no necesita permiso del micrófono ni activar el teclado. La automatización reconoce controles en inglés y español y puede necesitar ajustes para tu versión de la app. Si falta el botón o falla, usa el menú del mensaje → Compartir → Transcribir audio · OpenVoiceIME.</string>
+    <string name="message_setup_description">WhatsApp / Telegram: mantén pulsado un mensaje de voz y toca el botón flotante Transcribir. Activa abajo el servicio opcional de accesibilidad para transcripción de mensajes. Necesita acceso a los controles visibles de la pantalla para manejar los menús Compartir. El audio se envía al mismo proveedor configurado aquí; no necesita permiso del micrófono ni activar el teclado. La automatización reconoce controles en inglés y español y puede necesitar ajustes para tu versión de la app. Si falta el botón o falla, usa el menú del mensaje → Compartir → Transcribir audio · OpenVoiceIME.</string>
     <string name="message_setup_enable">Configurar transcripción de mensajes</string>
     <string name="message_setup_enabled">Atajo para mensajes activado</string>
     <string name="message_setup_disabled">Atajo para mensajes desactivado. Compartir normalmente sigue funcionando.</string>
     <string name="message_share_failed">No se pudo completar el envío. Selecciona un mensaje de audio y usa Compartir → Transcribir audio · OpenVoiceIME.</string>
     <string name="share_close_icon">×</string>
-    <string name="share_snapshot_preparing">Preparando…</string>
-    <string name="share_snapshot_unsupported">Mantener el chat en pantalla requiere Android 11 o posterior. Usa el menú del mensaje → Compartir → OpenVoiceIME.</string>
-    <string name="share_snapshot_protected">Esta pantalla bloquea las capturas. Usa el menú del mensaje → Compartir → OpenVoiceIME.</string>
-    <string name="share_snapshot_unavailable">No se pudo mantener el chat en pantalla. Prueba a desactivar y activar la transcripción de mensajes en Accesibilidad o usa el menú del mensaje → Compartir → OpenVoiceIME.</string>
+    <string name="share_cover_title">Preparando tu audio</string>
+    <string name="share_cover_detail">Tu transcripción se abrirá en un momento.</string>
 </resources>

@@ -192,16 +192,14 @@
     <string name="message_transcribe">Transcribe</string>
     <string name="message_transcribe_description">Transcribe the selected audio message with OpenVoiceIME</string>
     <string name="message_service_name">OpenVoiceIME message transcription</string>
-    <string name="message_service_description">Optional shortcut for WhatsApp and Telegram: select one voice message and tap the floating Transcribe button. This service reads visible interface controls to operate More, Share and the OpenVoiceIME destination. After you press Transcribe, it holds a temporary screenshot in memory to keep the chat visible. The screenshot is never saved or uploaded. Only the audio you explicitly share is sent to your configured provider. Disable this service to remove the shortcut.</string>
+    <string name="message_service_description">Optional shortcut for WhatsApp and Telegram: select one voice message and tap the floating Transcribe button. This service reads visible interface controls to operate More, Share and the OpenVoiceIME destination. It does not store chat screen contents. Only the audio you explicitly share is sent to your configured provider. Disable this service to remove the shortcut.</string>
     <string name="message_setup_title">Transcribe voice messages</string>
-    <string name="message_setup_description">WhatsApp / Telegram: hold one voice message, then tap the floating Transcribe button. Enable the optional message transcription accessibility service below. It needs visible screen controls and temporary in-memory screenshots to hide the Share menus. Screenshots are never saved or uploaded. Audio goes to the same provider configured here; no microphone permission or keyboard activation is needed. Menu automation currently recognizes English and Spanish controls and may need updates for your app version. If the button is missing or sharing fails, use the message menu → Share → Transcribe audio · OpenVoiceIME.</string>
+    <string name="message_setup_description">WhatsApp / Telegram: hold one voice message, then tap the floating Transcribe button. Enable the optional message transcription accessibility service below. It needs access to visible screen controls to handle the Share menus. Audio goes to the same provider configured here; no microphone permission or keyboard activation is needed. Menu automation currently recognizes English and Spanish controls and may need updates for your app version. If the button is missing or sharing fails, use the message menu → Share → Transcribe audio · OpenVoiceIME.</string>
     <string name="message_setup_enable">Set up message transcription</string>
     <string name="message_setup_enabled">Message shortcut enabled</string>
     <string name="message_setup_disabled">Message shortcut disabled. Standard Share still works.</string>
     <string name="message_share_failed">Could not complete sharing. Select one audio message, then use Share → Transcribe audio · OpenVoiceIME.</string>
     <string name="share_close_icon">×</string>
-    <string name="share_snapshot_preparing">Preparing…</string>
-    <string name="share_snapshot_unsupported">Keeping the chat on screen requires Android 11 or newer. Use the message menu → Share → OpenVoiceIME.</string>
-    <string name="share_snapshot_protected">This screen blocks capture. Use the message menu → Share → OpenVoiceIME.</string>
-    <string name="share_snapshot_unavailable">Could not keep the chat on screen. Try turning message transcription off and on in Accessibility settings, or use the message menu → Share → OpenVoiceIME.</string>
+    <string name="share_cover_title">Preparing your audio</string>
+    <string name="share_cover_detail">Your transcript will open in a moment.</string>
 </resources>

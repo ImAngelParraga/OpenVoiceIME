@@ -4,7 +4,6 @@
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
-    android:canTakeScreenshot="true"
     android:notificationTimeout="100"
     android:description="@string/message_service_description"
     android:settingsActivity="dev.rankis.openime.settings.SettingsActivity" />
