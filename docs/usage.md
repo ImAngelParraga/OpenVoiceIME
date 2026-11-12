@@ -7,12 +7,20 @@ This uses your existing provider URL, token, model and transcription language. I
 1. In app Settings, select **Transcribe voice messages → Set up message transcription**.
 2. Enable **OpenVoiceIME message transcription** in Android Accessibility settings. This separate, optional service needs screen-content access to recognize menu controls. The physical-keyboard shortcut service keeps its existing permissions.
 3. In WhatsApp or Telegram, hold **one voice message** to select it. When the message-selection toolbar exposes its Forward/Delete or Share/Delete actions, a themed **Transcribe** pill appears beside the selected message when its accessible bounds are available, or in a centered fallback above the composer. Scrolling invalidates stale message coordinates.
-4. Tap **Transcribe**. An opaque progress cover appears first while the service clicks Share, or More → Share, then selects **Transcribe audio · OpenVoiceIME** in Android’s share chooser. The cover clears after the result sheet draws, or on cancellation, timeout, device configuration changes or service interruption. This visually masks the automated menus; it does not bypass them, and system transitions may still briefly appear on some devices. Transcription starts automatically with your configured provider.
+4. Tap **Transcribe**. A temporary snapshot keeps the selected chat visually in place, with a small cancellable indicator near the audio, while the service clicks Share, or More → Share, then selects **Transcribe audio · OpenVoiceIME** in Android’s share chooser. The snapshot is released after the result sheet draws, or on cancellation, timeout, device configuration changes or service interruption. The chat is briefly frozen during the handoff. Its snapshot stays only in memory: it is never saved or sent to the transcription provider. This visually masks the automated menus; it does not bypass them, and system transitions may still briefly appear on some devices. Transcription starts automatically with your configured provider.
 5. Read/select the result in the bottom sheet. **Copy** and **Share text** act only when pressed; nothing is automatically inserted or sent to the conversation. **Close** or Android Back returns to the previous screen.
 
 The rounded result sheet uses the keyboard’s day/night palette, wraps short messages and scrolls long ones. It floats over the conversation; it does not insert a transcript into the messenger’s message layout. Rotation retains the current audio/request/result. **Cancel** stops the current attempt while keeping imported audio for **Retry**. Closing the dialog deletes its owned temporary audio. After process death, share the message again; abandoned imports are removed after 24 hours on the next import.
 
 The receiver accepts a single shared content URI, validates the audio container and duration, and limits imports to 25 MiB. Supported containers include OGG/Opus, M4A/MP4, WAV, MP3, FLAC, WebM, AAC and AMR. The configured server must also support the format; audio is uploaded with its detected extension/MIME type, without transcoding. Long messages use the existing bounded transcription deadline, up to 15 minutes.
+
+### Capture setup and privacy
+
+The frozen-chat shortcut requires Android 11 or newer. Android 14+ captures the selected messenger window; Android 11–13 captures the display only while the source chat remains current. The service discards stale captures and releases pixels on completion, cancellation, timeout, configuration change or disconnect. It never starts sharing if capture fails or the source changes.
+
+If capture is unavailable after upgrading, turn **OpenVoiceIME message transcription** off and on in Android Accessibility settings to refresh its screenshot capability. Screens that block screenshots cannot use this presentation. On protected screens or older Android versions, use the message's ordinary Share action; direct shared-audio transcription remains available.
+
+[Direct audio access research](research/direct-audio-access.md) records the tested folder-access route and account-based alternatives. This release does not add folder access or account linking to the production app.
 
 ### Compatibility and fallback
 

@@ -1,0 +1,6 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <provider android:name="dev.rankis.openime.MediaFixtureProvider"
+            android:authorities="dev.rankis.openime.testbed.test.media-fixture" android:exported="true" />
+    </application>
+</manifest>

@@ -147,8 +147,11 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V73: Shared-transcription Retry is accepted only from failed/cancelled state; repeated or stale Retry actions during work or after success cannot upload again or replace a successful result.
 
 - V74: Message action uses the shared day/night palette and a 48dp pill. Prefer fresh long-click/selected-message screen bounds, clamp within the current window, choose below/above without covering the audio, and use a centered fallback when bounds are unavailable. Scrolling, deselection and unrelated navigation invalidate stale anchors.
-- V75: Explicit Transcribe draws an opaque accessibility progress cover before opening owned Share menus. Underlying windows remain operable by accessibility. Keep the cover until the receiver acknowledges its first frame; timeout, cancellation, configuration changes, interrupt and disconnect remove it. This masks menus without claiming background-only sharing or guaranteed suppression of system transitions.
-- V76: Transcript uses a bottom-aligned rounded sheet with shared day/night colors, readable selectable text, 48dp actions above navigation/cutout insets and a scrollable long result. Keep cancellation/retry/rotation/audio cleanup contracts. Narrow large-text layouts retain all actions. No native message insertion, screen capture or transcript history is introduced.
+- V75: Explicit Transcribe draws the V77 frozen-chat overlay before opening owned Share menus. Underlying windows remain operable by accessibility. Keep the cover until the receiver acknowledges its first frame; timeout, cancellation, configuration changes, interrupt and disconnect remove it. This masks menus without claiming background-only sharing or guaranteed suppression of system transitions.
+- V76: Transcript uses a bottom-aligned rounded sheet with shared day/night colors, readable selectable text, 48dp actions above navigation/cutout insets and a scrollable long result. Keep cancellation/retry/rotation/audio cleanup contracts. Narrow large-text layouts retain all actions. No native message insertion or transcript history is introduced; transient screen capture follows V77.
+
+- V77: Explicit Transcribe alone captures the current supported messenger on Android 11+, preferring its own window on Android 14+. Freeze it in a memory-only overlay with a 48dp cancel/progress indicator near the audio; draw before any menu action. No bitmap is saved, logged, uploaded or retained after handoff/cancel/timeout/configuration/disconnect. Failed/blocked capture opens no Share menus and offers direct manual sharing.
+- V78: Capture completion must match the still-current request and source package/window. Cancel, timeout, navigation and teardown invalidate pending capture; stale success releases its bitmap without drawing or sharing. The frozen chat cannot receive taps while automation controls underlying menus.
 
 ## §T
 
@@ -196,6 +199,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T29 | x | Implement optional floating message transcription, bounded shared-audio import/result dialog, deterministic menu automation, English/Spanish setup, JVM and Android fixture tests; publish signed release. | V21,V30,V36,V69,V70,V71,V72 |
 
 | T30 | x | Anchor and theme the message pill, mask share transitions, restyle the result as a bottom sheet, verify geometry/lifecycle/actual overlay handoff and signed publication. | V21,V70,V71,V73,V74,V75,V76 |
+
+| T31 | x | Replace progress scene with transient chat snapshot/nearby indicator, verify memory cleanup/secure-window rejection/stale callbacks/real chooser; research direct audio retrieval and publish signed release. | V21,V70,V74,V75,V76,V77,V78 |
 
 ## §B
 
@@ -282,3 +287,11 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B77 | 2026-11-12 | Covered Android 16 chooser exposed the exact receiver node with isVisibleToUser=false, so the target filter stalled. Permit an occluded exact own-app target only in an expected system resolver while the progress cover is active; other menu controls keep visibility checks. | V75; covered real-chooser test |
 | B78 | 2026-11-12 | Screenshot showed a standalone pill measured to intrinsic 28dp despite XML height, and a bottom-sheet action overlapping the gesture handle. Measure the overlay at explicit 48dp and apply navigation/cutout padding to the sheet. | V74,V76; overlay bounds and sheet inset checks |
 | B79 | 2026-11-12 | Interrupt cleanup detached the receiver acknowledgement while the service could stay connected; a later share would retain its cover until timeout. Detach only on disconnect/destruction. | V75; interrupt/reuse cleanup |
+| B80 | 2026-11-12 | Overlay test still called the removed full-screen progress API after switching to snapshot ownership. Supply a synthetic owned bitmap and assert its release after cancellation. | V77; test contract update |
+| B81 | 2026-11-12 | Fixture read message bounds before first layout, producing a false nearby-pill failure. Await focused visible geometry before selection. | V74; test readiness |
+| B82 | 2026-11-12 | Navigation test launched a new task and destroyed the original fixture, then queried its ActivityScenario. Keep the source counter reference for the late-callback assertion. | V78; test lifecycle |
+| B83 | 2026-11-12 | Repeated overlay measurement allowed the action label to wrap into two lines. Keep action/indicator labels single-line and bound the indicator label width. | V74,V77; screenshot review |
+| B84 | 2026-11-12 | Picker fell back to storage root because its nested fixture was absent; root folder approval is intentionally disabled. Verify fixture existence and confirm the exact tree ID before reading. | storage experiment readiness; no production invariant change |
+| B85 | 2026-11-12 | Shell-created cross-app Android/media fixture was absent; the initial-URI hint therefore fell back to storage root. Create synthetic bytes through a test-APK provider under its own distinct UID. | storage experiment isolation; no production invariant change |
+| B86 | 2026-11-12 | A test-APK provider runs under a separate app class loader and cannot assume the target APK Kotlin runtime. Use a dependency-free Java provider for the cross-UID synthetic fixture. | research fixture isolation |
+| B87 | 2026-11-12 | Samsung handoff timed out with previously installed test artifacts; freshly rebuilt/reinstalled APKs passed the same case. Cause unconfirmed; retain capture diagnostics and require a complete freshly installed device rerun before publication. | V75,V77; device verification |

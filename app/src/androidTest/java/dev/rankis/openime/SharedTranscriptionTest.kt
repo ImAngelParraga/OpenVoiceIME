@@ -111,15 +111,7 @@ class SharedTranscriptionTest {
         var receiver: SharedTranscriptionActivity? = null
         try {
             ActivityScenario.launch(ShareFixtureActivity::class.java).use { fixture ->
-                val audioBounds = android.graphics.Rect()
-                fixture.onActivity {
-                    val group = it.findViewById<android.view.ViewGroup>(android.R.id.content)
-                    val layout = group.getChildAt(0) as android.view.ViewGroup
-                    (layout.getChildAt(0) as Button).apply {
-                        getGlobalVisibleRect(audioBounds)
-                        performLongClick()
-                    }
-                }
+                val audioBounds = selectMessage(fixture)
                 await {
                     var bounds: android.graphics.Rect? = null
                     main { bounds = MessageTestAccessibilityService.instance?.overlayBounds("messageTranscribeAction") }
@@ -137,7 +129,10 @@ class SharedTranscriptionTest {
                     main { tapped = MessageTestAccessibilityService.instance?.tapFloatingAction() == true }
                     tapped
                 }
-                await {
+                await(failureMessage = {
+                    val service = MessageTestAccessibilityService.instance
+                    "Receiver not opened: captureFailure=${service?.captureFailure}, snapshotCaptured=${service?.lastSnapshot != null}"
+                }) {
                     main {
                         receiver = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
                             .filterIsInstance<SharedTranscriptionActivity>().firstOrNull()
@@ -155,6 +150,7 @@ class SharedTranscriptionTest {
                     !covered
                 }
                 assertEquals(1, server.requestCount)
+                main { assertTrue("Handoff must release the chat image", MessageTestAccessibilityService.instance!!.lastSnapshot!!.bitmap.isRecycled) }
                 main {
                     val activity = receiver!!
                     assertEquals(android.view.Gravity.BOTTOM, activity.window.attributes.gravity and android.view.Gravity.VERTICAL_GRAVITY_MASK)
@@ -215,6 +211,8 @@ class SharedTranscriptionTest {
 
     @Test fun testV75CoverWaitsForDrawBlocksTouchesAndRemovesOnCancel() = withMessageService {
         var presentation: dev.rankis.openime.sharing.MessageShareOverlay? = null
+        val bitmap = android.graphics.Bitmap.createBitmap(context.resources.displayMetrics.widthPixels,
+            context.resources.displayMetrics.heightPixels, android.graphics.Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.DKGRAY) }
         try {
             ActivityScenario.launch(ShareFixtureActivity::class.java).use { fixture ->
                 val audioBounds = android.graphics.Rect()
@@ -227,7 +225,8 @@ class SharedTranscriptionTest {
                     val service = MessageTestAccessibilityService.instance!!
                     val themed = android.view.ContextThemeWrapper(service, R.style.Theme_OpenVoiceIME)
                     presentation = dev.rankis.openime.sharing.MessageShareOverlay(themed, service.getSystemService(android.view.WindowManager::class.java))
-                    assertTrue(presentation!!.showCover(onCancel = { presentation!!.clear() }, onDrawn = { drawn = true }))
+                    assertTrue(presentation!!.showSnapshot(dev.rankis.openime.sharing.ChatSnapshot(bitmap, android.graphics.Rect(0, 0, bitmap.width, bitmap.height)),
+                        onCancel = { presentation!!.clear() }, onDrawn = { drawn = true }))
                     assertFalse(drawn)
                 }
                 await {
@@ -250,9 +249,11 @@ class SharedTranscriptionTest {
                     main { visible = MessageTestAccessibilityService.instance?.overlayBounds("shareCover") != null }
                     !visible
                 }
+                assertTrue("Snapshot pixels must be released", bitmap.isRecycled)
             }
         } finally {
             main { presentation?.clear() }
+            if (!bitmap.isRecycled) bitmap.recycle()
         }
     }
 
@@ -274,6 +275,7 @@ class SharedTranscriptionTest {
                     main { visible = MessageTestAccessibilityService.instance?.overlayBounds("shareCover") != null }
                     visible
                 }
+                if (!interrupt) screenshot("frozen-chat-handoff.png")
                 if (interrupt) main { MessageTestAccessibilityService.instance!!.onInterrupt() }
                 await {
                     var visible = false
@@ -282,6 +284,97 @@ class SharedTranscriptionTest {
                 }
             }
         }
+    }
+
+    @Test fun testV77ProtectedChatDoesNotOpenShareMenus() = withMessageService {
+        val intent = Intent(context, ShareFixtureActivity::class.java).putExtra("secure", true)
+        ActivityScenario.launch<ShareFixtureActivity>(intent).use { fixture ->
+            fixture.onActivity { activity ->
+                val content = activity.findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0) as android.view.ViewGroup
+                content.getChildAt(0).performLongClick()
+            }
+            await {
+                var tapped = false
+                main { tapped = MessageTestAccessibilityService.instance?.tapFloatingAction() == true }
+                tapped
+            }
+            await {
+                var failed = false
+                main { failed = MessageTestAccessibilityService.instance?.captureFailure != null }
+                failed
+            }
+            main {
+                val failure = MessageTestAccessibilityService.instance!!.captureFailure
+                if (android.os.Build.VERSION.SDK_INT >= 34) assertEquals(dev.rankis.openime.sharing.ChatSnapshotCapture.Failure.PROTECTED, failure)
+                else assertTrue(failure in setOf(dev.rankis.openime.sharing.ChatSnapshotCapture.Failure.PROTECTED,
+                    dev.rankis.openime.sharing.ChatSnapshotCapture.Failure.UNAVAILABLE))
+                assertNull(MessageTestAccessibilityService.instance!!.overlayBounds("shareCover"))
+            }
+            fixture.onActivity { assertEquals(0, it.shareMenusOpened) }
+        }
+    }
+
+    @Test fun testV78LateCaptureAfterInterruptNavigationOrTimeoutIsReleasedWithoutSharing() = withMessageService {
+        for (action in listOf("interrupt", "navigate", "timeout")) {
+            main {
+                MessageTestAccessibilityService.instance!!.apply { holdCapture = true; pendingCapture = null }
+            }
+            ActivityScenario.launch(ShareFixtureActivity::class.java).use { fixture ->
+                lateinit var sourceActivity: ShareFixtureActivity
+                fixture.onActivity { sourceActivity = it }
+                selectMessage(fixture)
+                await {
+                    var tapped = false
+                    main { tapped = MessageTestAccessibilityService.instance?.tapFloatingAction() == true }
+                    tapped
+                }
+                await {
+                    var waiting = false
+                    main { waiting = MessageTestAccessibilityService.instance?.pendingCapture != null }
+                    waiting
+                }
+                fun deliver() {
+                    val image = android.graphics.Bitmap.createBitmap(32, 64, android.graphics.Bitmap.Config.ARGB_8888)
+                    main {
+                        MessageTestAccessibilityService.instance!!.pendingCapture!!(
+                            dev.rankis.openime.sharing.ChatSnapshot(image, android.graphics.Rect(0, 0, 32, 64)),
+                        )
+                        assertNull(MessageTestAccessibilityService.instance!!.overlayBounds("shareCover"))
+                    }
+                    assertTrue(image.isRecycled)
+                }
+                when (action) {
+                    "interrupt" -> { main { MessageTestAccessibilityService.instance!!.onInterrupt() }; deliver() }
+                    "navigate" -> ActivityScenario.launch(IntegrationHostActivity::class.java).use { host ->
+                        await {
+                            var focused = false
+                            host.onActivity { focused = it.hasWindowFocus() }
+                            focused
+                        }
+                        deliver()
+                    }
+                    else -> { android.os.SystemClock.sleep(8_300); deliver() }
+                }
+                main { assertEquals(0, sourceActivity.shareMenusOpened) }
+            }
+        }
+    }
+
+    private fun selectMessage(scenario: ActivityScenario<ShareFixtureActivity>): android.graphics.Rect {
+        val bounds = android.graphics.Rect()
+        await {
+            var ready = false
+            scenario.onActivity { activity ->
+                val content = activity.findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0) as android.view.ViewGroup
+                ready = activity.hasWindowFocus() && content.getChildAt(0).getGlobalVisibleRect(bounds) && bounds.height() > 0
+            }
+            ready
+        }
+        scenario.onActivity { activity ->
+            val content = activity.findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0) as android.view.ViewGroup
+            content.getChildAt(0).performLongClick()
+        }
+        return bounds
     }
 
     private fun withMessageServer(test: (MockWebServer) -> Unit) = withServer { server ->
@@ -322,13 +415,13 @@ class SharedTranscriptionTest {
         return text
     }
     private fun main(block: () -> Unit) = instrumentation.runOnMainSync(block)
-    private fun await(condition: () -> Boolean) {
+    private fun await(failureMessage: () -> String = { "Expected state did not arrive" }, condition: () -> Boolean) {
         val end = android.os.SystemClock.uptimeMillis() + 12_000
         while (android.os.SystemClock.uptimeMillis() < end) {
             if (condition()) return
             Thread.sleep(80)
         }
-        assertTrue("Expected state did not arrive", condition())
+        assertTrue(failureMessage(), condition())
     }
     private fun shell(command: String): String = automation.executeShellCommand(command).use {
         android.os.ParcelFileDescriptor.AutoCloseInputStream(it).bufferedReader().readText().trim()
