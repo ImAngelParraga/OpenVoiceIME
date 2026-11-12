@@ -1,6 +1,5 @@
 package dev.rankis.openime
 
-import android.Manifest
 import android.content.Context
 import android.content.res.Configuration
 import android.text.InputFilter
@@ -819,7 +818,7 @@ class ImeLifecycleTest {
 
     private fun withIme(test: (Harness) -> Unit) {
         val context = instrumentation.targetContext
-        instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.RECORD_AUDIO)
+        DeviceTestPermissions.microphone(instrumentation.uiAutomation, context)
         var harness: Harness? = null
         ActivityScenario.launch(IntegrationHostActivity::class.java).use { scenario ->
             scenario.onActivity { host ->

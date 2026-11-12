@@ -1,6 +1,5 @@
 package dev.rankis.openime
 
-import android.Manifest
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.view.inputmethod.InputMethodManager
@@ -21,7 +20,7 @@ class SystemShadeRecordingTest {
     @Test
     fun testV55QuickSettingsKeepsSameRecordingUntilKeyboardIsDismissed() {
         val context = instrumentation.targetContext
-        instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.RECORD_AUDIO)
+        DeviceTestPermissions.microphone(instrumentation.uiAutomation, context)
         val settings = AppSettings(apiToken = "integration-test")
         SettingsStore(context).apply { save(settings); markConnectionTestSucceeded(settings) }
         val previous = shell("settings get secure default_input_method").trim()

@@ -175,7 +175,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 | T26 | x | Diagnose remaining OnePlus panel flashing/no-show from the user-copied shortcut trace; apply and verify a fix supported by that device sequence; publish signed v0.4.6. | V57,V58,V59,V62,V63,V64 |
 | T27 | x | Use v0.4.6 OnePlus trace to add one guarded direct-window fallback for dropped show delivery, verify fault injection/cancellation/Enter consumption and publish signed v0.4.7. | V57,V60,V63,V64,V65,V66,V67,V68 |
-| T28 | . | Confirm v0.4.7 on the OnePlus Pad 3 with actual open/finish chords; inspect copied direct-window fallback and window lifecycle events if opening still fails. | V60,V63,V65 |
+| T28 | x | Confirm v0.4.7 on the OnePlus Pad 3 with actual open/finish chords; inspect copied direct-window fallback and window lifecycle events if opening still fails. | V60,V63,V65 |
 
 ## §B
 
@@ -247,3 +247,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B63 | 2026-11-11 | Android can show the newly selected IME before the allowance setting update recreates its view. onCreateInputView detached and stopped the already-running recorder into ReadyToUpload. Preserve owned capture across view-only recreation; keep explicit configuration/discard behavior. | V67 |
 | B64 | 2026-11-11 | ImeTracker showed the previous typing IME finishing its hide after the next test shortcut despite host insets and animation completion, cancelling the new voice window. Await Accessibility event quiescence as well as host animation/insets before dispatching the test chord. | test readiness; V65 |
 | B65 | 2026-11-11 | Accessibility onUnbind could no longer switch keyboards (accepted=false), leaving the voice IME selected and breaking expected off/on restoration. Fall back to the still-selected bound IME switchInputMethod operation, rechecking selection and explicit no-return intent. | V68 |
+| B66 | 2026-11-12 | OnePlus denies shell GRANT_RUNTIME_PERMISSIONS, causing 49 setup failures before microphone-dependent tests. Reuse an already granted test-app microphone permission and request it through normal app UI when shell grants are unavailable. | test setup correction; no product invariant change |
+| B67 | 2026-11-12 | OnePlus disconnected the debug Accessibility service before destroying its cached instance; the test reported a stop failure although keyboard and visibility were restored. Clear the test instance on unbind, guard stale destruction by identity, and retain explicit stop-state diagnostics. | test lifecycle correction; no product invariant change |
+| B68 | 2026-11-12 | Live Bluetooth check sampled restored keyboard preference when host IME insets first became hidden, before the production IME close callback finished. The first transcript was inserted and the preference later restored; await the callback-dependent setting before asserting and retain per-round timing on failure. | physical test readiness; V64 |
+| B69 | 2026-11-12 | Diagnostic-copy instrumentation mutated the personal device clipboard without cleanup. Snapshot the existing ClipData and restore it in finally, alongside test settings, without printing or persisting clipboard contents. | test isolation correction; V63 unchanged |

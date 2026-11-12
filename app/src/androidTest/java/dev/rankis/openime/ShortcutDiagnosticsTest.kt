@@ -24,6 +24,7 @@ class ShortcutDiagnosticsTest {
                 val address = "https://private-server-must-not-be-copied.invalid"
                 val typedText = "private editor text must not be copied"
                 val clipboard = host.getSystemService(ClipboardManager::class.java)
+                val originalClip = clipboard.primaryClip
                 try {
                     store.save(original.copy(apiToken = token, baseUrl = address))
                     host.editor.setText(typedText)
@@ -46,6 +47,9 @@ class ShortcutDiagnosticsTest {
                     assertFalse(report.contains(address))
                     assertFalse(report.contains(typedText))
                 } finally {
+                    if (originalClip != null) clipboard.setPrimaryClip(originalClip)
+                    else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) clipboard.clearPrimaryClip()
+                    else clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
                     store.save(original)
                 }
             }

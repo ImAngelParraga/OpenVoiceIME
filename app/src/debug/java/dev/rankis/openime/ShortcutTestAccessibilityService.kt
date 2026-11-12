@@ -10,8 +10,13 @@ class ShortcutTestAccessibilityService : DictationShortcutService() {
         instance = this
     }
 
+    override fun onUnbind(intent: android.content.Intent?): Boolean {
+        if (instance === this) instance = null
+        return super.onUnbind(intent)
+    }
+
     override fun onDestroy() {
-        instance = null
+        if (instance === this) instance = null
         super.onDestroy()
     }
 

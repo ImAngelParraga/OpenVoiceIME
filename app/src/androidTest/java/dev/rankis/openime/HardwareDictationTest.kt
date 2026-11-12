@@ -1,6 +1,5 @@
 package dev.rankis.openime
 
-import android.Manifest
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.UiAutomation
 import android.os.ParcelFileDescriptor
@@ -153,7 +152,10 @@ class HardwareDictationTest {
             val others = enabledServices.split(":").filter { it != listener }.joinToString(":")
             shell(if (others.isEmpty()) "settings delete secure enabled_accessibility_services"
                 else "settings put secure enabled_accessibility_services $others")
-            await("shortcut service stopped") {
+            await("shortcut service stopped", {
+                "listener=${ShortcutTestAccessibilityService.instance != null} ime=${SystemImeTestService.instance != null} " +
+                    "hostHidden=${hostImeVisible(scenario, false)} animations=${animations.size}"
+            }) {
                 ShortcutTestAccessibilityService.instance == null && SystemImeTestService.instance == null &&
                     hostImeVisible(scenario, false) && animations.isEmpty()
             }
@@ -389,7 +391,7 @@ class HardwareDictationTest {
         block: (ActivityScenario<IntegrationHostActivity>, String, String) -> Unit,
     ) {
         val context = instrumentation.targetContext
-        automation.grantRuntimePermission(context.packageName, Manifest.permission.RECORD_AUDIO)
+        DeviceTestPermissions.microphone(automation, context)
         val settings = AppSettings(apiToken = "integration-test", selectInsertedText = false)
         SettingsStore(context).apply { save(settings); markConnectionTestSucceeded(settings) }
         val saved = listOf("default_input_method", "enabled_input_methods", "enabled_accessibility_services",
