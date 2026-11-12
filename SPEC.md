@@ -146,6 +146,10 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 - V73: Shared-transcription Retry is accepted only from failed/cancelled state; repeated or stale Retry actions during work or after success cannot upload again or replace a successful result.
 
+- V74: Message action uses the shared day/night palette and a 48dp pill. Prefer fresh long-click/selected-message screen bounds, clamp within the current window, choose below/above without covering the audio, and use a centered fallback when bounds are unavailable. Scrolling, deselection and unrelated navigation invalidate stale anchors.
+- V75: Explicit Transcribe draws an opaque accessibility progress cover before opening owned Share menus. Underlying windows remain operable by accessibility. Keep the cover until the receiver acknowledges its first frame; timeout, cancellation, configuration changes, interrupt and disconnect remove it. This masks menus without claiming background-only sharing or guaranteed suppression of system transitions.
+- V76: Transcript uses a bottom-aligned rounded sheet with shared day/night colors, readable selectable text, 48dp actions above navigation/cutout insets and a scrollable long result. Keep cancellation/retry/rotation/audio cleanup contracts. Narrow large-text layouts retain all actions. No native message insertion, screen capture or transcript history is introduced.
+
 ## §T
 
 | id | status | goal | cites |
@@ -190,6 +194,8 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T28 | x | Confirm v0.4.7 on the OnePlus Pad 3 with actual open/finish chords; inspect copied direct-window fallback and window lifecycle events if opening still fails. | V60,V63,V65 |
 
 | T29 | x | Implement optional floating message transcription, bounded shared-audio import/result dialog, deterministic menu automation, English/Spanish setup, JVM and Android fixture tests; publish signed release. | V21,V30,V36,V69,V70,V71,V72 |
+
+| T30 | x | Anchor and theme the message pill, mask share transitions, restyle the result as a bottom sheet, verify geometry/lifecycle/actual overlay handoff and signed publication. | V21,V70,V71,V73,V74,V75,V76 |
 
 ## §B
 
@@ -272,3 +278,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B73 | 2026-11-12 | Locked physical test tablet leaves NotificationShade focused; floating UI test cannot observe the synthetic selection. Require unlocked device before counting UI verification. | device readiness; V72 unchanged |
 | B74 | 2026-11-12 | Repeated programmatic Retry after fast success started a third upload and replaced the result with timeout. Gate Retry by failed/cancelled state as well as active job. | V73; shared cancellation/recreation tests |
 | B75 | 2026-11-12 | Android 16 chooser handoff did not reach receiver; target handling lacked offscreen-target scrolling and Just once confirmation. Bound both operations and verify handoff on Android 13 and 16. | V71; chooser state-machine and device tests |
+| B76 | 2026-11-12 | Fixed-position framework button, visible automated menus and default dialog made voice-message transcription feel disconnected from the chat. Use anchored themed action, bounded progress cover and matching result sheet. | V74,V75,V76 |
+| B77 | 2026-11-12 | Covered Android 16 chooser exposed the exact receiver node with isVisibleToUser=false, so the target filter stalled. Permit an occluded exact own-app target only in an expected system resolver while the progress cover is active; other menu controls keep visibility checks. | V75; covered real-chooser test |
+| B78 | 2026-11-12 | Screenshot showed a standalone pill measured to intrinsic 28dp despite XML height, and a bottom-sheet action overlapping the gesture handle. Measure the overlay at explicit 48dp and apply navigation/cutout padding to the sheet. | V74,V76; overlay bounds and sheet inset checks |
+| B79 | 2026-11-12 | Interrupt cleanup detached the receiver acknowledgement while the service could stay connected; a later share would retain its cover until timeout. Detach only on disconnect/destruction. | V75; interrupt/reuse cleanup |

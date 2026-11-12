@@ -6,6 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.Gravity
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import androidx.core.view.doOnPreDraw
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.ProgressBar
@@ -34,8 +41,23 @@ class SharedTranscriptionActivity : AppCompatActivity() {
         setContentView(R.layout.activity_shared_transcription)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         val display = resources.displayMetrics
-        window.setLayout(minOf((display.widthPixels * 0.94).toInt(), (640 * display.density).toInt()),
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window.setDimAmount(0.24f)
+        window.setGravity(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+        window.setLayout(minOf(display.widthPixels, (640 * display.density).toInt()),
             WindowManager.LayoutParams.WRAP_CONTENT)
+        window.decorView.doOnPreDraw {
+            window.decorView.postOnAnimation { ShareHandoff.receiverReady?.invoke() }
+        }
+        val sheet = findViewById<View>(R.id.shareSheet)
+        val bottomPadding = sheet.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(sheet) { view, insets ->
+            view.updatePadding(bottom = bottomPadding + insets.getInsets(
+                WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.displayCutout(),
+            ).bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(sheet)
         setFinishOnTouchOutside(false)
         model = ViewModelProvider(this)[SharedTranscriptionModel::class.java]
         findViewById<Button>(R.id.shareClose).setOnClickListener { finish() }
@@ -67,7 +89,10 @@ class SharedTranscriptionActivity : AppCompatActivity() {
             is SharedTranscriptState.Ready -> getString(R.string.share_done)
             is SharedTranscriptState.Failed -> state.message
         }
-        findViewById<TextView>(R.id.shareTranscript).text = transcript.orEmpty()
+        findViewById<TextView>(R.id.shareTranscript).apply {
+            text = transcript.orEmpty()
+            visibility = if (transcript != null) View.VISIBLE else View.GONE
+        }
         findViewById<Button>(R.id.shareCancel).visibility = if (working) View.VISIBLE else View.GONE
         findViewById<Button>(R.id.shareRetry).visibility = if (state is SharedTranscriptState.Failed && state.canRetry) View.VISIBLE else View.GONE
         findViewById<Button>(R.id.shareSettings).visibility = if (state is SharedTranscriptState.Failed) View.VISIBLE else View.GONE

@@ -106,23 +106,32 @@ class SharedTranscriptionTest {
         }
     }
 
-    @Test fun testV71FloatingActionNavigatesMoreShareAndRealResolverThenShowsTranscript() = withServer { server ->
+    @Test fun testV71FloatingActionNavigatesMoreShareAndRealResolverThenShowsTranscript() = withMessageServer { server ->
         server.enqueue(MockResponse().setBody("""{"text":"Meet at six. This is a synthetic voice message."}"""))
-        val previousServices = setting("enabled_accessibility_services")
-        val previousEnabled = setting("accessibility_enabled")
-        val listener = "${context.packageName}/dev.rankis.openime.MessageTestAccessibilityService"
         var receiver: SharedTranscriptionActivity? = null
         try {
-            val services = previousServices.takeUnless { it == "null" }.orEmpty()
-            shell("settings put secure enabled_accessibility_services ${listOf(services, listener).filter { it.isNotBlank() }.joinToString(":")}")
-            shell("settings put secure accessibility_enabled 1")
-            await { MessageTestAccessibilityService.instance != null }
             ActivityScenario.launch(ShareFixtureActivity::class.java).use { fixture ->
+                val audioBounds = android.graphics.Rect()
                 fixture.onActivity {
                     val group = it.findViewById<android.view.ViewGroup>(android.R.id.content)
                     val layout = group.getChildAt(0) as android.view.ViewGroup
-                    (layout.getChildAt(0) as Button).performLongClick()
+                    (layout.getChildAt(0) as Button).apply {
+                        getGlobalVisibleRect(audioBounds)
+                        performLongClick()
+                    }
                 }
+                await {
+                    var bounds: android.graphics.Rect? = null
+                    main { bounds = MessageTestAccessibilityService.instance?.overlayBounds("messageTranscribeAction") }
+                    bounds != null
+                }
+                main {
+                    val bounds = MessageTestAccessibilityService.instance!!.overlayBounds("messageTranscribeAction")!!
+                    assertTrue("Pill must retain a 48dp touch target", bounds.height() >= 48 * context.resources.displayMetrics.density)
+                    assertTrue("Pill should sit below the selected message", bounds.top >= audioBounds.bottom)
+                    assertTrue("Pill should stay near the selected message", bounds.top - audioBounds.bottom < 32 * context.resources.displayMetrics.density)
+                }
+                screenshot("shared-message-action.png")
                 await {
                     var tapped = false
                     main { tapped = MessageTestAccessibilityService.instance?.tapFloatingAction() == true }
@@ -140,19 +149,28 @@ class SharedTranscriptionTest {
                     main { text = receiver?.findViewById<TextView>(R.id.shareTranscript)?.text?.toString().orEmpty() }
                     text == "Meet at six. This is a synthetic voice message."
                 }
-                assertEquals(1, server.requestCount)
-                automation.takeScreenshot()?.let { bitmap ->
-                    File(context.getExternalFilesDir(null), "shared-transcript.png").outputStream().use {
-                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-                    }
-                    bitmap.recycle()
+                await {
+                    var covered = false
+                    main { covered = MessageTestAccessibilityService.instance?.overlayBounds("shareCover") != null }
+                    !covered
                 }
+                assertEquals(1, server.requestCount)
+                main {
+                    val activity = receiver!!
+                    assertEquals(android.view.Gravity.BOTTOM, activity.window.attributes.gravity and android.view.Gravity.VERTICAL_GRAVITY_MASK)
+                    val insets = androidx.core.view.ViewCompat.getRootWindowInsets(activity.window.decorView)!!
+                        .getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars())
+                    val metrics = android.util.DisplayMetrics()
+                    @Suppress("DEPRECATION") activity.windowManager.defaultDisplay.getRealMetrics(metrics)
+                    val bounds = android.graphics.Rect()
+                    activity.findViewById<View>(R.id.shareCopy).getGlobalVisibleRect(bounds)
+                    assertTrue("Copy must remain above system navigation", bounds.bottom <= metrics.heightPixels - insets.bottom)
+                }
+                screenshot("shared-transcript.png")
                 main { receiver?.finish() }
             }
         } finally {
             main { receiver?.finish() }
-            restore("enabled_accessibility_services", previousServices)
-            restore("accessibility_enabled", previousEnabled)
         }
     }
 
@@ -192,6 +210,108 @@ class SharedTranscriptionTest {
                 }
                 assertTrue("Long transcript must scroll", (transcript.parent.parent as android.widget.ScrollView).canScrollVertically(1))
             }
+        }
+    }
+
+    @Test fun testV75CoverWaitsForDrawBlocksTouchesAndRemovesOnCancel() = withMessageService {
+        var presentation: dev.rankis.openime.sharing.MessageShareOverlay? = null
+        try {
+            ActivityScenario.launch(ShareFixtureActivity::class.java).use { fixture ->
+                val audioBounds = android.graphics.Rect()
+                fixture.onActivity { activity ->
+                    val content = activity.findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0) as android.view.ViewGroup
+                    content.getChildAt(0).getGlobalVisibleRect(audioBounds)
+                }
+                var drawn = false
+                main {
+                    val service = MessageTestAccessibilityService.instance!!
+                    val themed = android.view.ContextThemeWrapper(service, R.style.Theme_OpenVoiceIME)
+                    presentation = dev.rankis.openime.sharing.MessageShareOverlay(themed, service.getSystemService(android.view.WindowManager::class.java))
+                    assertTrue(presentation!!.showCover(onCancel = { presentation!!.clear() }, onDrawn = { drawn = true }))
+                    assertFalse(drawn)
+                }
+                await {
+                    var visible = false
+                    main { visible = drawn && MessageTestAccessibilityService.instance?.overlayBounds("shareCover") != null }
+                    visible
+                }
+                screenshot("shared-message-progress.png")
+                val now = android.os.SystemClock.uptimeMillis()
+                for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+                    val event = android.view.MotionEvent.obtain(now, now + action * 20L, action,
+                        audioBounds.exactCenterX(), audioBounds.exactCenterY(), 0)
+                    try { automation.injectInputEvent(event, true) } finally { event.recycle() }
+                }
+                instrumentation.waitForIdleSync()
+                fixture.onActivity { assertEquals("Cover must block the underlying message", 0, it.messageClicks) }
+                main { assertTrue(MessageTestAccessibilityService.instance!!.tapOverlayAction("shareCoverCancel")) }
+                await {
+                    var visible = false
+                    main { visible = MessageTestAccessibilityService.instance?.overlayBounds("shareCover") != null }
+                    !visible
+                }
+            }
+        } finally {
+            main { presentation?.clear() }
+        }
+    }
+
+    @Test fun testV75TimeoutAndInterruptAlwaysRemoveCover() = withMessageService {
+        for (interrupt in listOf(true, false)) {
+            val intent = Intent(context, ShareFixtureActivity::class.java).putExtra("no_share", true)
+            ActivityScenario.launch<ShareFixtureActivity>(intent).use { fixture ->
+                fixture.onActivity { activity ->
+                    val content = activity.findViewById<android.view.ViewGroup>(android.R.id.content).getChildAt(0) as android.view.ViewGroup
+                    content.getChildAt(0).performLongClick()
+                }
+                await {
+                    var tapped = false
+                    main { tapped = MessageTestAccessibilityService.instance?.tapFloatingAction() == true }
+                    tapped
+                }
+                await {
+                    var visible = false
+                    main { visible = MessageTestAccessibilityService.instance?.overlayBounds("shareCover") != null }
+                    visible
+                }
+                if (interrupt) main { MessageTestAccessibilityService.instance!!.onInterrupt() }
+                await {
+                    var visible = false
+                    main { visible = MessageTestAccessibilityService.instance?.overlayBounds("shareCover") != null }
+                    !visible
+                }
+            }
+        }
+    }
+
+    private fun withMessageServer(test: (MockWebServer) -> Unit) = withServer { server ->
+        withMessageService { test(server) }
+    }
+
+    private fun withMessageService(test: () -> Unit) {
+        val previousServices = setting("enabled_accessibility_services")
+        val previousEnabled = setting("accessibility_enabled")
+        val listener = "${context.packageName}/dev.rankis.openime.MessageTestAccessibilityService"
+        try {
+            val services = previousServices.takeUnless { it == "null" }.orEmpty()
+            shell("settings put secure enabled_accessibility_services ${listOf(services, listener).filter { it.isNotBlank() }.joinToString(":")}")
+            shell("settings put secure accessibility_enabled 1")
+            await { MessageTestAccessibilityService.instance != null }
+            test()
+        } finally {
+            restore("enabled_accessibility_services", previousServices)
+            restore("accessibility_enabled", previousEnabled)
+        }
+    }
+
+    private fun screenshot(name: String) {
+        // Let the bounded sheet entrance animation finish before capture.
+        android.os.SystemClock.sleep(220)
+        automation.takeScreenshot()?.let { bitmap ->
+            File(context.getExternalFilesDir(null), name).outputStream().use {
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+            bitmap.recycle()
         }
     }
 

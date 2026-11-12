@@ -34,7 +34,7 @@ The centered keyboard keeps **Cancel**, **Pause/Resume**, **Delete**, and **Tran
 
 ## Transcribe voice messages
 
-Configure your provider, then open **Transcribe voice messages → Set up message transcription** and enable **OpenVoiceIME message transcription** in Android Accessibility settings. In WhatsApp or Telegram, hold one voice message and tap the floating **Transcribe** button. The optional service operates the Share menus and opens a selectable transcript with **Copy**, **Share text**, **Retry**, and **Close**. This feature does not require microphone permission or enabling the voice keyboard.
+Configure your provider, then open **Transcribe voice messages → Set up message transcription** and enable **OpenVoiceIME message transcription** in Android Accessibility settings. In WhatsApp or Telegram, hold one voice message and tap the floating **Transcribe** button. The themed pill sits near the selected message when possible. A progress cover masks the automated Share menus before a matching bottom sheet opens a selectable transcript with **Copy**, **Share text**, **Retry**, and **Close**. This feature does not require microphone permission or enabling the voice keyboard.
 
 Automation recognizes English/Spanish menu controls and depends on the messenger and system share chooser exposing them. If the button is missing or automation stops, use **message menu → Share → Transcribe audio · OpenVoiceIME**. Real Android chooser handoff is tested with an isolated chat fixture; WhatsApp/Telegram versions still require a device check. See [setup, supported audio and compatibility](docs/usage.md#transcribe-received-voice-messages).
 

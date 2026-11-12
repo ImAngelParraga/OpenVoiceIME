@@ -11,21 +11,27 @@ import android.widget.PopupMenu
 
 /** Isolated chat surface for exercising the real Accessibility-to-Sharesheet handoff. */
 class ShareFixtureActivity : Activity() {
+    var messageClicks = 0
+        private set
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val layout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16, (96 * resources.displayMetrics.density).toInt(), 16, 16)
+        }
         fun add(label: String, action: (Button) -> Unit = {}) = Button(this).apply {
             text = label
             setOnClickListener { action(this) }
             layout.addView(this)
         }
-        val message = add("Voice message (test)")
+        val message = add("Voice message (test)") { messageClicks++ }
         message.setOnLongClickListener {
+            message.isSelected = true
             add("Forward")
             add("Delete")
             add("More options") { anchor ->
                 PopupMenu(this, anchor).apply {
-                    menu.add("Share").setOnMenuItemClickListener {
+                    menu.add(if (intent.getBooleanExtra("no_share", false)) "Unavailable" else "Share").setOnMenuItemClickListener {
                         val uri = Uri.parse("content://$packageName.share-fixture/voice.wav")
                         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("audio/wav")
                             .putExtra(Intent.EXTRA_STREAM, uri)

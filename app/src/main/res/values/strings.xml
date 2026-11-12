@@ -174,7 +174,7 @@
     <string name="share_target">Transcribe audio · OpenVoiceIME</string>
     <string name="share_title">Audio transcription</string>
     <string name="share_importing">Preparing the shared audio…</string>
-    <string name="share_working">Transcribing with your configured provider…</string>
+    <string name="share_working">Transcribing your audio…</string>
     <string name="share_done">Transcript ready</string>
     <string name="share_invalid">Share one valid audio message. This file is empty or its audio format is unsupported.</string>
     <string name="share_too_large">The audio exceeds the 25 MB limit. Share a shorter message.</string>
@@ -198,4 +198,7 @@
     <string name="message_setup_enabled">Message shortcut enabled</string>
     <string name="message_setup_disabled">Message shortcut disabled. Standard Share still works.</string>
     <string name="message_share_failed">Could not complete sharing. Select one audio message, then use Share → Transcribe audio · OpenVoiceIME.</string>
+    <string name="share_cover_title">Preparing your audio</string>
+    <string name="share_cover_detail">Your transcript will open in a moment.</string>
+    <string name="share_close_icon">×</string>
 </resources>
