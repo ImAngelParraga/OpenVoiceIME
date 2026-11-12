@@ -1,6 +1,6 @@
 # Direct access to received audio
 
-Checked 2026-11-12. The released shortcut still obtains audio through Android sharing; none of the account integrations below is enabled.
+Checked 2026-11-12. **A real incoming WhatsApp notification supplied an exact audio URI that an ordinary notification-listener app read without Share.** Access expired after notification dismissal; a temporary memory buffer preserved the exact bytes. The released shortcut still uses Android sharing, and matching an arbitrary selected native chat row to a cached note remains unverified. No account integration below is enabled.
 
 ## What the storage experiment establishes
 
@@ -59,12 +59,12 @@ As a separate static cross-check, the APK obtained from the [official Android do
 | Date, displayed time, duration, file ordering | Candidate filters; no verified identity guarantee | Use them to narrow a folder-access candidate set, never as evidence that the only remaining file must be correct. Missing files and delayed/concurrent downloads invalidate that inference. |
 | Visual waveform + duration → candidate file | Worth testing as a similarity-based route, not yet validated | Compare screenshots of synthetic native voice notes against decoded candidate envelopes, including same-duration notes, silence, forwarded notes and deliberately missing targets. Require abstention/fallback for ambiguous cases. |
 | A selected note triggers one new download | Potential special case for not-yet-downloaded media | Measure an explicitly triggered download alongside concurrent downloads, temporary-file renames and folder access. Already-downloaded messages still need another route. No downloads were triggered in this session. |
-| Notification supplies an audio URI | Platform-supported, WhatsApp behavior unverified | With explicit notification-access setup, inspect only newly sent synthetic voice-note notifications for MIME, data URI and readable grants. This cannot be assumed to cover an older selected message or a chat already open in the foreground. |
+| Notification supplies an audio URI | Confirmed for a fresh incoming voice note on the tested Android 16/WhatsApp build. | Capture locally while the notification grant is valid; the URI stopped being readable after dismissal. Arbitrary older selections and arrivals that create no notification still need another route. |
 | Linked-device message object → file hash/media | Stronger content identity, still needs selection mapping | A separately authorized client can obtain media metadata, but it needs its own message picker or a demonstrated bridge from the native selection. |
 
 The waveform limitation follows from primary implementation evidence: Baileys [computes a 64-value normalized amplitude envelope](https://github.com/WhiskeySockets/Baileys/blob/81345beb67ca3fb0eb79a2c20cd4ac24da517929/src/Utils/messages-media.ts), while its [message preparation accepts an explicitly supplied waveform](https://github.com/WhiskeySockets/Baileys/blob/81345beb67ca3fb0eb79a2c20cd4ac24da517929/src/Utils/messages.ts). Its [protocol schema keeps waveform and file SHA-256 in separate fields](https://github.com/WhiskeySockets/Baileys/blob/81345beb67ca3fb0eb79a2c20cd4ac24da517929/WAProto/WAProto.proto). **Inference:** matching displayed bars may narrow candidates, but cannot be treated as a verified file hash, and the native Android renderer/algorithm must be measured rather than assumed to match Baileys.
 
-Android provides both [`MessagingStyle.Message.getDataUri()`](https://developer.android.com/reference/android/app/Notification.MessagingStyle.Message#getDataUri()) and [`EXTRA_AUDIO_CONTENTS_URI`](https://developer.android.com/reference/android/app/Notification#EXTRA_AUDIO_CONTENTS_URI). Their existence does not demonstrate WhatsApp populates them or grants our app access. No notification listener was enabled on the phone.
+Android provides both [`MessagingStyle.Message.getDataUri()`](https://developer.android.com/reference/android/app/Notification.MessagingStyle.Message#getDataUri()) and [`EXTRA_AUDIO_CONTENTS_URI`](https://developer.android.com/reference/android/app/Notification#EXTRA_AUDIO_CONTENTS_URI). The live experiment below confirms that WhatsApp populated per-message MIME/URI fields and an authorized listener could read the attachment on this configuration. The separate top-level audio-contents key was absent. This does not establish identical behavior on every version.
 
 The waveform follow-up below now supplies native-note comparisons, missing-target checks and a constructed false acceptance. It has not established a reliable automatic replacement for sharing. A separately authorized message picker provides a clearer identity boundary, while the bridge from native long-press selection remains unproven. No direct-file matching feature was added by this investigation.
 
@@ -104,19 +104,43 @@ This was a deliberately constructed counterexample, not an accidental collision 
 - The active accessibility root later became null although the app remained visible. With interactive-window retrieval enabled, the focused window still supplied the correct WhatsApp tree. A successful final continuous probe paired all three new notes with their files. This is diagnostic evidence; no focused-window fallback was added to production.
 - Run device UI operations sequentially and validate actual test status. A process exit code of zero did not reliably indicate a passing legacy UI Automator test.
 
-The final notification-code check found the standard `MessagingStyle.Message.setData` forwarding wrapper (`X.K1c`, called from `X.K8S`) but did not establish that WhatsApp supplies a readable voice-note URI to our app. No notification listener or second-account incoming-message fixture was enabled. This route remains unverified rather than ruled out.
+The static notification-code check found a standard `MessagingStyle.Message.setData` forwarding wrapper (`X.K1c`, called from `X.K8S`). The later real incoming-notification experiment below established readable attachment access; static wrapper presence alone had not proved that behavior.
 
 **Outcome:** waveform matching is useful for ranking candidates in this small experiment, but no reliable automatic replacement for Share was established. The next useful work would be a substantially larger independent corpus and a better waveform-generation model, or an exact identifier supplied by an explicitly authorized client integration. Neither a lower threshold nor a folder grant alone resolves message identity.
 
-## Notification-URI experiment: preparation and current blocker
+## Notification-URI experiment: confirmed direct retrieval
 
-The next supplied voice note was left unplayed, but its chat had already been opened. At inspection time, `cmd notification list` reported **zero active WhatsApp notifications**. This is not evidence that the note's original notification lacked an attachment URI: entering the chat can remove the notification independently of audio playback. WhatsApp was put in the background and a fresh, untouched test notification was requested.
+A fresh non-private voice note arrived while WhatsApp was in the background on the Android 16 phone running WhatsApp **2.26.43.76**. A temporary ordinary app with [`NotificationListenerService`](https://developer.android.com/reference/android/service/notification/NotificationListenerService) access received the notification and read its attachment through `ContentResolver.openInputStream`. **No Share menu, audio playback, folder grant, storage permission, account pairing or transcription request was involved.** The diagnostic APK declared no Internet permission.
 
-A typed shell call to `INotificationManager.getActiveNotifications` was rejected with `ACCESS_NOTIFICATIONS`; no attempt was made to grant that signature permission. A separate temporary diagnostic APK was prepared instead, using `NotificationListenerService`, filtering by WhatsApp package and test-start time, and retaining attachment MIME/URI presence and structural keys rather than message text or sender names. It has no Internet permission. It distinguishes `Notification.sound` (the alert sound) from `MessagingStyle.Message` attachment data and `EXTRA_AUDIO_CONTENTS_URI`.
+| Check | Observed result |
+|---|---|
+| Real conversation notification | `MessagingStyle`, with per-message MIME `audio/ogg; codecs=opus` and a `content://com.whatsapp.provider.media/item/<uuid>` URI. |
+| Group-summary notification | No per-message audio reference; inspecting only this record would miss the attachment. |
+| Top-level `EXTRA_AUDIO_CONTENTS_URI` | Absent. Its absence did not mean there was no audio URI. |
+| Ordinary listener opens the URI | **21,150 bytes read**, with an Ogg header; SHA-256 matched across repeated reads. |
+| Notification refreshed during testing | The opaque URI changed; recapturing the scoped test message still returned byte-identical audio. |
+| After dismissing the exact test notification | `NotificationRemoved` was observed. New opens failed with `SecurityException` at both **2 seconds and 10 seconds**. |
+| Temporary in-memory copy after dismissal | Still 21,150 bytes with the same SHA-256 at both checks; cleared after the final check. |
 
-The extractor passed a **synthetic metadata round-trip control on the Android 13 tablet**: an unposted notification carrying `audio/ogg` and a dummy attachment URI was rebuilt with the public `Notification.Builder.recoverBuilder(...).getStyle()` API and yielded the expected fields. This verifies extraction logic, not a real provider read or WhatsApp behavior. Notification access was never enabled on that tablet, and its temporary APK was removed.
+The lifetime test used the listener's targeted `cancelNotification` API. It did **not** establish the exact timing for chat opening: the attempted forwarding of the notification's PendingIntent did not open the chat. No other notification was dismissed, and the test audio was not played. The result demonstrates access revocation after this removal path, not permanent availability or identical behavior for every removal reason.
 
-On the Android 16 phone, installing the diagnostic APK was rejected with `INSTALL_FAILED_USER_RESTRICTED`. The owner was asked to enable/approve USB installation, or choose limited shell inspection. No notification listener has been enabled on the phone. The real-notification result remains **pending**, not negative, until a fresh background notification and an approved inspection path are available. No transcription request was made and the supplied note was not played.
+The notification also contained a top-level `last_row_id` value of type `Long`. Its per-audio semantics and any bridge to a selected native accessibility row were not established. It must not be assumed to solve native-message identity, especially when a notification contains multiple messages. For the diagnostic read, a known notification-key hash plus the test message timestamp limited capture to the supplied fixture; byte hashes verified that refreshed URI reads still represented the same audio. This is not a claim that that tuple is a universal message identifier.
+
+### Test validity and cleanup
+
+The extractor first passed unposted synthetic MIME/URI round-trip controls on **Android 13 and Android 16**, using the public `Notification.Builder.recoverBuilder(...).getStyle()` API. These controls verified metadata decoding; the real listener read above separately verified provider access. A direct shell API call requiring `ACCESS_NOTIFICATIONS` was rejected, and a shell `content read` was denied even though its process exit code was zero. No signature permission was granted or bypassed.
+
+Initial phone installations returned `INSTALL_FAILED_USER_RESTRICTED`; an ordinary retry succeeded after the owner enabled USB installation. A temporary listener then collected structural metadata, not message text or sender names. Other WhatsApp notifications arrived during the session, so the attachment-reading step was restricted to the supplied test message before the removal experiment.
+
+A diagnostic parsing trap initially hid the real conversation record: its notification key contained an embedded newline in an opaque tag. Splitting `cmd notification list` into individual lines truncated that key, so `get` failed for the conversation while succeeding for the summary. Preserving the complete key and quoting it correctly exposed the actual per-message MIME and URI. Production listener callbacks already supply structured notification objects and should not parse shell output.
+
+The temporary app was uninstalled, its notification access revoked, its memory buffer cleared, and transient URI/identity files removed. The installed OpenVoiceIME app was unchanged. The test note remains in WhatsApp, unplayed; its test notification was dismissed deliberately. No production direct-reading feature was published by this research.
+
+### What this enables
+
+For notes that generate a notification, an opt-in implementation can capture the exact attachment into a bounded private cache while its grant is valid, then submit it to transcription only after an explicit user action. URI strings alone are insufficient: they can change and their read grants can expire. Cache retention, size limits, cleanup and duplicate notification updates need explicit handling.
+
+A per-note **Transcribe action in our own notification** can address the captured clip directly without matching a native chat row. The original long-press shortcut still needs a demonstrated join from the selected WhatsApp row to that cached clip. Older notes, notifications missed before capture, and arrivals that produce no notification still need the existing Share fallback or a different integration. One successful phone/build/voice-note test does not establish universal compatibility.
 
 ## Why folder access is not yet an exact-message shortcut
 
@@ -134,4 +158,4 @@ A safe folder prototype would need either a demonstrated stable message/file ide
 
 The [WhatsApp Business platform](https://whatsappbusiness.com/developers/developer-hub/) exposes business messaging integration. It is not a documented way for this keyboard app to retrieve a selected message from an existing personal chat.
 
-For a completely independent audio pipeline, an account-based companion is the strongest documented direction. For minimal additional setup, a scoped-folder prototype is smaller, but exact-message matching must be demonstrated before it can replace sharing safely. Neither requires sending transcripts back into a conversation automatically.
+For incoming notes with accessible notifications, listener capture is now the demonstrated route with no account pairing or folder grant. An account-based companion remains a separate direction for independent message access and history. Neither route has proved an exact join from an arbitrary native long-press selection to its message/file identity, and neither requires sending transcripts back into a conversation automatically.
