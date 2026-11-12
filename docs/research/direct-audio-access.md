@@ -66,7 +66,47 @@ The waveform limitation follows from primary implementation evidence: Baileys [c
 
 Android provides both [`MessagingStyle.Message.getDataUri()`](https://developer.android.com/reference/android/app/Notification.MessagingStyle.Message#getDataUri()) and [`EXTRA_AUDIO_CONTENTS_URI`](https://developer.android.com/reference/android/app/Notification#EXTRA_AUDIO_CONTENTS_URI). Their existence does not demonstrate WhatsApp populates them or grants our app access. No notification listener was enabled on the phone.
 
-The recommended next bounded experiment is waveform matching on a synthetic corpus with known file ground truth and a folder grant. It should measure false matches and abstentions before any automatic upload is considered. If that route is too unreliable, a separately authorized message picker provides a clearer identity boundary. No direct-file matching feature was added by this investigation.
+The waveform follow-up below now supplies native-note comparisons, missing-target checks and a constructed false acceptance. It has not established a reliable automatic replacement for sharing. A separately authorized message picker provides a clearer identity boundary, while the bridge from native long-press selection remains unproven. No direct-file matching feature was added by this investigation.
+
+## Follow-up: matching visible waveforms to actual files
+
+A second session used the same Android 16 phone and WhatsApp 2.26.43.76. The user authorized test messages only in their self-chat and supplied two new non-private spoken notes plus one silence note. No transcription requests were sent. A generated four-second Opus attachment had no native waveform, so it was excluded from native-waveform validation. The phone killed the temporary tone player; that attempted automated recording was also excluded. Test messages remain in the self-chat; temporary probe files, exported crops and locally copied recordings were removed after analysis. The original music volume was restored. No production app change or notification-access grant was made.
+
+### Procedure and limits
+
+Only each waveform rectangle was exported, not a screenshot of the chat. Each non-flat crop contained 39 visible bars. Ground truth came from a controlled Share stopped at Android's chooser: its filename located the exact file for local decoding. Thus **the experiment tests matching; it does not itself demonstrate a Share-free app integration**. File reads used ADB, not an ordinary app's folder grant on this phone.
+
+The first prepared note was used for calibration. A simple 64-bin decoded-audio envelope plus interpolation scored the two new spoken notes at 0.7200 and 0.5009; the second could rank below a wrong synthetic candidate. Inspection of the installed APK then identified a rendering difference: the bar view averages groups of waveform values when reducing their count, and the separate playback thumb obscures the first visible interval. The corrected model used 64 bins of decoded 48-kHz mono PCM, square-root RMS features, grouped reduction to 40 bars, and omission of the first covered bar before Pearson correlation. These changes improve sampling alignment; they do not replicate the waveform-generation pipeline completely.
+
+The installed APK inspected locally has SHA-256 `a1b3b262a86c8ed928bce8b777da69a2324607356bd03d814396a66bbc27da55`. Relevant code paths include `VoiceVisualizer`, `VoiceNoteSeekBar`, and obfuscated `X.9kG` (bar resizing), `X.SWO` (separate visualization-file output) and `X.AEd` (byte-valued visualization-file reads). Decompiled code was used for local inspection only and is not included here. Some unrelated methods could not be decompiled; the findings above concern readable methods, not a complete reconstruction of the app.
+
+After this correction, each spoken note was compared against 1,004 same-duration candidates: its correct file, three other prepared notes repeated/cut to that exact sample count, and 1,000 synthetic step-envelope tone signals. These are controlled distractors, **not 1,004 independently collected WhatsApp messages**. A hypothetical conservative rule required a score of at least 0.90 and a lead of at least 0.15 over the runner-up; it never uploaded anything.
+
+| Note | Decoded duration | Correct-file score | Strongest wrong candidate | Rank of correct file | Conservative decision |
+|---|---:|---:|---:|---:|---|
+| Original calibration note | 3.933 s | 0.9341 | 0.6069 | 1 | Accept |
+| New spoken note A | 9.934 s | 0.8586 | 0.4797 | 1 | Abstain |
+| New spoken note B | 11.954 s | 0.7234 | 0.5004 | 1 | Abstain |
+| New silence note | 6.913 s | No discriminating bars | — | — | Abstain |
+
+Removing the correct file also produced abstention for all three spoken examples under that rule. Lowering the cutoff would accept more of these examples, but the small corpus cannot establish a safe cutoff or real-world false-match rate. The new notes were collected after initial calibration, but the resampling correction was developed after their first scores were observed; these results are model development, not final unseen validation. The small self-chat corpus does not establish accuracy for incoming notes from other senders, iOS, forwarded messages, different sizes/themes or other WhatsApp versions.
+
+### A constructed failure even with conservative thresholds
+
+An additional local control used the *other* prepared speech note, repeated/cut to the target length and amplitude-shaped per frame to resemble the displayed bars. It was Opus-encoded and decoded again before scoring. Its score against spoken note B's on-screen waveform was **0.9985**, versus **0.7234** for the real file. Its lead over the real file was **0.2751**, so the conservative rule would accept the wrong recording even with the real file present.
+
+This was a deliberately constructed counterexample, not an accidental collision observed in normal chats and not an estimate of real-world risk. It demonstrates that this scorer measures amplitude shape rather than attachment identity. A larger score alone cannot establish that a selected note belongs to a particular file; silence and missing/modified files also need explicit fallback behavior.
+
+### Inspection fixes learned during the session
+
+- The hierarchy can expose both chat and selection-toolbar controls with the same resource ID. Select the message-toolbar ancestor explicitly and verify the expected conversation before each action.
+- An unconditional Back left the test conversation and selected a chat-list row. The error was caught before sharing that selection. Subsequent pairing required the authorized conversation header, a voice-note row and exactly one selected message; selection was dismissed through its close control only when present.
+- The active accessibility root later became null although the app remained visible. With interactive-window retrieval enabled, the focused window still supplied the correct WhatsApp tree. A successful final continuous probe paired all three new notes with their files. This is diagnostic evidence; no focused-window fallback was added to production.
+- Run device UI operations sequentially and validate actual test status. A process exit code of zero did not reliably indicate a passing legacy UI Automator test.
+
+The final notification-code check found the standard `MessagingStyle.Message.setData` forwarding wrapper (`X.K1c`, called from `X.K8S`) but did not establish that WhatsApp supplies a readable voice-note URI to our app. No notification listener or second-account incoming-message fixture was enabled. This route remains unverified rather than ruled out.
+
+**Outcome:** waveform matching is useful for ranking candidates in this small experiment, but no reliable automatic replacement for Share was established. The next useful work would be a substantially larger independent corpus and a better waveform-generation model, or an exact identifier supplied by an explicitly authorized client integration. Neither a lower threshold nor a folder grant alone resolves message identity.
 
 ## Why folder access is not yet an exact-message shortcut
 
