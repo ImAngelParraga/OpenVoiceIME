@@ -211,23 +211,26 @@ class RemoteSttInputMethodServiceSourceTest {
     }
 
     @Test
-    fun directKeyboardReturnCleansActiveWorkBeforeSwitching() {
+    fun directKeyboardReturnCancelsWorkBeforeSwitching() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val createViewBody = functionBody(source, "onCreateInputView")
         val returnBody = functionBody(source, "returnToKeyboard")
-        val cleanupBody = functionBody(source, "discardCurrentWork") + functionBody(source, "detachInputView") + functionBody(source, "clearEditorGestures")
+        val discardBody = functionBody(source, "discardCurrentWork")
+        val deactivateBody = functionBody(source, "deactivateInputView") + functionBody(source, "clearEditorGestures")
 
         assertTrue(createViewBody.contains("keyboardButton.setOnClickListener"))
-        assertTrue(returnBody.indexOf("discardCurrentWork()") < returnBody.indexOf("switchToPreviousOrFallbackKeyboard()"))
-        assertTrue(cleanupBody.contains("cancelScheduledStartRecording()"))
-        assertTrue(cleanupBody.contains("handler.removeCallbacks(tick)"))
-        assertTrue(cleanupBody.contains("uploadJob?.cancel()"))
-        assertTrue(cleanupBody.contains("recorder.cancel()"))
-        assertTrue(cleanupBody.contains("recordingAudioFocus.abandon()"))
-        assertTrue(cleanupBody.contains("audioFile?.delete()"))
-        assertTrue(cleanupBody.contains("pendingText = null"))
-        assertTrue(cleanupBody.contains("activeEditorGesture = null"))
-        assertTrue(cleanupBody.contains("activeGestureMode = null"))
+        val discard = returnBody.indexOf("discardCurrentWork(returningToKeyboard = true)")
+        assertTrue(discard >= 0 && discard < returnBody.indexOf("switchToPreviousOrFallbackKeyboard()"))
+        assertTrue(discardBody.contains("deactivateInputView(restoreGesture)"))
+        assertTrue(deactivateBody.contains("cancelScheduledStartRecording()"))
+        assertTrue(deactivateBody.contains("handler.removeCallbacks(tick)"))
+        assertTrue(discardBody.contains("uploadJob?.cancel()"))
+        assertTrue(discardBody.contains("if (returningToKeyboard) recorder.cancelForKeyboardReturn() else recorder.cancel()"))
+        assertTrue(discardBody.contains("recordingAudioFocus.abandon()"))
+        assertTrue(discardBody.contains("audioFile?.delete()"))
+        assertTrue(discardBody.contains("pendingText = null"))
+        assertTrue(deactivateBody.contains("activeEditorGesture = null"))
+        assertTrue(deactivateBody.contains("activeGestureMode = null"))
     }
 
     @Test

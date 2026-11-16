@@ -25,7 +25,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - Delete tap removes current selection, or one preceding Unicode code point when selection is empty; left slide selects backward from caret and release deletes that range.
 - Completed user-facing implementation publishes signed GitHub release unless user explicitly opts out; project-site APK mirrors same build.
 - Settings label translated in English and Spanish.
-- Direct keyboard-return control cleans active recording/transient work before switching; Android 9+ prefers last-used IME, with safe fallback to sole other enabled IME where available.
+- Direct keyboard-return control invalidates active recording/transient work and starts recorder release before switching; Android 9+ prefers last-used IME, with safe fallback to sole other enabled IME where available.
 
 ## §I
 
@@ -83,7 +83,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V24: Delete tap honors latched Terminal/Rich mode without reprobe; only an unlatched accessibility/programmatic tap probes capability, and each tap causes at most one mutation.
 - V25: IME configuration changes leave at most one recorder active; rebuilt UI and logical state agree; Cancel/Stop remain usable without switching keyboards.
 - V26: Cursor pad locks once to dominant axis after touch slop; horizontal behavior stays unchanged, vertical movement emits only newly crossed bounded `KEYCODE_DPAD_UP`/`KEYCODE_DPAD_DOWN` steps including reversal, tap/cancel emits none, and accessible labels describe four directions.
-- V27: Keyboard-return button is always reachable in OpenVoiceIME panel, cancels recorder/audio focus/upload/scheduled work before switching, prefers `switchToPreviousInputMethod()` on Android 9+, falls back without opening picker when exactly one other enabled IME exists, and exposes localized English/Spanish/default label and content description.
+- V27: Keyboard-return button is always reachable in OpenVoiceIME panel, cancels audio focus/upload/scheduled work and detaches the recorder before switching. Recorder release runs off the main thread, and a fresh capture waits for release. The control prefers `switchToPreviousInputMethod()` on Android 9+, falls back without opening picker when exactly one other enabled IME exists, and exposes localized English/Spanish/default label and content description.
 - V28: [Historical T15; superseded by V51] Header app/version and compact keyboard-return icon.
 - V29: Model picker uses authenticated server-advertised transcription IDs when available, refreshes after settings resume or connection changes, ignores stale responses, and preserves the current editable model if discovery fails. Future model IDs require no client update.
 
@@ -205,6 +205,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 | T32 | x | Restore opaque full-screen share progress, remove screenshot capture/capability and stale strings/code, verify secure-window/cancellation/chooser regressions; publish signed v0.5.3 and update the connected phone. | V21,V70,V74,V75,V76,V77,V78 |
 | T33 | x | Split Settings into a readiness home and focused sub-screens, verify unit/instrumented settings, setup and diagnostics tests plus phone screenshots in both themes and Spanish; publish signed v0.6.0. | V40,V42,V47,V48,V49,V63,V79 |
+| T34 | x | Move keyboard-return recorder release off the main thread and defer transcription client creation until upload. Verify Samsung Keyboard handoff and rejected-switch recovery. Publish signed v0.6.1. | V21,V27 |
 
 ## §B
 
@@ -313,3 +314,4 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B99 | 2026-11-12 | User testing found the frozen-chat presentation still jumped visually and did not justify capturing the chat. Restore the earlier opaque progress cover and remove screenshot capability/code; verify secure-window sharing and interruption before the first cover frame. | V75,V77,V78 |
 | B100 | 2026-11-12 | The Android 13 secure-window check asserted overlay-tree visibility immediately after the menu counter changed. Await both menu progress and the cover window before inspecting bounds; the focused check and all ten feature cases then passed. | V75,V77; asynchronous test readiness |
 | B101 | 2026-11-12 | Release resource optimization renamed XML entries, so inspection by the source res/xml path failed. Resolve the packaged XML path from the resource table before verifying screenshot capability removal. | release verification only |
+| B102 | 2026-11-16 | Recorder shutdown blocked the keyboard-return request on the IME main thread. Detach capture and release it on a worker before allowing another recording. | V27 |

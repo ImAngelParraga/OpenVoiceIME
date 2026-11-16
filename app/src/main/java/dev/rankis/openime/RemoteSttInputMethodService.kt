@@ -205,7 +205,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     override fun onCreateInputView(): View {
-        detachInputView(preserveUpload = true)
+        detachInputView()
         configureInputWindow()
         val view = LayoutInflater.from(this).inflate(R.layout.ime_voice_input, null)
         ViewCompat.setOnApplyWindowInsetsListener(view) { root, insets ->
@@ -265,7 +265,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     override fun onConfigurationChanged(newConfig: Configuration) {
         ShortcutDiagnostics.record(this, "configuration orientation=${newConfig.orientation} keyboard=${newConfig.keyboard} hard-hidden=${newConfig.hardKeyboardHidden}")
         rebuildingInputView = true
-        detachInputView(preserveUpload = true)
+        detachInputView()
         try {
             super.onConfigurationChanged(newConfig)
         } finally {
@@ -283,7 +283,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         cancelPendingInputFinish()
         if (!restarting || !sameEditor || finishingCapture) {
             if (rebuildingInputView) {
-                detachInputView(preserveUpload = true, restoreGesture = false)
+                detachInputView(restoreGesture = false)
             } else if (!continuingCapture) {
                 discardCurrentWork(restoreGesture = false)
             }
@@ -313,7 +313,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     override fun onFinishInputView(finishingInput: Boolean) {
         ShortcutDiagnostics.record(this, "input-view-finish finishing=$finishingInput platform-view=$isInputViewShown")
         if (rebuildingInputView) {
-            detachInputView(preserveUpload = true)
+            detachInputView()
         } else if (!finishingInput || !deferCaptureFinish()) {
             discardCurrentWork()
         }
@@ -323,7 +323,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     override fun onFinishInput() {
         ShortcutDiagnostics.record(this, "input-finish rebuilding=$rebuildingInputView")
         if (rebuildingInputView) {
-            detachInputView(preserveUpload = true)
+            detachInputView()
         } else if (!deferCaptureFinish()) {
             discardCurrentWork()
         }
@@ -360,19 +360,22 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         handler.removeCallbacks(finishUnrestartedInput)
     }
 
-    private fun detachInputView(preserveUpload: Boolean = false, restoreGesture: Boolean = true, preserveRecording: Boolean = true) {
+    private fun deactivateInputView(restoreGesture: Boolean) {
         inputViewVisible = false
         cancelScheduledStartRecording()
         handler.removeCallbacks(tick)
         if (restoreGesture) runCatching { restoreActiveGesture() }
         clearEditorGestures()
+    }
+
+    private fun detachInputView(restoreGesture: Boolean = true) {
+        deactivateInputView(restoreGesture)
 
         // A shortcut visibility-setting update can recreate only the view while input continues.
-        val retainShortcutRecorder = preserveRecording && HardwareDictation.owns(this) &&
+        val retainShortcutRecorder = HardwareDictation.owns(this) &&
             !rebuildingInputView && (state == ImeState.Recording || state == ImeState.Paused)
         if (::recorder.isInitialized && !retainShortcutRecorder) {
-            val retainPausedRecorder = preserveRecording && state == ImeState.Paused
-            if (preserveRecording && state == ImeState.Recording) {
+            if (state == ImeState.Recording) {
                 recordingDuration.pause()
                 audioDurationMillis = recordingDuration.elapsedMillis.coerceAtLeast(1L)
                 audioFile = recorder.stop()
@@ -383,15 +386,9 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
                     lastErrorMessage = getString(R.string.error_recording_failed)
                 }
             }
-            if (!retainPausedRecorder) recorder.cancel()
+            if (state != ImeState.Paused) recorder.cancel()
         }
         if (::recordingAudioFocus.isInitialized && !retainShortcutRecorder) recordingAudioFocus.abandon()
-        if (!preserveUpload && state == ImeState.Uploading) {
-            operationId += 1
-            uploadJob?.cancel()
-            uploadJob = null
-            state = ImeState.ReadyToUpload
-        }
     }
 
     private fun clearEditorGestures() {
@@ -406,18 +403,16 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         terminalGestureDragged = false
     }
 
-    private fun discardCurrentWork(restoreGesture: Boolean = true) {
+    private fun discardCurrentWork(restoreGesture: Boolean = true, returningToKeyboard: Boolean = false) {
         cancelPendingInputFinish()
-        detachInputView(restoreGesture = restoreGesture, preserveRecording = false)
+        deactivateInputView(restoreGesture)
         operationId += 1
         uploadJob?.cancel()
         uploadJob = null
         if (::recorder.isInitialized) {
-            recorder.cancel()
+            if (returningToKeyboard) recorder.cancelForKeyboardReturn() else recorder.cancel()
         }
-        if (::recordingAudioFocus.isInitialized) {
-            recordingAudioFocus.abandon()
-        }
+        if (::recordingAudioFocus.isInitialized) recordingAudioFocus.abandon()
         audioFile?.delete()
         audioFile = null
         audioDurationMillis = 0L
@@ -854,10 +849,8 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     private fun returnToKeyboard() {
-        discardCurrentWork()
-        if (switchToPreviousOrFallbackKeyboard()) {
-            return
-        }
+        discardCurrentWork(returningToKeyboard = true)
+        if (switchToPreviousOrFallbackKeyboard()) return
 
         // Keep the panel usable if the platform refuses every switch request.
         inputViewVisible = true

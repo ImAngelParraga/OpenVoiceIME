@@ -795,6 +795,24 @@ class ImeLifecycleTest {
         }
     }
 
+    @Test
+    fun rejectedKeyboardReturnDiscardsOldRecordingBeforeStartingAgain() = withIme { ime ->
+        main { ime.show() }; idle()
+        val discardedAudio = checkNotNull(ime.recorder.lastFile)
+        main {
+            ime.service.previousKeyboardResult = false
+            ime.view.findViewById<View>(R.id.keyboardButton).performClick()
+            assertEquals(1, ime.service.previousKeyboardRequests)
+            assertFalse(ime.recorder.active)
+            assertFalse(discardedAudio.exists())
+        }
+        idle()
+        main {
+            assertEquals(2, ime.recorder.starts)
+            assertFreshPanel(ime)
+        }
+    }
+
     private fun assertFreshPanel(ime: Harness) {
         assertEquals(View.GONE, ime.view.findViewById<View>(R.id.retryButton).visibility)
         assertEquals(View.GONE, ime.view.findViewById<View>(R.id.errorDetailsInput).visibility)
@@ -871,10 +889,11 @@ class ImeLifecycleTest {
         var nextKeyboardRequests = 0
         var previousKeyboardRequests = 0
         var nextKeyboardResult = true
+        var previousKeyboardResult = true
         var launchedActivity: android.content.Intent? = null
         override fun requestHideSelf(flags: Int) { hideRequests += 1 }
         override fun switchToNextKeyboard(): Boolean { nextKeyboardRequests += 1; return nextKeyboardResult }
-        override fun switchToPreviousOrFallbackKeyboard(): Boolean { previousKeyboardRequests += 1; return true }
+        override fun switchToPreviousOrFallbackKeyboard(): Boolean { previousKeyboardRequests += 1; return previousKeyboardResult }
         override fun startActivity(intent: android.content.Intent) { launchedActivity = intent }
         init { attachBaseContext(context) }
         override fun getCurrentInputConnection() = connection

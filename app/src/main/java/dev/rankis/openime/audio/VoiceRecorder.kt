@@ -9,4 +9,5 @@ interface VoiceRecorder {
     fun resume()
     fun stop(): File?
     fun cancel()
+    fun cancelForKeyboardReturn() = cancel()
 }

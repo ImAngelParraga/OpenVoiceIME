@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.MediaRecorder
 import android.os.Build
 import java.io.File
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 internal fun deleteAbandonedRecordings(cacheDir: File) {
     cacheDir.listFiles()?.filter { it.isFile && it.name.startsWith("openime-") && it.extension == "m4a" }
@@ -19,6 +21,9 @@ class AudioRecorder(private val context: Context) : VoiceRecorder {
 
     override fun start(): File {
         check(recorder == null) { "Recorder already running" }
+        // A quick return to dictation can create a new service before the old mic is released.
+        pendingKeyboardReturnRelease?.get()
+        pendingKeyboardReturnRelease = null
         val file = File.createTempFile("openime-", ".m4a", context.cacheDir)
         var mediaRecorder: MediaRecorder? = null
 
@@ -75,20 +80,39 @@ class AudioRecorder(private val context: Context) : VoiceRecorder {
         return file
     }
 
-    override fun cancel() {
+    override fun cancel() = discard(releaseInBackground = false)
+
+    override fun cancelForKeyboardReturn() = discard(releaseInBackground = true)
+
+    private fun discard(releaseInBackground: Boolean) {
         val file = currentFile
         val mediaRecorder = recorder
         recorder = null
         currentFile = null
-        if (mediaRecorder != null) {
-            runCatching { mediaRecorder.stop() }
-            releaseRecorder(mediaRecorder)
+        val release = Runnable {
+            mediaRecorder?.let(::stopAndRelease)
+            file?.let { runCatching { it.delete() } }
         }
-        file?.let { runCatching { it.delete() } }
+        if (mediaRecorder != null && releaseInBackground) {
+            pendingKeyboardReturnRelease = recorderReleaseExecutor.submit(release)
+        } else {
+            release.run()
+        }
+    }
+
+    private fun stopAndRelease(mediaRecorder: MediaRecorder) {
+        runCatching { mediaRecorder.stop() }
+        releaseRecorder(mediaRecorder)
     }
 
     private fun releaseRecorder(mediaRecorder: MediaRecorder) {
         runCatching { mediaRecorder.reset() }
         runCatching { mediaRecorder.release() }
+    }
+
+    private companion object {
+        val recorderReleaseExecutor = Executors.newSingleThreadExecutor()
+        // Read and written by the IME main thread. The worker only owns the detached recorder.
+        var pendingKeyboardReturnRelease: Future<*>? = null
     }
 }

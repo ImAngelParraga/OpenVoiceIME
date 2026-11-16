@@ -20,12 +20,25 @@ class AudioRecorderSourceTest {
     fun teardownDetachesRecorderStateBeforeMediaRecorderCalls() {
         val source = String(Files.readAllBytes(sourcePath()))
 
-        listOf("stop", "cancel").forEach { functionName ->
-            val body = functionBody(source, functionName)
-            assertTrue(body.indexOf("recorder = null") < body.indexOf("mediaRecorder.stop()"))
-            assertTrue(body.indexOf("currentFile = null") < body.indexOf("mediaRecorder.stop()"))
-            assertTrue(body.contains("releaseRecorder(mediaRecorder)"))
-        }
+        val stop = functionBody(source, "stop")
+        assertTrue(stop.indexOf("recorder = null") < stop.indexOf("mediaRecorder.stop()"))
+        assertTrue(stop.indexOf("currentFile = null") < stop.indexOf("mediaRecorder.stop()"))
+
+        val discard = functionBody(source, "discard")
+        assertTrue(discard.indexOf("recorder = null") < discard.indexOf("stopAndRelease"))
+        assertTrue(discard.indexOf("currentFile = null") < discard.indexOf("stopAndRelease"))
+    }
+
+    @Test
+    fun keyboardReturnReleasesRecorderOffMainAndRestartWaitsForRelease() {
+        val source = String(Files.readAllBytes(sourcePath()))
+        val discard = functionBody(source, "discard")
+        val start = functionBody(source, "start")
+        val waitForRelease = start.indexOf("pendingKeyboardReturnRelease?.get()")
+
+        assertTrue(source.contains("fun cancelForKeyboardReturn() = discard(releaseInBackground = true)"))
+        assertTrue(discard.contains("pendingKeyboardReturnRelease = recorderReleaseExecutor.submit"))
+        assertTrue(waitForRelease >= 0 && waitForRelease < start.indexOf("File.createTempFile"))
     }
 
     @Test

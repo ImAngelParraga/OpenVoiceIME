@@ -17,7 +17,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 class OpenAiCompatibleProvider(
-    private val client: OkHttpClient = defaultClient(),
+    private val client: OkHttpClient? = null,
 ) : SttProvider {
     override suspend fun transcribe(audioFile: File, settings: AppSettings, timeoutMillis: Long): TranscriptionResult = withContext(Dispatchers.IO) {
         if (!audioFile.exists() || audioFile.length() <= 0L) {
@@ -29,7 +29,7 @@ class OpenAiCompatibleProvider(
 
         try {
             withTimeout(timeoutMillis) {
-                val call = client.newCall(request)
+                val call = (client ?: sharedClient).newCall(request)
                 call.timeout().timeout(timeoutMillis, TimeUnit.MILLISECONDS)
                 val response = call.awaitBody()
                 if (response.isSuccessful) {
@@ -45,6 +45,10 @@ class OpenAiCompatibleProvider(
         } catch (e: Exception) {
             TranscriptionResult.Failure(e.toTranscriptionError())
         }
+    }
+
+    private companion object {
+        val sharedClient by lazy(::defaultClient)
     }
 }
 
