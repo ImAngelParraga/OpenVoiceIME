@@ -4,7 +4,8 @@ import java.io.File
 
 interface VoiceRecorder {
     val maxAmplitude: Int
-    fun start(): File
+    // Delivers an accepted start or failure on the caller’s main thread.
+    fun start(onResult: (Result<File>) -> Unit)
     fun pause()
     fun resume()
     fun stop(): File?

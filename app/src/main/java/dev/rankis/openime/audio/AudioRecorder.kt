@@ -3,9 +3,10 @@ package dev.rankis.openime.audio
 import android.content.Context
 import android.media.MediaRecorder
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import java.io.File
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
 
 internal fun deleteAbandonedRecordings(cacheDir: File) {
     cacheDir.listFiles()?.filter { it.isFile && it.name.startsWith("openime-") && it.extension == "m4a" }
@@ -13,41 +14,58 @@ internal fun deleteAbandonedRecordings(cacheDir: File) {
 }
 
 class AudioRecorder(private val context: Context) : VoiceRecorder {
-    private var recorder: MediaRecorder? = null
-    private var currentFile: File? = null
+    private data class Capture(val recorder: MediaRecorder, val file: File)
+
+    private class PendingStart {
+        @Volatile var cancelled = false
+        var capture: Capture? = null
+    }
+
+    private var capture: Capture? = null
+    private var pendingStart: PendingStart? = null
 
     override val maxAmplitude: Int
-        get() = runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
+        get() = runCatching { capture?.recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
 
-    override fun start(): File {
-        check(recorder == null) { "Recorder already running" }
-        // A quick return to dictation can create a new service before the old mic is released.
-        pendingKeyboardReturnRelease?.get()
-        pendingKeyboardReturnRelease = null
+    override fun start(onResult: (Result<File>) -> Unit) {
+        check(capture == null && pendingStart == null) { "Recorder already running or starting" }
+        val start = PendingStart()
+        pendingStart = start
+        recorderWorker.execute {
+            if (start.cancelled) return@execute
+            val result = runCatching { startCapture(start) }
+            start.capture = result.getOrNull()
+            mainHandler.post {
+                if (pendingStart !== start) return@post
+                pendingStart = null
+                capture = result.getOrNull()
+                onResult(result.map { it.file })
+            }
+        }
+    }
+
+    private fun startCapture(start: PendingStart): Capture {
         val file = File.createTempFile("openime-", ".m4a", context.cacheDir)
         var mediaRecorder: MediaRecorder? = null
-
-        return try {
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        try {
+            val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 MediaRecorder(context)
             } else {
                 @Suppress("DEPRECATION")
                 MediaRecorder()
             }
-            val configuredRecorder = mediaRecorder ?: error("Recorder construction failed")
-            configuredRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-            configuredRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            configuredRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            configuredRecorder.setAudioChannels(1)
-            configuredRecorder.setAudioSamplingRate(16000)
-            configuredRecorder.setAudioEncodingBitRate(64000)
-            configuredRecorder.setOutputFile(file.absolutePath)
-            configuredRecorder.prepare()
-            configuredRecorder.start()
-
-            recorder = configuredRecorder
-            currentFile = file
-            file
+            mediaRecorder = recorder
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder.setAudioChannels(1)
+            recorder.setAudioSamplingRate(16000)
+            recorder.setAudioEncodingBitRate(64000)
+            recorder.setOutputFile(file.absolutePath)
+            recorder.prepare()
+            check(!start.cancelled)
+            recorder.start()
+            return Capture(recorder, file)
         } catch (failure: Throwable) {
             mediaRecorder?.let(::releaseRecorder)
             runCatching { file.delete() }
@@ -56,28 +74,23 @@ class AudioRecorder(private val context: Context) : VoiceRecorder {
     }
 
     override fun pause() {
-        checkNotNull(recorder) { "Recorder is not running" }.pause()
+        checkNotNull(capture) { "Recorder is not running" }.recorder.pause()
     }
 
     override fun resume() {
-        checkNotNull(recorder) { "Recorder is not running" }.resume()
+        checkNotNull(capture) { "Recorder is not running" }.recorder.resume()
     }
 
     override fun stop(): File? {
-        val file = currentFile
-        val mediaRecorder = recorder
-        recorder = null
-        currentFile = null
-        if (mediaRecorder == null) {
-            return file
-        }
-        val stopped = runCatching { mediaRecorder.stop() }.isSuccess
-        releaseRecorder(mediaRecorder)
+        val current = capture ?: return null
+        capture = null
+        val stopped = runCatching { current.recorder.stop() }.isSuccess
+        releaseRecorder(current.recorder)
         if (!stopped) {
-            file?.delete()
+            current.file.delete()
             return null
         }
-        return file
+        return current.file
     }
 
     override fun cancel() = discard(releaseInBackground = false)
@@ -85,24 +98,25 @@ class AudioRecorder(private val context: Context) : VoiceRecorder {
     override fun cancelForKeyboardReturn() = discard(releaseInBackground = true)
 
     private fun discard(releaseInBackground: Boolean) {
-        val file = currentFile
-        val mediaRecorder = recorder
-        recorder = null
-        currentFile = null
-        val release = Runnable {
-            mediaRecorder?.let(::stopAndRelease)
-            file?.let { runCatching { it.delete() } }
+        pendingStart?.let { start ->
+            pendingStart = null
+            start.cancelled = true
+            // Release before a newer start can open the mic, even across service instances.
+            recorderWorker.execute { start.capture?.let(::discardCapture) }
         }
-        if (mediaRecorder != null && releaseInBackground) {
-            pendingKeyboardReturnRelease = recorderReleaseExecutor.submit(release)
+        val current = capture ?: return
+        capture = null
+        if (releaseInBackground) {
+            recorderWorker.execute { discardCapture(current) }
         } else {
-            release.run()
+            discardCapture(current)
         }
     }
 
-    private fun stopAndRelease(mediaRecorder: MediaRecorder) {
-        runCatching { mediaRecorder.stop() }
-        releaseRecorder(mediaRecorder)
+    private fun discardCapture(capture: Capture) {
+        runCatching { capture.recorder.stop() }
+        releaseRecorder(capture.recorder)
+        runCatching { capture.file.delete() }
     }
 
     private fun releaseRecorder(mediaRecorder: MediaRecorder) {
@@ -111,8 +125,7 @@ class AudioRecorder(private val context: Context) : VoiceRecorder {
     }
 
     private companion object {
-        val recorderReleaseExecutor = Executors.newSingleThreadExecutor()
-        // Read and written by the IME main thread. The worker only owns the detached recorder.
-        var pendingKeyboardReturnRelease: Future<*>? = null
+        val recorderWorker = Executors.newSingleThreadExecutor()
+        val mainHandler = Handler(Looper.getMainLooper())
     }
 }

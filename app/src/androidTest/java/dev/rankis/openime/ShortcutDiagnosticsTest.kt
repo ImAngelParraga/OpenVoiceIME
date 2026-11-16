@@ -3,9 +3,11 @@ package dev.rankis.openime
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.SystemClock
 import android.widget.Button
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import dev.rankis.openime.settings.KeyboardSetupGuide
 import dev.rankis.openime.settings.SettingsStore
 import org.junit.Assert.*
@@ -14,6 +16,24 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ShortcutDiagnosticsTest {
+    @Test
+    fun newestDiagnosticIsReadableBeforeAndAfterBackgroundPersistence() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = context.getSharedPreferences("openime_shortcut_diagnostics", Context.MODE_PRIVATE)
+        val marker = "batch-persistence-${SystemClock.uptimeMillis()}"
+
+        ShortcutDiagnostics.record(context, marker)
+        assertTrue(ShortcutDiagnostics.report(context).contains(marker))
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        while (!preferences.getString("events", "").orEmpty().contains(marker) &&
+            SystemClock.uptimeMillis() < deadline
+        ) {
+            SystemClock.sleep(25)
+        }
+        assertTrue(preferences.getString("events", "").orEmpty().contains(marker))
+        assertEquals(1, ShortcutDiagnostics.report(context).lineSequence().count { it.endsWith(marker) })
+    }
+
     @Test
     fun testV63DiagnosticsAreBoundedAndCopiedOnlyExplicitlyWithoutEditorOrCredentials() {
         ActivityScenario.launch(IntegrationHostActivity::class.java).use { scenario ->

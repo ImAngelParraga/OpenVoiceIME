@@ -10,9 +10,9 @@ class AudioRecorderSourceTest {
     @Test
     fun testV34FailedStopDiscardsIncompleteFileInsteadOfUploadingIt() {
         val body = functionBody(String(Files.readAllBytes(sourcePath())), "stop")
-        assertTrue(body.contains("val stopped = runCatching { mediaRecorder.stop() }.isSuccess"))
-        assertTrue(body.indexOf("releaseRecorder(mediaRecorder)") < body.indexOf("if (!stopped)"))
-        assertTrue(body.substringAfter("if (!stopped)").contains("file?.delete()"))
+        assertTrue(body.contains("val stopped = runCatching { current.recorder.stop() }.isSuccess"))
+        assertTrue(body.indexOf("releaseRecorder(current.recorder)") < body.indexOf("if (!stopped)"))
+        assertTrue(body.substringAfter("if (!stopped)").contains("current.file.delete()"))
         assertTrue(body.substringAfter("if (!stopped)").contains("return null"))
     }
 
@@ -21,33 +21,31 @@ class AudioRecorderSourceTest {
         val source = String(Files.readAllBytes(sourcePath()))
 
         val stop = functionBody(source, "stop")
-        assertTrue(stop.indexOf("recorder = null") < stop.indexOf("mediaRecorder.stop()"))
-        assertTrue(stop.indexOf("currentFile = null") < stop.indexOf("mediaRecorder.stop()"))
-
         val discard = functionBody(source, "discard")
-        assertTrue(discard.indexOf("recorder = null") < discard.indexOf("stopAndRelease"))
-        assertTrue(discard.indexOf("currentFile = null") < discard.indexOf("stopAndRelease"))
+        assertTrue(stop.indexOf("capture = null") < stop.indexOf("current.recorder.stop()"))
+        assertTrue(discard.indexOf("pendingStart = null") < discard.indexOf("start.cancelled = true"))
+        assertTrue(discard.indexOf("capture = null") < discard.indexOf("discardCapture(current)"))
     }
 
     @Test
-    fun keyboardReturnReleasesRecorderOffMainAndRestartWaitsForRelease() {
+    fun keyboardReturnAndRecorderStartupShareOneWorker() {
         val source = String(Files.readAllBytes(sourcePath()))
         val discard = functionBody(source, "discard")
         val start = functionBody(source, "start")
-        val waitForRelease = start.indexOf("pendingKeyboardReturnRelease?.get()")
 
         assertTrue(source.contains("fun cancelForKeyboardReturn() = discard(releaseInBackground = true)"))
-        assertTrue(discard.contains("pendingKeyboardReturnRelease = recorderReleaseExecutor.submit"))
-        assertTrue(waitForRelease >= 0 && waitForRelease < start.indexOf("File.createTempFile"))
+        assertTrue(start.indexOf("recorderWorker.execute") < start.indexOf("startCapture(start)"))
+        assertTrue(discard.contains("recorderWorker.execute { discardCapture(current) }"))
+        assertTrue(start.contains("if (pendingStart !== start) return@post"))
     }
 
     @Test
     fun startReleasesConstructedRecorderAndTemporaryFileOnFailure() {
         val source = String(Files.readAllBytes(sourcePath()))
-        val body = functionBody(source, "start")
+        val body = functionBody(source, "startCapture")
 
         assertTrue(body.contains("var mediaRecorder: MediaRecorder? = null"))
-        assertTrue(body.contains("mediaRecorder = if"))
+        assertTrue(body.contains("mediaRecorder = recorder"))
         assertTrue(body.contains("mediaRecorder?.let(::releaseRecorder)"))
         assertTrue(body.contains("runCatching { file.delete() }"))
     }

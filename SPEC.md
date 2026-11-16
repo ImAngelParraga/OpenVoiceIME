@@ -154,6 +154,9 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 - V78: A pending cover-draw callback acts only while that cover is still owned. Cancel, timeout, configuration change, interruption and teardown remove its ownership, preventing stale continuation. The cover blocks underlying chat taps while accessibility operates the bounded Share sequence.
 - V79: Settings opens on a readiness card (microphone, keyboard, tested server) whose unfinished rows lead to their fix, then rows for Server & model, Languages & prompt, Panel behavior, Voice messages, Response times, Setup guide and app language. Each sub-screen autosaves only its own fields. Post-insert hide/return flags are edited as one choice (return to typing keyboard, hide, keep dictating); unchanged stored combinations are preserved until the user picks. Screens follow the panel's day/night palette and system-bar insets in English and Spanish.
 
+- V80: The voice panel remains responsive while the mic starts. Recorder startup and pending release share one worker across IME instances. Cancellation or editor replacement invalidates startup, releases abandoned capture, and prevents late completion from updating a newer panel. Recording-ready controls appear after successful startup.
+- V81: Shortcut diagnostics keep the latest 80 events, include queued events in explicit reports and persist batches on a worker.
+
 ## §T
 
 | id | status | goal | cites |
@@ -206,6 +209,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T32 | x | Restore opaque full-screen share progress, remove screenshot capture/capability and stale strings/code, verify secure-window/cancellation/chooser regressions; publish signed v0.5.3 and update the connected phone. | V21,V70,V74,V75,V76,V77,V78 |
 | T33 | x | Split Settings into a readiness home and focused sub-screens, verify unit/instrumented settings, setup and diagnostics tests plus phone screenshots in both themes and Spanish; publish signed v0.6.0. | V40,V42,V47,V48,V49,V63,V79 |
 | T34 | x | Move keyboard-return recorder release off the main thread and defer transcription client creation until upload. Verify Samsung Keyboard handoff and rejected-switch recovery. Publish signed v0.6.1. | V21,V27 |
+| T35 | x | Move mic startup off the UI thread, batch diagnostic persistence, trace both keyboard directions with Perfetto, and publish signed v0.6.2. | V21,V25,V27,V63,V80,V81 |
 
 ## §B
 
@@ -315,3 +319,4 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B100 | 2026-11-12 | The Android 13 secure-window check asserted overlay-tree visibility immediately after the menu counter changed. Await both menu progress and the cover window before inspecting bounds; the focused check and all ten feature cases then passed. | V75,V77; asynchronous test readiness |
 | B101 | 2026-11-12 | Release resource optimization renamed XML entries, so inspection by the source res/xml path failed. Resolve the packaged XML path from the resource table before verifying screenshot capability removal. | release verification only |
 | B102 | 2026-11-16 | Recorder shutdown blocked the keyboard-return request on the IME main thread. Detach capture and release it on a worker before allowing another recording. | V27 |
+| B103 | 2026-11-16 | Native mic startup blocked the main thread after the voice window began drawing. Serialize startup and delayed release on one worker. The teardown source check also needed to follow capture ownership after the refactor. | V34,V80 |

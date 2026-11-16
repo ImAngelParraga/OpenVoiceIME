@@ -7,6 +7,8 @@ import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** Local event history containing fixed labels and lifecycle flags, never editor or connection data. */
 internal object ShortcutDiagnostics {
@@ -14,15 +16,38 @@ internal object ShortcutDiagnostics {
     private const val EVENTS = "events"
     private const val MAX_EVENTS = 80
 
-    @Synchronized
-    fun record(context: Context, event: String) {
-        val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-        val lines = preferences.getString(EVENTS, "").orEmpty().lines().filter { it.isNotEmpty() }
-        val entry = "${SystemClock.elapsedRealtime()}ms ${event.take(240)}"
-        preferences.edit().putString(EVENTS, (lines + entry).takeLast(MAX_EVENTS).joinToString("\n")).apply()
-    }
+    private const val FLUSH_INTERVAL_MILLIS = 750L
+    private val pending = ArrayDeque<String>()
+    private val writer = Executors.newSingleThreadScheduledExecutor()
+    private var cachedHistory: String? = null
 
     @Synchronized
+    fun record(context: Context, event: String) {
+        if (pending.size == MAX_EVENTS) pending.removeFirst()
+        pending.addLast("${SystemClock.elapsedRealtime()}ms ${event.take(240)}")
+        if (pending.size == 1) {
+            val appContext = context.applicationContext
+            writer.schedule({ flush(appContext) }, FLUSH_INTERVAL_MILLIS, TimeUnit.MILLISECONDS)
+        }
+    }
+
+    private fun flush(context: Context) {
+        val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        val saved = preferences.getString(EVENTS, "").orEmpty()
+        val history = synchronized(this) {
+            completeHistory(cachedHistory ?: saved).also {
+                cachedHistory = it
+                pending.clear()
+            }
+        }
+        preferences.edit().putString(EVENTS, history).commit()
+    }
+
+    private fun completeHistory(saved: String): String =
+        (saved.lineSequence().filter { it.isNotEmpty() }.toList() + pending)
+            .takeLast(MAX_EVENTS)
+            .joinToString("\n")
+
     fun report(context: Context): String {
         val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName
         val configuration = context.resources.configuration
@@ -32,7 +57,8 @@ internal object ShortcutDiagnostics {
         val selected = Settings.Secure.getString(context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
         val ownIme = ComponentName.unflattenFromString(selected.orEmpty())?.packageName == context.packageName
         val hardwareVisibility = Settings.Secure.getString(context.contentResolver, "show_ime_with_hard_keyboard")
-        val events = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getString(EVENTS, "").orEmpty()
+        val saved = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getString(EVENTS, "").orEmpty()
+        val events = synchronized(this) { completeHistory(cachedHistory ?: saved) }
         return buildString {
             appendLine("OpenVoiceIME $version shortcut diagnostics")
             appendLine("Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}; ${Build.MANUFACTURER} ${Build.MODEL}")

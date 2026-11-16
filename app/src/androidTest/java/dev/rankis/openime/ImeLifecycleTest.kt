@@ -813,6 +813,34 @@ class ImeLifecycleTest {
         }
     }
 
+    @Test
+    fun keyboardReturnDuringRecorderStartupIgnoresLateCompletion() = withIme { ime ->
+        main {
+            ime.recorder.delayStart = true
+            ime.show()
+        }
+        idle()
+        main {
+            val lateStart = checkNotNull(ime.recorder.delayedStart)
+            assertEquals(ime.host.getString(R.string.status_starting_recorder),
+                ime.view.findViewById<TextView>(R.id.statusText).text.toString())
+            assertFalse(ime.view.findViewById<View>(R.id.stopButton).isEnabled)
+            ime.view.findViewById<View>(R.id.keyboardButton).performClick()
+            assertEquals(1, ime.service.previousKeyboardRequests)
+            ime.recorder.delayStart = false
+            ime.show()
+            // The superseded start must never show an error on the reopened panel.
+            android.os.Handler(ime.host.mainLooper).post {
+                lateStart(Result.failure(IllegalStateException("late start")))
+            }
+        }
+        idle()
+        main {
+            assertEquals(1, ime.recorder.starts)
+            assertFreshPanel(ime)
+        }
+    }
+
     private fun assertFreshPanel(ime: Harness) {
         assertEquals(View.GONE, ime.view.findViewById<View>(R.id.retryButton).visibility)
         assertEquals(View.GONE, ime.view.findViewById<View>(R.id.errorDetailsInput).visibility)
@@ -915,12 +943,20 @@ class ImeLifecycleTest {
         var failPause = false
         var lastFile: File? = null
         override val maxAmplitude = 12_000
-        override fun start(): File {
+        var delayStart = false
+        var delayedStart: ((Result<File>) -> Unit)? = null
+
+        override fun start(onResult: (Result<File>) -> Unit) {
             check(!active)
+            if (delayStart) {
+                delayedStart = onResult
+                return
+            }
             active = true; paused = false; starts += 1
-            return File.createTempFile("integration-audio-", ".m4a", context.cacheDir).apply {
+            val file = File.createTempFile("integration-audio-", ".m4a", context.cacheDir).apply {
                 writeBytes(byteArrayOf(1, 2, 3)); lastFile = this
             }
+            onResult(Result.success(file))
         }
         override fun pause() {
             check(active && !paused)

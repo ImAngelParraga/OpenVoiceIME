@@ -6,6 +6,7 @@
     <string name="version_placeholder">Versión</string>
     <string name="version_format">Versión %1$s</string>
     <string name="ime_version_format">OpenVoiceIME %1$s</string>
+    <string name="status_starting_recorder">Iniciando micrófono…</string>
     <string name="status_recording">Grabando</string>
     <string name="status_uploading_format">Subiendo %1$d KB</string>
     <string name="status_inserted">Insertado</string>

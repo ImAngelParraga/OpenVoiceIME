@@ -24,7 +24,7 @@ class RemoteSttInputMethodServiceSourceTest {
         val handle = functionBody(source, "handleTranscript")
         val failure = functionBody(source, "showInsertionFailure") + functionBody(source, "renderPendingTranscript")
         assertTrue(functionBody(source, "onStartInput").contains("editorSessionId += 1"))
-        assertTrue(functionBody(source, "startRecordingOrShowSetupError").contains("recordingEditorSessionId = editorSessionId"))
+        assertTrue(functionBody(source, "completeRecorderStart").contains("recordingEditorSessionId = editorSessionId"))
         assertTrue(commit.indexOf("recordingEditorSessionId != editorSessionId") < commit.indexOf("connection.commitTranscriptAwaitingReadback"))
         assertTrue(handle.contains("recordingEditorSessionId != editorSessionId"))
         assertTrue(failure.contains("state = ImeState.ReadyToInsert"))
@@ -79,7 +79,7 @@ class RemoteSttInputMethodServiceSourceTest {
     @Test
     fun testV25RecorderStartFailureCleansRecorderAndFileState() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
-        val body = functionBody(source, "startRecordingOrShowSetupError")
+        val body = functionBody(source, "showRecorderStartError")
 
         assertTrue(body.contains("recorder.cancel()"))
         assertTrue(body.contains("recordingAudioFocus.abandon()"))
@@ -126,7 +126,7 @@ class RemoteSttInputMethodServiceSourceTest {
         val body = functionBody(source, "startRecordingOrShowSetupError")
 
         assertTrue(body.contains("recordingAudioFocus.request()"))
-        assertTrue(body.indexOf("recordingAudioFocus.request()") < body.indexOf("recorder.start()"))
+        assertTrue(body.indexOf("recordingAudioFocus.request()") < body.indexOf("recorder.start {"))
         assertFalse(body.contains("AUDIOFOCUS_REQUEST_GRANTED"))
     }
 

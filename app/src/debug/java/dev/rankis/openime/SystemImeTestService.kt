@@ -60,14 +60,15 @@ class SystemImeTestService : RemoteSttInputMethodService() {
         var file: File? = null
             private set
         override val maxAmplitude = 12_000
-        override fun start(): File {
+        override fun start(onResult: (Result<File>) -> Unit) {
             check(!active)
             starts += 1
             active = true
-            return File.createTempFile("system-ime-test-", ".m4a", cacheDir).apply {
+            val recording = File.createTempFile("system-ime-test-", ".m4a", cacheDir).apply {
                 writeBytes(byteArrayOf(1, 2, 3))
                 file = this
             }
+            onResult(Result.success(recording))
         }
         override fun pause() = Unit
         override fun resume() = Unit

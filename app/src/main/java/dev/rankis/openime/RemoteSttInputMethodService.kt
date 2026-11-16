@@ -369,6 +369,10 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     }
 
     private fun detachInputView(restoreGesture: Boolean = true) {
+        if (state == ImeState.Starting) {
+            discardCurrentWork(restoreGesture)
+            return
+        }
         deactivateInputView(restoreGesture)
 
         // A shortcut visibility-setting update can recreate only the view while input continues.
@@ -447,38 +451,56 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             return
         }
 
-        runCatching {
-            handler.removeCallbacks(tick)
-            operationId += 1
+        operationId += 1
+        val startupOperationId = operationId
+        state = ImeState.Starting
+        renderStartingRecorder()
+        try {
             recordingAudioFocus.request()
-            audioFile = recorder.start()
-            pendingText = null
-            pendingInsertionMessage = null
-            lastErrorMessage = null
-            state = ImeState.Recording
-            recordingDuration.start()
-            audioDurationMillis = 0L
-            recordingEditorSessionId = editorSessionId
-            applyDefaultStatusStyle()
-            clearErrorDetails()
-            statusText.setText(R.string.status_recording)
-            timerText.text = "00:00"
-            levelBar.progress = 0
-            showLanguageControls()
-            updatePauseControl()
-            stopButton.setText(R.string.button_stop)
-            stopButton.isEnabled = true
-            cancelButton.setText(R.string.button_cancel)
-            cancelButton.isEnabled = true
-            retryButton.visibility = View.GONE
-            handler.post(tick)
-            validateRecordingSettingsAsync(operationId)
-        }.onFailure {
-            recorder.cancel()
-            recordingAudioFocus.abandon()
-            audioFile = null
-            showError(getString(R.string.error_start_recorder))
+            recorder.start { result -> completeRecorderStart(startupOperationId, result) }
+        } catch (_: Exception) {
+            showRecorderStartError()
         }
+    }
+
+    private fun completeRecorderStart(startupOperationId: Long, result: Result<File>) {
+        if (startupOperationId != operationId || state != ImeState.Starting) return
+        val file = result.getOrElse {
+            showRecorderStartError()
+            return
+        }
+        audioFile = file
+        pendingText = null
+        pendingInsertionMessage = null
+        lastErrorMessage = null
+        state = ImeState.Recording
+        recordingDuration.start()
+        audioDurationMillis = 0L
+        recordingEditorSessionId = editorSessionId
+        levelBar.progress = 0
+        renderCaptureState()
+        handler.post(tick)
+        validateRecordingSettingsAsync(operationId)
+    }
+
+    private fun renderStartingRecorder() {
+        applyDefaultStatusStyle()
+        clearErrorDetails()
+        statusText.setText(R.string.status_starting_recorder)
+        stopButton.setText(R.string.button_stop)
+        stopButton.isEnabled = false
+        cancelButton.setText(R.string.button_cancel)
+        cancelButton.isEnabled = true
+        retryButton.visibility = View.GONE
+        levelBar.visibility = View.GONE
+        timerText.visibility = View.GONE
+    }
+
+    private fun showRecorderStartError() {
+        recorder.cancel()
+        recordingAudioFocus.abandon()
+        audioFile = null
+        showError(getString(R.string.error_start_recorder))
     }
 
     internal fun finishDictationFromKeyboard(): Boolean {
@@ -891,6 +913,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
                 resetControls()
                 showLanguageControls()
             }
+            ImeState.Starting -> renderStartingRecorder()
             ImeState.Recording, ImeState.Paused -> renderCaptureState()
             ImeState.Uploading -> {
                 applyDefaultStatusStyle()
@@ -927,13 +950,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private fun resetControls() {
         state = ImeState.Idle
         lastErrorMessage = null
-        applyDefaultStatusStyle()
-        clearErrorDetails()
-        timerText.text = "00:00"
-        levelBar.progress = 0
-        languageButton.visibility = View.GONE
-        retryButton.setText(R.string.button_retry)
-        retryButton.visibility = View.GONE
+        renderStartingRecorder()
     }
 
     private fun setupLanguageControls() {
@@ -1322,6 +1339,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
 
     private enum class ImeState {
         Idle,
+        Starting,
         Recording,
         Paused,
         ReadyToUpload,
