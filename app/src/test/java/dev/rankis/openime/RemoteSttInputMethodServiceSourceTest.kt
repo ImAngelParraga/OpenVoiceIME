@@ -211,6 +211,22 @@ class RemoteSttInputMethodServiceSourceTest {
     }
 
     @Test
+    fun testV82PanelIsPrefetchedOffMainThreadDuringCreation() {
+        val source = String(Files.readAllBytes(serviceSourcePath()))
+        val create = functionBody(source, "onCreate")
+        val take = functionBody(source, "takePrefetchedPanel")
+
+        assertTrue(create.indexOf("super.onCreate()") < create.indexOf("prefetchPanel()"))
+        assertTrue(functionBody(source, "prefetchPanel").contains("panelInflation.submit"))
+        assertTrue(source.contains("Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)"))
+        assertTrue(functionBody(source, "onCreateInputView").contains("takePrefetchedPanel() ?: inflatePanel(LayoutInflater.from(this))"))
+        assertTrue(take.indexOf("prefetchedPanel = null") < take.indexOf("prefetched.get()"))
+        assertTrue(take.contains("getOrNull()"))
+        val configuration = functionBody(source, "onConfigurationChanged")
+        assertTrue(configuration.indexOf("takePrefetchedPanel()") < configuration.indexOf("super.onConfigurationChanged(newConfig)"))
+    }
+
+    @Test
     fun directKeyboardReturnCancelsWorkBeforeSwitching() {
         val source = String(Files.readAllBytes(serviceSourcePath()))
         val createViewBody = functionBody(source, "onCreateInputView")

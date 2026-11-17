@@ -156,6 +156,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 
 - V80: The voice panel remains responsive while the mic starts. Recorder startup and pending release share one worker across IME instances. Cancellation or editor replacement invalidates startup, releases abandoned capture, and prevents late completion from updating a newer panel. Recording-ready controls appear after successful startup.
 - V81: Shortcut diagnostics keep the latest 80 events, include queued events in explicit reports and persist batches on a worker.
+- V82: Each IME instance inflates its panel on a background-priority worker from `onCreate`, while the platform attaches the input window. The first input view uses that panel; a failed prefetch inflates on the main thread, and a configuration change before first show discards it. Inflation never runs on two threads at once.
 
 ## §T
 
@@ -210,6 +211,7 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | T33 | x | Split Settings into a readiness home and focused sub-screens, verify unit/instrumented settings, setup and diagnostics tests plus phone screenshots in both themes and Spanish; publish signed v0.6.0. | V40,V42,V47,V48,V49,V63,V79 |
 | T34 | x | Move keyboard-return recorder release off the main thread and defer transcription client creation until upload. Verify Samsung Keyboard handoff and rejected-switch recovery. Publish signed v0.6.1. | V21,V27 |
 | T35 | x | Move mic startup off the UI thread, batch diagnostic persistence, trace both keyboard directions with Perfetto, and publish signed v0.6.2. | V21,V25,V27,V63,V80,V81 |
+| T36 | x | Prefetch the panel off the main thread during IME creation, A/B-trace warm and cold Samsung Keyboard-to-panel switches on the tablet, and publish signed v0.6.3. | V25,V82 |
 
 ## §B
 
@@ -320,3 +322,4 @@ Centered, equally sized Cancel/Pause/Delete/Transcribe controls; direct settings
 | B101 | 2026-11-12 | Release resource optimization renamed XML entries, so inspection by the source res/xml path failed. Resolve the packaged XML path from the resource table before verifying screenshot capability removal. | release verification only |
 | B102 | 2026-11-16 | Recorder shutdown blocked the keyboard-return request on the IME main thread. Detach capture and release it on a worker before allowing another recording. | V27 |
 | B103 | 2026-11-16 | Native mic startup blocked the main thread after the voice window began drawing. Serialize startup and delayed release on one worker. The teardown source check also needed to follow capture ownership after the refactor. | V34,V80 |
+| B104 | 2026-11-17 | A normal-priority panel prefetch took a big core and slowed the main thread's window attach by as much as it saved. Run the prefetch at background priority. | V82 |

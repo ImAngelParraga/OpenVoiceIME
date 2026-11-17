@@ -11,6 +11,7 @@ import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
@@ -64,6 +65,8 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -123,6 +126,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private var terminalDownX = 0f
     private var terminalDownY = 0f
     private var uploadJob: Job? = null
+    private var prefetchedPanel: Future<View>? = null
 
     private val finishUnrestartedInput = Runnable {
         if (awaitingInputRestart) discardCurrentWork()
@@ -154,6 +158,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
 
     override fun onCreate() {
         super.onCreate()
+        prefetchPanel()
         deleteAbandonedRecordings(cacheDir)
         provider = createSttProvider()
         recorder = createRecorder()
@@ -207,7 +212,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     override fun onCreateInputView(): View {
         detachInputView()
         configureInputWindow()
-        val view = LayoutInflater.from(this).inflate(R.layout.ime_voice_input, null)
+        val view = takePrefetchedPanel() ?: inflatePanel(LayoutInflater.from(this))
         ViewCompat.setOnApplyWindowInsetsListener(view) { root, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             root.setPadding(bars.left, 0, bars.right, bars.bottom)
@@ -262,8 +267,27 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         return view
     }
 
+    // The platform attaches the input window before asking for its view; inflating meanwhile keeps it off the critical path.
+    private fun prefetchPanel() {
+        val inflater = LayoutInflater.from(this).cloneInContext(this)
+        prefetchedPanel = panelInflation.submit<View> { inflatePanel(inflater) }
+    }
+
+    // Waits for any prefetch, so inflation never runs on two threads at once.
+    private fun takePrefetchedPanel(): View? {
+        val prefetched = prefetchedPanel ?: return null
+        prefetchedPanel = null
+        return runCatching { prefetched.get() }
+            .onFailure { Log.w(TAG, "Panel prefetch failed; inflating on the main thread", it) }
+            .getOrNull()
+    }
+
+    private fun inflatePanel(inflater: LayoutInflater): View = inflater.inflate(R.layout.ime_voice_input, null)
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         ShortcutDiagnostics.record(this, "configuration orientation=${newConfig.orientation} keyboard=${newConfig.keyboard} hard-hidden=${newConfig.hardKeyboardHidden}")
+        // A panel inflated for the old configuration would show stale resources.
+        takePrefetchedPanel()
         rebuildingInputView = true
         detachInputView()
         try {
@@ -1362,5 +1386,12 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
 
     private companion object {
         const val TAG = "OpenVoiceIME"
+        val panelInflation = Executors.newSingleThreadExecutor { task ->
+            Thread({
+                // Background priority keeps inflation off the cores the main thread needs to attach the window.
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+                task.run()
+            }, "OpenVoiceIME-panel")
+        }
     }
 }
