@@ -13,6 +13,7 @@ import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
@@ -45,6 +46,7 @@ class KeyboardSetupGuide(
     }
 
     private val routes = root.findViewById<RadioGroup>(R.id.setupRouteGroup)
+    private val settings = SettingsStore(context)
 
     init {
         when (preferences.getString(ROUTE, null)) {
@@ -66,6 +68,13 @@ class KeyboardSetupGuide(
         }
         root.findViewById<Button>(R.id.setupShortcutButton).setOnClickListener {
             open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            root.findViewById<LinearLayout>(R.id.setupShortcutOptions).addSwitchRow(
+                context.getString(R.string.shortcut_toggle_title),
+                context.getString(R.string.shortcut_toggle_summary),
+                settings.toggleDictationShortcut,
+            ) { settings.toggleDictationShortcut = it }
         }
         root.findViewById<Button>(R.id.setupCopyShortcutDiagnostics).setOnClickListener {
             context.getSystemService(ClipboardManager::class.java).setPrimaryClip(

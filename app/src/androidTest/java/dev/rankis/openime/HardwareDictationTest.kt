@@ -93,6 +93,27 @@ class HardwareDictationTest {
     fun testV57V59V60HardwareShortcutsRespectReturnAndHideActions() = exerciseShortcuts()
 
     @Test
+    fun testSpaceToggleInsertsAndRestoresTypingKeyboard() =
+        withShortcutKeyboard { scenario, _, previous ->
+            SettingsStore(instrumentation.targetContext).toggleDictationShortcut = true
+            repeat(2) { round ->
+                focusHiddenEditor(scenario)
+                shortcut(repeatCount = 2)
+                await("recording") { SystemImeTestService.instance?.testRecorder?.active == true }
+                val recorder = SystemImeTestService.instance!!.testRecorder
+                shortcut(repeatCount = 2)
+                await("typing keyboard restored") {
+                    SystemImeTestService.instance == null && getSetting("default_input_method") == previous
+                }
+                assertEquals(1, recorder.stops)
+                scenario.onActivity {
+                    assertEquals("shortcut dictation", it.editor.text.toString())
+                    if (round == 0) it.editor.setText("")
+                }
+            }
+        }
+
+    @Test
     fun testV62LandscapeNormalEditorKeepsDictationPanelBoundedAndVisible() =
         exerciseShortcuts(normalEditor = true, landscape = true)
 
@@ -393,13 +414,15 @@ class HardwareDictationTest {
         val context = instrumentation.targetContext
         DeviceTestPermissions.microphone(automation, context)
         val settings = AppSettings(apiToken = "integration-test", selectInsertedText = false)
-        SettingsStore(context).apply { save(settings); markConnectionTestSucceeded(settings) }
+        val store = SettingsStore(context).apply { save(settings); markConnectionTestSucceeded(settings) }
+        val previousToggle = store.toggleDictationShortcut
         val saved = listOf("default_input_method", "enabled_input_methods", "enabled_accessibility_services",
             "accessibility_enabled", "show_ime_with_hard_keyboard").associateWith { getSetting(it) }
         val previous = saved.getValue("default_input_method")
         val ime = "${context.packageName}/dev.rankis.openime.SystemImeTestService"
         val listener = "${context.packageName}/dev.rankis.openime.ShortcutTestAccessibilityService"
         try {
+            store.toggleDictationShortcut = false
             shell("ime enable $ime")
             shell("settings put secure show_ime_with_hard_keyboard 0")
             val services = saved.getValue("enabled_accessibility_services").takeUnless { it == "null" }.orEmpty()
@@ -420,6 +443,7 @@ class HardwareDictationTest {
                 block(scenario, ime, previous)
             }
         } finally {
+            store.toggleDictationShortcut = previousToggle
             main { HardwareDictation.finish() }
             shell("ime set $previous")
             saved.forEach { (key, value) ->

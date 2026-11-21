@@ -147,7 +147,9 @@
     <string name="shortcut_title">Atajo de teclado físico</string>
     <string name="shortcut_instructions">Activa Atajo de teclado de OpenVoiceIME en Accesibilidad de Android. Mantén oculto el teclado virtual y selecciona un campo de texto. Ctrl+Mayús+Espacio abre la grabación; Ctrl+Mayús+Intro transcribe, inserta y oculta el panel sin cambiar de teclado ni enviar Intro a la aplicación. Si hay un error, el panel permanece abierto; repite el atajo de finalizar para reintentar. Se omite la confirmación solo para esta acción. El servicio opcional no lee la pantalla ni guarda lo escrito.</string>
     <string name="shortcut_setup">Configurar atajo de teclado</string>
-    <string name="shortcut_enabled">Servicio de atajo activado: Ctrl+Mayús+Espacio para grabar; Ctrl+Mayús+Intro para insertar y ocultar.</string>
+    <string name="shortcut_enabled">Servicio de atajo activado</string>
+    <string name="shortcut_toggle_title">Usar Ctrl+Mayús+Espacio para finalizar el dictado</string>
+    <string name="shortcut_toggle_summary">Pulsa una vez para grabar. Vuelve a pulsar para insertar la transcripción y regresar al teclado anterior.</string>
     <string name="shortcut_disabled">Servicio de atajo desactivado. Actívalo en los ajustes de Accesibilidad de Android.</string>
     <string name="shortcut_unsupported">El atajo global requiere Android 11 o posterior.</string>
     <string name="shortcut_enable_ime">Activa primero OpenVoiceIME en los ajustes de teclado de Android.</string>

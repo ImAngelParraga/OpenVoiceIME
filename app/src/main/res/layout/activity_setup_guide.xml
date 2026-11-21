@@ -221,6 +221,12 @@
                     android:layout_marginTop="12dp"
                     android:text="@string/shortcut_setup" />
 
+                <LinearLayout
+                    android:id="@+id/setupShortcutOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
                 <TextView
                     style="@style/Widget.OpenVoiceIME.Settings.Help"
                     android:layout_marginTop="12dp"

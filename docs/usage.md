@@ -64,7 +64,9 @@ HeliBoard itself describes both [direct APK installation](https://github.com/Hel
 4. Leave **Use on-screen keyboard** off under Android’s physical-keyboard settings.
 5. Focus a text field and press **Ctrl+Shift+Space**. The recording panel opens while the physical keyboard stays connected.
 6. Press **Ctrl+Shift+Enter** to stop recording (including paused recording), transcribe, insert the result, and hide the panel. OpenVoiceIME stays selected; the shortcut never sends Enter or submits the destination app. It skips confirmation for this dictation without changing saved preferences.
-7. If transcription or insertion fails, the panel stays open with the available recovery actions. Press **Ctrl+Shift+Enter** again to retry retained audio or insert the retained transcript. Repeated presses while uploading or verifying insertion do not duplicate work.
+7. If transcription or insertion fails, the panel stays open with the available recovery actions. Press the finish shortcut again to retry retained audio or insert the retained transcript. Repeated presses while uploading or verifying insertion do not duplicate work.
+
+To use the same keys for both actions, enable **Use Ctrl+Shift+Space to finish dictation** in the setup guide. Press **Ctrl+Shift+Space** once to record and again to insert the transcript and restore the previous keyboard.
 
 The on-screen **Transcribe**, **Cancel**, and keyboard-return controls retain their normal preference behavior.
 

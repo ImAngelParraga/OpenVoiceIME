@@ -8,10 +8,12 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import dev.rankis.openime.settings.SettingsStore
 
 /** Receives the optional hardware shortcut while another keyboard is selected. */
 open class DictationShortcutService : AccessibilityService() {
     private val consumedKeys = mutableSetOf<Pair<Int, Int>>()
+    private val settings by lazy { SettingsStore(this) }
 
     protected open val dictationServiceClass: Class<out RemoteSttInputMethodService>
         get() = RemoteSttInputMethodService::class.java
@@ -40,7 +42,9 @@ open class DictationShortcutService : AccessibilityService() {
             event.isAltPressed || event.isMetaPressed || event.isCanceled
         ) return false
         val handled = if (event.keyCode == KeyEvent.KEYCODE_SPACE) {
-            openDictation()
+            if (!settings.toggleDictationShortcut ||
+                !HardwareDictation.transcribeAndHide(ShortcutFinishAction.RestoreKeyboard)
+            ) openDictation()
             true
         } else {
             HardwareDictation.transcribeAndHide()
