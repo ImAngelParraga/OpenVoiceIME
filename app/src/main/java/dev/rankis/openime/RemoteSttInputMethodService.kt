@@ -108,7 +108,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
     private var pendingHideAfterSuccess: Boolean = true
     private var pendingSelectInsertedText: Boolean = true
     private var pendingReturnToKeyboardAfterInsert: Boolean = true
-    private var finishAndHideRequested = false
+    private var shortcutFinishAction: ShortcutFinishAction? = null
     private var lastErrorMessage: String? = null
     private var operationId: Long = 0L
     private var selectedLanguageCode: String? = null
@@ -450,7 +450,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         pendingHideAfterSuccess = true
         pendingSelectInsertedText = true
         pendingReturnToKeyboardAfterInsert = true
-        finishAndHideRequested = false
+        shortcutFinishAction = null
         lastErrorMessage = null
         state = ImeState.Idle
     }
@@ -527,15 +527,15 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
         showError(getString(R.string.error_start_recorder))
     }
 
-    internal fun finishDictationFromKeyboard(): Boolean {
+    internal fun finishDictationFromKeyboard(action: ShortcutFinishAction = ShortcutFinishAction.HidePanel): Boolean {
         if (!inputViewVisible) return false
         when (state) {
             ImeState.Recording, ImeState.Paused, ImeState.ReadyToUpload, ImeState.ReadyToInsert -> {
-                finishAndHideRequested = true
+                shortcutFinishAction = action
                 onPrimaryAction()
             }
             ImeState.Error -> if (audioFile?.exists() == true) {
-                finishAndHideRequested = true
+                shortcutFinishAction = action
                 retryUpload()
             }
             else -> Unit
@@ -715,7 +715,7 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             showInsertionFailure(getString(R.string.transcription_editor_changed))
             return@withContext
         }
-        if (settings.confirmBeforeInsert && !finishAndHideRequested) {
+        if (settings.confirmBeforeInsert && shortcutFinishAction == null) {
             state = ImeState.ReadyToInsert
             renderCurrentState()
         } else {
@@ -795,8 +795,8 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
                 ))
                 return@launch
             }
-            val shouldFinishAndHide = finishAndHideRequested
-            finishAndHideRequested = false
+            val finishAction = shortcutFinishAction
+            shortcutFinishAction = null
             audioFile?.delete()
             audioFile = null
             pendingText = null
@@ -815,8 +815,13 @@ open class RemoteSttInputMethodService : android.inputmethodservice.InputMethodS
             statusText.setText(R.string.status_inserted)
             stopButton.isEnabled = false
             retryButton.visibility = View.GONE
-            if (shouldFinishAndHide) {
-                HardwareDictation.prepareHideWithoutKeyboardReturn(this@RemoteSttInputMethodService)
+            if (finishAction != null) {
+                when (finishAction) {
+                    ShortcutFinishAction.HidePanel ->
+                        HardwareDictation.prepareHideWithoutKeyboardReturn(this@RemoteSttInputMethodService)
+                    ShortcutFinishAction.RestoreKeyboard ->
+                        if (HardwareDictation.finish(this@RemoteSttInputMethodService)) return@launch
+                }
                 requestHideSelf(0)
                 return@launch
             }

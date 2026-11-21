@@ -52,6 +52,10 @@ class SettingsStore(context: Context) {
         return prefs.enumValue(KEY_APP_LANGUAGE_CHOICE, AppLanguageChoice.SYSTEM)
     }
 
+    var toggleDictationShortcut: Boolean
+        get() = prefs.getBoolean(KEY_TOGGLE_DICTATION_SHORTCUT, false)
+        set(enabled) = prefs.edit { putBoolean(KEY_TOGGLE_DICTATION_SHORTCUT, enabled) }
+
     fun loadTranscriptionLanguage(packageName: String? = null): TranscriptionLanguageSettings {
         val normalizedPackageName = packageName?.trim()?.ifBlank { null }
         val appLanguageKey = normalizedPackageName?.let(::transcriptionLanguageKey)
@@ -282,6 +286,7 @@ class SettingsStore(context: Context) {
         const val KEY_RETURN_TO_KEYBOARD_AFTER_INSERT = "return_to_keyboard_after_insert"
         const val KEY_CONFIRM_BEFORE_INSERT = "confirm_before_insert"
         const val KEY_SELECT_INSERTED_TEXT = "select_inserted_text"
+        const val KEY_TOGGLE_DICTATION_SHORTCUT = "toggle_dictation_shortcut"
         const val KEY_CUSTOM_PRESET_TOKEN_PREFIX = "custom_preset_token_"
         const val KEY_TESTED_CONNECTION_FINGERPRINT = "tested_connection_fingerprint"
         const val AUTO_LANGUAGE_CODE = "__auto__"

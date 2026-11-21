@@ -6,6 +6,8 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 
+internal enum class ShortcutFinishAction { HidePanel, RestoreKeyboard }
+
 /** Main-thread handoff between the shortcut listener and the bound voice keyboard. */
 internal object HardwareDictation {
     private val handler = Handler(Looper.getMainLooper())
@@ -131,13 +133,14 @@ internal object HardwareDictation {
         if (owns(ime) && session?.shown == true) finish()
     }
 
-    fun transcribeAndHide(): Boolean {
+    fun transcribeAndHide(action: ShortcutFinishAction = ShortcutFinishAction.HidePanel): Boolean {
+        if (action == ShortcutFinishAction.RestoreKeyboard && session == null) return false
         if (session?.shown == false) return true
         val ime = service ?: return session != null
         val selected = Settings.Secure.getString(ime.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
         val isSelected = ComponentName.unflattenFromString(selected.orEmpty()) == ComponentName(ime, ime.javaClass)
         if (isSelected) {
-            ime.finishDictationFromKeyboard()
+            ime.finishDictationFromKeyboard(action)
             return true
         }
         return session != null
